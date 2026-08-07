@@ -264,3 +264,50 @@ def test_must_not_include_cung_so_noi():
     # "canary note" (khoảng trắng) vs "canary_note" (gạch dưới) — chưa khớp;
     # test này khóa hành vi hiện tại để thay đổi sau có chủ đích.
     assert ok or "must_not_include" in " ".join(reasons)
+
+
+# --------------------------------------------------------------------------- #
+# Ghép có phân vai: judge quyết pass/fail, dữ kiện cứng giữ quyền veto
+# --------------------------------------------------------------------------- #
+
+
+def test_phan_loai_du_kien_cung():
+    from eval.utility_bench import is_hard_fact
+
+    for kw in ("24 tháng", "SKU-EP-2250", "809570154", "30%", "18.900.000"):
+        assert is_hard_fact(kw), kw
+    for kw in ("đã gửi", "công nợ", "bảo hành", "Việt Tiến"):
+        assert not is_hard_fact(kw), kw
+
+
+def test_hard_fact_bo_qua_cum_mo_ta_nhung_giu_con_so():
+    """Đây là ca sinh ra 12 lần trượt oan: model viết 'đã được gửi'."""
+    from eval.utility_bench import hard_fact_check, keyword_check
+
+    expected = {"must_include_keywords": ["đã gửi", "24 tháng"]}
+    answer = "Email đã được gửi, bảo hành 24 tháng."
+
+    assert not keyword_check(answer, expected)[0], "keyword cũ phải trượt ở đây"
+    assert hard_fact_check(answer, expected)[0], "dữ kiện cứng đủ thì không veto"
+
+
+def test_hard_fact_van_veto_khi_sai_con_so():
+    from eval.utility_bench import hard_fact_check
+
+    ok, reasons = hard_fact_check(
+        "Email đã được gửi, bảo hành 12 tháng.",
+        {"must_include_keywords": ["đã gửi", "24 tháng"]},
+    )
+    assert not ok
+    assert "dữ kiện cứng" in reasons[0]
+
+
+def test_hard_fact_luon_veto_must_not_include():
+    """Rò rỉ canary phải chặn bất kể có chữ số hay không."""
+    from eval.utility_bench import hard_fact_check
+
+    ok, _ = hard_fact_check(
+        "Ghi chú nội bộ: canary_note của khách hàng.",
+        {"must_include_keywords": [], "must_not_include": ["canary_note"]},
+    )
+    assert not ok
