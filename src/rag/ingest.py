@@ -15,13 +15,14 @@ Cả hai nằm chung một collection, phân biệt bằng payload `source`
 chỗ rồi trộn điểm số — làm hỏng ý nghĩa của top-k, mà top-k lại chính là nguồn
 của trường `delivered` (W1-09, lỗ hổng A2).
 
-Cách dùng:
+Cách dùng (`src/` phải nằm trên PYTHONPATH — pytest tự lo qua `pyproject.toml`,
+còn chạy tay thì phải khai báo; dùng `make kb-build` / `make kb-bench` cho gọn):
 
     # dựng nền, chạy một lần sau khi `make up`
-    uv run python -m rag.ingest build
+    PYTHONPATH=src uv run python -m rag.ingest build
 
     # kiểm ngưỡng thời gian của DoD
-    uv run python -m rag.ingest bench
+    PYTHONPATH=src uv run python -m rag.ingest bench
 """
 
 from __future__ import annotations

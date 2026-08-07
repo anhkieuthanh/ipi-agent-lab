@@ -19,10 +19,15 @@ services:
       - "6334:6334"
     volumes:
       - qdrant_data:/qdrant/storage
-    # Image qdrant không có curl/wget/nc — dùng /dev/tcp của bash (có sẵn).
+    # Image qdrant không có curl/wget/nc — dùng /dev/tcp, nhưng đó là tính năng
+    # của BASH, không phải POSIX sh. `CMD-SHELL` chạy /bin/sh (dash trong image
+    # này) nên báo "cannot create /dev/tcp/...: Directory nonexistent" và
+    # healthcheck fail vĩnh viễn. Phải gọi bash tường minh — image có /bin/bash.
     healthcheck:
       test:
-        - CMD-SHELL
+        - CMD
+        - bash
+        - -c
         - >-
           exec 3<>/dev/tcp/127.0.0.1/6333 &&
           printf 'GET /readyz HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
