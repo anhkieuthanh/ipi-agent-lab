@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-07T01:03:49.756316+00:00",
-  "trials_per_target": 10,
+  "generated_at": "2026-08-07T01:21:38.135423+00:00",
+  "trials_this_run": 10,
   "results": {
     "api1": {
       "status": "ran",
@@ -98,7 +98,8 @@
           "tokens_out": 73
         }
       ],
-      "measured_at": "2026-08-07T01:03:49.756316+00:00"
+      "measured_at": "2026-08-07T01:03:49.756316+00:00",
+      "from_previous_run": true
     },
     "api2": {
       "status": "ran",
@@ -196,107 +197,106 @@
           "tokens_out": 68
         }
       ],
-      "measured_at": "2026-08-07T01:03:49.756316+00:00"
+      "measured_at": "2026-08-07T01:03:49.756316+00:00",
+      "from_previous_run": true
     },
     "local": {
       "status": "ran",
-      "model": "qwen/qwen3-4b",
+      "model": "google/gemma-4-e2b",
       "label": "LM Studio local (M3)",
+      "measured_at": "2026-08-07T01:21:38.135423+00:00",
       "trials": [
         {
           "i": 1,
           "ok": true,
           "reason": "ok",
-          "latency_ms": 49241,
+          "latency_ms": 53965,
           "attempts": 1,
-          "tokens_in": 214,
-          "tokens_out": 158
+          "tokens_in": 128,
+          "tokens_out": 222
         },
         {
           "i": 2,
           "ok": true,
           "reason": "ok",
-          "latency_ms": 14882,
+          "latency_ms": 18918,
           "attempts": 1,
-          "tokens_in": 214,
-          "tokens_out": 158
+          "tokens_in": 128,
+          "tokens_out": 248
         },
         {
           "i": 3,
           "ok": true,
           "reason": "ok",
-          "latency_ms": 16184,
+          "latency_ms": 22343,
           "attempts": 1,
-          "tokens_in": 214,
-          "tokens_out": 158
+          "tokens_in": 128,
+          "tokens_out": 248
         },
         {
           "i": 4,
           "ok": true,
           "reason": "ok",
-          "latency_ms": 19401,
+          "latency_ms": 25629,
           "attempts": 1,
-          "tokens_in": 214,
-          "tokens_out": 158
+          "tokens_in": 128,
+          "tokens_out": 248
         },
         {
           "i": 5,
           "ok": true,
           "reason": "ok",
-          "latency_ms": 15654,
+          "latency_ms": 25751,
           "attempts": 1,
-          "tokens_in": 214,
-          "tokens_out": 158
+          "tokens_in": 128,
+          "tokens_out": 248
         },
         {
           "i": 6,
           "ok": true,
           "reason": "ok",
-          "latency_ms": 14987,
+          "latency_ms": 19726,
           "attempts": 1,
-          "tokens_in": 214,
-          "tokens_out": 158
+          "tokens_in": 128,
+          "tokens_out": 248
         },
         {
           "i": 7,
           "ok": true,
           "reason": "ok",
-          "latency_ms": 14281,
+          "latency_ms": 19211,
           "attempts": 1,
-          "tokens_in": 214,
-          "tokens_out": 158
+          "tokens_in": 128,
+          "tokens_out": 248
         },
         {
           "i": 8,
           "ok": true,
           "reason": "ok",
-          "latency_ms": 15519,
+          "latency_ms": 22362,
           "attempts": 1,
-          "tokens_in": 214,
-          "tokens_out": 158
+          "tokens_in": 128,
+          "tokens_out": 248
         },
         {
           "i": 9,
           "ok": true,
           "reason": "ok",
-          "latency_ms": 14304,
+          "latency_ms": 22287,
           "attempts": 1,
-          "tokens_in": 214,
-          "tokens_out": 158
+          "tokens_in": 128,
+          "tokens_out": 248
         },
         {
           "i": 10,
           "ok": true,
           "reason": "ok",
-          "latency_ms": 14282,
+          "latency_ms": 19101,
           "attempts": 1,
-          "tokens_in": 214,
-          "tokens_out": 158
+          "tokens_in": 128,
+          "tokens_out": 248
         }
-      ],
-      "from_previous_run": true,
-      "measured_at": "2026-08-06T17:01:41.411078+00:00",
-      "skip_reason_this_run": "target_id='local': biến môi trường 'LOCAL_LLM_API_KEY' (cho 'api_key') chưa được set — xem .env.example"
+      ]
     }
   }
 }
