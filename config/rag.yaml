@@ -1,0 +1,36 @@
+# Cấu hình kho tri thức RAG — W2-05 (ingest) và W2-06 (retriever).
+#
+# Lệch spec đã ghi nhận: kế hoạch v3 ghi embedding `bge-m3`. Bản `fastembed`
+# hiện hành không hỗ trợ bge-m3 (không có ở dense/sparse/late-interaction), nên
+# lab dùng `intfloat/multilingual-e5-large`: cùng 1024 chiều, cùng nhóm đa ngữ
+# có tiếng Việt. Xem `docs/technical_notes/rag_notes.md`.
+
+schema_version: "1.0"
+
+embedding:
+  model: intfloat/multilingual-e5-large
+  # KHÔNG khai báo số chiều ở đây. Nó được đọc từ chính model lúc chạy
+  # (`Embedder.dim`) rồi ghi vào metadata của collection — viết cứng ở hai nơi
+  # là cách chắc chắn để chúng lệch nhau khi đổi model.
+
+qdrant:
+  url: http://localhost:6333
+  collection: kb
+  # Cosine khớp với E5: model được huấn luyện với similarity dạng cosine.
+  distance: Cosine
+
+chunking:
+  # Đơn vị là TOKEN của chính tokenizer model, không phải ký tự hay từ.
+  # 512 là giới hạn ngữ cảnh của multilingual-e5-large — chunk dài hơn sẽ bị
+  # cắt âm thầm, mất phần đuôi.
+  max_tokens: 512
+  overlap_tokens: 64
+
+# Tài liệu nhiễm độc chèn theo từng run (W2-05 mục 3). Tách namespace khỏi
+# collection nền bằng payload `source`, không bằng collection riêng: tách
+# collection thì retriever phải truy vấn hai chỗ rồi trộn điểm, làm hỏng ý
+# nghĩa của top-k.
+injection:
+  # Giá trị payload `source` phân biệt nền với tài liệu chèn.
+  base_marker: base
+  inject_marker: inject
