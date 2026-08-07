@@ -1,0 +1,42 @@
+# config/models.yaml — W2-02 cấu hình target model cho llm_client dùng chung
+#
+# Nguyên tắc: đổi model đích chỉ bằng đổi 1 chuỗi `target_id` khi khởi tạo
+# `LLMClient(target_id=...)`. KHÔNG hard-code base_url/api_key/model trong
+# src/agent/*.py — mọi giá trị bí mật lấy qua biến môi trường (xem .env.example).
+#
+# 3 target khớp đúng W1-11 (docs/technical_notes/local_model_notes.md,
+# docs/technical_notes/cost_budget.md): 2 API qua gateway chung llmgate.app
+# (phân biệt bằng model family) + 1 model local qua LM Studio.
+
+schema_version: "1.0"
+
+defaults:
+  timeout_s: 30
+  # Số lần THỬ LẠI, không tính lần gọi đầu: 5 ⇒ tối đa 6 lần gọi mạng.
+  # Chỉ áp dụng cho 429/5xx/timeout; model trả sai định dạng KHÔNG retry.
+  max_retries: 5
+  backoff_base_s: 1.0
+  backoff_max_s: 30.0
+  temperature: 0
+  # Ghi nguyên văn messages/tools/response vào logs/llm_client.jsonl.
+  # Đặt false nếu chỉ cần đếm token/chi phí và muốn log gọn.
+  log_bodies: true
+
+targets:
+  api1:
+    label: "API #1 (OpenAI family, qua llmgate.app)"
+    base_url_env: OPENAI_COMPATIBLE_BASE_URL
+    api_key_env: OPENAI_COMPATIBLE_API_KEY
+    model_env: TARGET_MODEL_A
+
+  api2:
+    label: "API #2 (Google family, qua llmgate.app)"
+    base_url_env: OPENAI_COMPATIBLE_BASE_URL
+    api_key_env: OPENAI_COMPATIBLE_API_KEY
+    model_env: TARGET_MODEL_B
+
+  local:
+    label: "LM Studio local (M3)"
+    base_url_env: LOCAL_LLM_BASE_URL
+    api_key_env: LOCAL_LLM_API_KEY
+    model_env: LOCAL_LLM_MODEL

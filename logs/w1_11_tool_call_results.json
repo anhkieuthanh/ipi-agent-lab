@@ -1,0 +1,103 @@
+{
+  "generated_at": "2026-08-06T17:01:41.411078+00:00",
+  "trials_per_target": 10,
+  "results": {
+    "local": {
+      "status": "ran",
+      "model": "qwen/qwen3-4b",
+      "label": "LM Studio local (M3)",
+      "trials": [
+        {
+          "i": 1,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 49241,
+          "attempts": 1,
+          "tokens_in": 214,
+          "tokens_out": 158
+        },
+        {
+          "i": 2,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 14882,
+          "attempts": 1,
+          "tokens_in": 214,
+          "tokens_out": 158
+        },
+        {
+          "i": 3,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 16184,
+          "attempts": 1,
+          "tokens_in": 214,
+          "tokens_out": 158
+        },
+        {
+          "i": 4,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 19401,
+          "attempts": 1,
+          "tokens_in": 214,
+          "tokens_out": 158
+        },
+        {
+          "i": 5,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 15654,
+          "attempts": 1,
+          "tokens_in": 214,
+          "tokens_out": 158
+        },
+        {
+          "i": 6,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 14987,
+          "attempts": 1,
+          "tokens_in": 214,
+          "tokens_out": 158
+        },
+        {
+          "i": 7,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 14281,
+          "attempts": 1,
+          "tokens_in": 214,
+          "tokens_out": 158
+        },
+        {
+          "i": 8,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 15519,
+          "attempts": 1,
+          "tokens_in": 214,
+          "tokens_out": 158
+        },
+        {
+          "i": 9,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 14304,
+          "attempts": 1,
+          "tokens_in": 214,
+          "tokens_out": 158
+        },
+        {
+          "i": 10,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 14282,
+          "attempts": 1,
+          "tokens_in": 214,
+          "tokens_out": 158
+        }
+      ]
+    }
+  }
+}
