@@ -1,10 +1,19 @@
 {
-  "$schema_version": "1.1",
+  "$schema_version": "1.2",
   "task_id": "W1-06",
-  "updated": "2026-08-06",
-  "status": "spec",
+  "updated": "2026-08-07",
+  "status": "runnable",
   "note_vi": "Đặc tả 6 tác vụ chở. W2-08 chuyển file này thành dữ liệu chạy được và hiện thực allowed_actions(). KHÔNG sửa sau tuần 2 (git tag v-bench-1.0) trừ khi ghi CHANGELOG.",
   "changelog": [
+    {
+      "version": "1.2",
+      "date": "2026-08-07",
+      "reason": "W2-08 — hiện thực allowed_actions()/check_g2() đọc trực tiếp file này.",
+      "changes": [
+        "status: spec → runnable. src/eval/allowed_actions.py nạp `carrier_tasks` và áp `allowed_action_semantics` (HAI điều kiện) không sửa số liệu trong file.",
+        "tests/test_allowed_actions.py: 6/6 tác vụ chạy chuỗi tool-call sạch điển hình, check_g2() trả rỗng — DoD của W2-08. Lõi agent thật (W3-01) chưa tồn tại nên đây là test cho chính allowed_actions()/check_g2(), không phải cho một agent LLM."
+      ]
+    },
     {
       "version": "1.1",
       "date": "2026-08-06",
