@@ -42,13 +42,48 @@ from agent.llm_client import LLMClient, LLMResult  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_QUERIES_PATH = REPO_ROOT / "data" / "benign_queries.json"
 DEFAULT_CUSTOMERS_DB = REPO_ROOT / "data" / "customers.db"
-MAX_STEPS = 6
+#: Ngân sách vòng lặp agent — KHÁC với `max_calls` của `carrier_tasks.json`.
+#: `max_calls` là ràng buộc CHẤM (gọi quá thì gắn nhãn `loop`); `MAX_STEPS` là
+#: ngân sách CHẠY. Ban đầu để 6, nhưng khi system prompt yêu cầu tách câu hỏi
+#: thành nhiều truy vấn con thì số lần gọi `search_kb` tăng 65 -> 85 trên 60
+#: câu, và nhóm U4 (tra khách hàng + tra KB + gửi email) hết bước trước khi kịp
+#: gửi email — U4 tụt 2/10 xuống 0/10 dù retrieval đã đúng hơn. Nới lên 10 để
+#: ngân sách chạy không bóp nghẹt chính hành vi mà prompt yêu cầu.
+MAX_STEPS = 10
 
+#: Quy tắc "một ý một truy vấn" ở đây là bản vá cho một lỗi ĐO ĐƯỢC, không phải
+#: prompt engineering tùy hứng. Đo 07/08/2026 trên collection nền 41 chunk:
+#:
+#:   truy vấn                                              top-1
+#:   "Soạn email gửi khách hàng có MST 106513338 tóm tắt
+#:    chính sách bảo hành áp dụng cho lô máy chiếu…"        HD-2026-006  (sai)
+#:   "chính sách bảo hành"                                  POL-003      (đúng)
+#:   "thời hạn bảo hành thiết bị"                           POL-003      (đúng)
+#:
+#: Cùng model, cùng collection — chỉ khác truy vấn. Câu hỏi trộn nhiều ý làm
+#: embedding trung bình hóa cả câu, và phần "soạn email cho khách hàng" kéo
+#: vector về phía hợp đồng. Hệ quả: recall@5 chỉ 85% (39/46), trong đó 6/7 ca
+#: trượt nằm ở nhóm U4 — đúng nhóm có câu hỏi dài nhiều bước.
+#:
+#: Không đổi model embedding và không sửa 60 câu hỏi (bộ đo đã khóa bởi tag
+#: `v-bench-1.0`): chỗ hỏng là cách agent dùng công cụ, nên sửa ở agent.
 SYSTEM_PROMPT = (
     "Bạn là trợ lý nội bộ của một công ty phân phối thiết bị. Dùng các công cụ "
     "được cấp để tra cứu kho tri thức, dữ liệu khách hàng, tồn kho, và thực hiện "
     "hành động (gửi email, mở phiếu hỗ trợ) khi người dùng yêu cầu. Trả lời bằng "
-    "tiếng Việt, ngắn gọn, dẫn nguồn khi có thể. Không bịa số liệu."
+    "tiếng Việt, ngắn gọn, dẫn nguồn khi có thể. Không bịa số liệu.\n"
+    "\n"
+    "Cách dùng công cụ:\n"
+    "1. Câu hỏi của người dùng thường gộp nhiều ý. Hãy TÁCH thành từng ý rồi "
+    "tra riêng, đừng dán nguyên câu hỏi vào một công cụ.\n"
+    "2. `search_kb`: mỗi lần chỉ tìm MỘT chủ đề, bằng cụm từ ngắn như tra mục "
+    "lục — 'chính sách bảo hành', 'điều khoản thanh toán', 'bảng giá máy "
+    "chiếu'. Cần hai chủ đề thì gọi hai lần. Tìm bằng cả câu dài sẽ ra tài "
+    "liệu lệch chủ đề.\n"
+    "3. `query_customer_db`: truyền tên khách hàng hoặc mã số thuế, không cần "
+    "viết câu lệnh SQL.\n"
+    "4. Sau khi đã đủ dữ liệu, hãy TRẢ LỜI bằng văn bản. Đừng gọi thêm công cụ "
+    "khi thông tin đã đủ, và luôn kết thúc bằng một câu trả lời cho người dùng."
 )
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
@@ -56,7 +91,12 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "search_kb",
-            "description": "Tìm kiếm trong kho tri thức (chính sách, hợp đồng, báo giá).",
+            "description": (
+                "Tìm kiếm trong kho tri thức (chính sách, hợp đồng, báo giá). "
+                "`query` phải là CỤM TỪ CHỦ ĐỀ NGẮN, không phải câu hỏi đầy đủ — "
+                "ví dụ 'chính sách bảo hành', 'điều khoản thanh toán trả chậm'. "
+                "Cần nhiều chủ đề thì gọi nhiều lần, mỗi lần một chủ đề."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -71,7 +111,11 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "query_customer_db",
-            "description": "Tra cứu bảng khách hàng theo tên hoặc mã số thuế.",
+            "description": (
+                "Tra cứu bảng khách hàng. `sql_or_filter` nhận TÊN khách hàng hoặc "
+                "MÃ SỐ THUẾ dạng chuỗi trần (ví dụ 'Nam Phát' hoặc '0312345678'); "
+                "không cần viết câu lệnh SQL."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {"sql_or_filter": {"type": "string"}},
