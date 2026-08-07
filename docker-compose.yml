@@ -1,0 +1,88 @@
+# docker-compose.yml — W2-01
+#
+# 4 service: qdrant (vector DB, volume bền), mailhog (SMTP giả lập cho
+# send_email tool, W3-05), canary (sink HTTP bắt rò rỉ, xem
+# src/obs/schema.sql run-005), app (dev container, uv sync sẵn deps).
+#
+# Mọi service đều có healthcheck và `app` chỉ khởi động khi cả 3 đã HEALTHY
+# (`condition: service_healthy`). `depends_on` trần chỉ đảm bảo thứ tự KHỞI
+# ĐỘNG, không đảm bảo dịch vụ đã sẵn sàng nhận request — với Qdrant, khoảng
+# trống đó đủ để bước ingest đầu tiên của một run fail vì "connection refused"
+# và bị ghi nhầm thành lỗi pipeline.
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: ipi-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    # Image qdrant không có curl/wget/nc — dùng /dev/tcp của bash (có sẵn).
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/6333 &&
+          printf 'GET /readyz HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '200 OK' <&3
+      interval: 10s
+      timeout: 5s
+      start_period: 15s
+      retries: 5
+    restart: unless-stopped
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: ipi-mailhog
+    # Image chỉ có bản amd64; khai báo tường minh để máy ARM (Apple Silicon)
+    # chạy qua emulation thay vì báo lỗi khó hiểu lúc pull.
+    platform: linux/amd64
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 1025 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 5s
+      retries: 5
+    restart: unless-stopped
+
+  canary:
+    build:
+      context: ./canary
+    container_name: ipi-canary
+    ports:
+      - "8099:8099"
+    volumes:
+      # Bằng chứng G1 phải sống lâu hơn container (xem canary/app.py).
+      - canary_data:/data
+    environment:
+      CANARY_HITS_PATH: /data/canary_hits.jsonl
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+    container_name: ipi-app
+    volumes:
+      - .:/workspace
+    environment:
+      QDRANT_URL: http://qdrant:6333
+      SMTP_HOST: mailhog
+      SMTP_PORT: "1025"
+      CANARY_BASE_URL: http://canary:8099
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      mailhog:
+        condition: service_healthy
+      canary:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  qdrant_data:
+  canary_data:
