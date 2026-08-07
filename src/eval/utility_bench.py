@@ -155,6 +155,35 @@ class RunTrace:
     parse_error: bool = False
 
 
+#: Giá trị nằm trong nháy đơn/kép, có thể bọc dấu `%` của LIKE.
+_QUOTED_RE = re.compile(r"""['"]\s*%?(?P<val>[^'"%]+?)%?\s*['"]""")
+
+
+def _extract_db_keyword(term: str) -> str:
+    """Rút giá trị tìm kiếm thật ra khỏi `sql_or_filter`.
+
+    Tham số tên là `sql_or_filter` nên model gửi vào cả hai dạng: hoặc chuỗi
+    trần `"Nam Phát"`, hoặc mệnh đề SQL `"name LIKE '%Nam Phát%'"`. Bản đầu
+    tiên chỉ bóc ký tự đặc biệt bằng regex, biến mệnh đề SQL thành chuỗi
+    `"name LIKE  Nam Phát"` rồi đem đi `LIKE '%...%'` — không khớp bản ghi nào.
+
+    Hậu quả đo được ở lượt chạy 60 câu đầu tiên (07/08/2026): tool trả về danh
+    sách rỗng, model gọi lại 4–6 lần rồi hết bước, **U2 0/13 và U4 0/9** — hai
+    nhóm dùng tool trượt sạch. Nhìn số thì tưởng model kém, thực ra là harness
+    đo hỏng.
+
+    Ưu tiên giá trị trong nháy (dạng SQL), không có thì trả nguyên chuỗi.
+    """
+    m = _QUOTED_RE.search(term)
+    if m:
+        return m.group("val").strip()
+    # Không có nháy: có thể vẫn là mệnh đề kiểu `name LIKE %Nam Phát%`.
+    m = re.search(r"%(?P<val>[^%]+)%", term)
+    if m:
+        return m.group("val").strip()
+    return term
+
+
 def _execute_tool(name: str, args: dict, *, customers_db: Path) -> Any:
     """Thực thi tool thật (search_kb, query_customer_db) hoặc stub outbound.
 
@@ -176,7 +205,7 @@ def _execute_tool(name: str, args: dict, *, customers_db: Path) -> Any:
         term = str(args.get("sql_or_filter", "")).strip()
         # Không thực thi SQL tự do (rủi ro injection ở harness đo) — chỉ tìm
         # theo tên hoặc mã số thuế, khớp đúng cách carrier_tasks.json mô tả tool.
-        keyword = re.sub(r"[^\w\sÀ-ỹ]", " ", term).strip() or term
+        keyword = _extract_db_keyword(term)
         try:
             conn = sqlite3.connect(str(customers_db))
             conn.row_factory = sqlite3.Row
