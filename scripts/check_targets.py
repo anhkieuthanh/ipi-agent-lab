@@ -132,18 +132,61 @@ def run_target(target_id: str, trials: int) -> dict:
         )
         print(f"  [{i:2d}/{trials}] ok={ok} reason={reason} latency={result.latency_ms}ms")
 
-    return {"status": "ran", "model": client.model, "label": client.label, "trials": records}
+    return {
+        "status": "ran",
+        "model": client.model,
+        "label": client.label,
+        "measured_at": datetime.now(timezone.utc).isoformat(),
+        "trials": records,
+    }
+
+
+def merge_with_previous(results: dict[str, dict]) -> dict[str, dict]:
+    """Giữ lại số đo cũ của target lần này bị `skip`.
+
+    Lý do: file kết quả là BẰNG CHỨNG cho DoD W1-11, mà ba target hiếm khi sẵn
+    sàng cùng lúc (LM Studio phải bật tay, khóa API phải có trong `.env`). Ghi
+    đè thẳng thì một lần chạy chỉ có 2 API sẽ xóa mất lượt đo 10/10 của model
+    local đã tốn công đo trước đó. Target `skip` mà file cũ có bản `ran` thì
+    dùng lại bản cũ, đánh dấu `from_previous_run` kèm mốc thời gian đo thật để
+    người đọc biết ba dòng trong bảng không nhất thiết cùng một lần chạy.
+    """
+    if not RESULT_PATH.exists():
+        return results
+
+    try:
+        previous = json.loads(RESULT_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"[cảnh báo] không đọc được {RESULT_PATH} ({e}) — bỏ qua bước merge.")
+        return results
+
+    prev_results = previous.get("results", {})
+    prev_stamp = previous.get("generated_at")
+
+    merged: dict[str, dict] = {}
+    for target_id, data in results.items():
+        old = prev_results.get(target_id)
+        if data["status"] == "skip" and old and old.get("status") == "ran":
+            kept = dict(old)
+            kept["from_previous_run"] = True
+            kept["measured_at"] = old.get("measured_at", prev_stamp)
+            kept["skip_reason_this_run"] = data.get("reason")
+            merged[target_id] = kept
+            print(f"[merge] `{target_id}` bị skip lần này — giữ lại số đo {kept['measured_at']}.")
+        else:
+            merged[target_id] = data
+    return merged
 
 
 def summarize(results: dict[str, dict], trials: int) -> int:
     """In bảng Markdown + trả về số target đạt (≥1 lần hợp lệ)."""
     print("\n\n===== BẢNG DÁN VÀO docs/technical_notes/local_model_notes.md =====\n")
-    print("| Target | Model | Hợp lệ / Tổng | Tỉ lệ | Latency trung vị (ms) |")
-    print("|---|---|---|---|---|")
+    print("| Target | Model | Hợp lệ / Tổng | Tỉ lệ | Latency trung vị (ms) | Đo lúc |")
+    print("|---|---|---|---|---|---|")
     n_pass = 0
     for target_id, data in results.items():
         if data["status"] == "skip":
-            print(f"| `{target_id}` | — | — | — | chưa cấu hình |")
+            print(f"| `{target_id}` | — | — | — | — | chưa cấu hình |")
             continue
         oks = [t for t in data["trials"] if t["ok"]]
         lats = sorted(t["latency_ms"] for t in data["trials"] if t["latency_ms"] is not None)
@@ -151,9 +194,12 @@ def summarize(results: dict[str, dict], trials: int) -> int:
         rate = 100 * len(oks) / len(data["trials"]) if data["trials"] else 0.0
         if oks:
             n_pass += 1
+        stamp = (data.get("measured_at") or "—")[:19].replace("T", " ")
+        if data.get("from_previous_run"):
+            stamp += " (lượt trước)"
         print(
             f"| `{target_id}` | `{data['model']}` | {len(oks)}/{len(data['trials'])} | "
-            f"{rate:.0f}% | {median if median is not None else '—'} |"
+            f"{rate:.0f}% | {median if median is not None else '—'} | {stamp} |"
         )
 
     print(f"\nDoD W1-11 / W2-02: {n_pass}/{len(results)} target trả tool_calls hợp lệ "
@@ -170,6 +216,7 @@ def main() -> int:
     args = parser.parse_args()
 
     results = {tid: run_target(tid, args.trials) for tid in args.targets}
+    results = merge_with_previous(results)
     n_pass = summarize(results, args.trials)
 
     RESULT_PATH.parent.mkdir(parents=True, exist_ok=True)
