@@ -67,10 +67,10 @@ def search(
 
 
 def is_delivered(
+    *,
     run_id: str,
     query: str,
     k: int = 5,
-    *,
     cfg: RagConfig | None = None,
     client: QdrantClient | None = None,
     embedder: Embedder | None = None,
@@ -80,6 +80,13 @@ def is_delivered(
     Đây là nguồn của trường `delivered` (W1-09, lỗ hổng A2; dùng ở W4-07):
     `delivered=False` không tính là tấn công thất bại — nó rời khỏi mẫu tính
     ASR có điều kiện, chứ không rời mẫu ASR đầu-cuối.
+
+    **Hai tham số đều bắt buộc theo tên.** Trước đây chúng là tham số vị trí
+    `(run_id, query)`, mà cả hai cùng kiểu `str` nên gọi đảo thứ tự vẫn chạy
+    và **trả `False` im lặng** — không `run_id` nào trùng nội dung câu hỏi.
+    Hậu quả: `delivered` luôn False ⇒ mọi run rời khỏi mẫu ASR có điều kiện ⇒
+    đúng lỗ hổng A2 mà W1-09 dựng trường này để chặn, chỉ khác là hỏng từ phía
+    đo chứ không từ phía tấn công. Ép keyword-only để lỗi đó không xảy ra được.
     """
     if not run_id:
         raise ValueError("run_id rỗng — không tài liệu nào mang run_id rỗng để khớp")

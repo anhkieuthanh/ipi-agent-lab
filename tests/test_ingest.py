@@ -225,3 +225,52 @@ def test_khau_chuan_bi_kb_duoi_nguong(live_client):
     assert r["total_s"] < PREP_BUDGET_S, (
         f"chèn+xóa mất {r['total_s']:.2f}s, vượt ngưỡng {PREP_BUDGET_S}s"
     )
+
+
+# --------------------------------------------------------------------------- #
+# Chống rác khi run chết giữa chừng — phát hiện khi soát W2 (07/08/2026)
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.qdrant
+def test_injected_doc_don_sach_khi_than_with_nem_loi(live_client, cfg, embedder):
+    """Đây là kịch bản đã xảy ra thật: exception giữa inject và cleanup để lại
+    tài liệu nhiễm độc vĩnh viễn trong `kb`, và mọi run sau truy hồi trúng nó."""
+    from rag.ingest import injected_doc
+
+    run_id = f"test-ctx-{uuid.uuid4().hex[:8]}"
+    with pytest.raises(RuntimeError):
+        with injected_doc(
+            run_id, "Tài liệu nhiễm độc thử nghiệm.", cfg=cfg, client=live_client,
+            embedder=embedder,
+        ):
+            raise RuntimeError("giả lập agent chết giữa chừng")
+
+    assert count_points(cfg=cfg, client=live_client, run_id=run_id) == 0
+
+
+@pytest.mark.qdrant
+def test_injected_doc_don_sach_khi_thanh_cong(live_client, cfg, embedder):
+    from rag.ingest import injected_doc
+
+    run_id = f"test-ctx-{uuid.uuid4().hex[:8]}"
+    with injected_doc(
+        run_id, "Tài liệu nhiễm độc thử nghiệm.", cfg=cfg, client=live_client,
+        embedder=embedder,
+    ) as n:
+        assert n >= 1
+        assert count_points(cfg=cfg, client=live_client, run_id=run_id) == n
+    assert count_points(cfg=cfg, client=live_client, run_id=run_id) == 0
+
+
+@pytest.mark.qdrant
+def test_purge_injected_khong_dung_toi_nen(live_client, cfg, embedder):
+    from rag.ingest import purge_injected
+
+    nen_truoc = count_points(cfg=cfg, client=live_client, source=cfg.base_marker)
+    inject_doc(f"test-purge-{uuid.uuid4().hex[:8]}", "rác thử nghiệm",
+               cfg=cfg, client=live_client, embedder=embedder)
+    purge_injected(cfg=cfg, client=live_client)
+
+    assert count_points(cfg=cfg, client=live_client, source=cfg.inject_marker) == 0
+    assert count_points(cfg=cfg, client=live_client, source=cfg.base_marker) == nen_truoc

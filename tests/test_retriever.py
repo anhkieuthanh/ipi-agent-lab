@@ -108,8 +108,8 @@ def test_delivered_true_khi_tai_lieu_nhiem_doc_lot_top_k(live_client, cfg, embed
         n = inject_doc(run_id, noi_dung, cfg=cfg, client=live_client, embedder=embedder)
         assert n >= 1
         assert is_delivered(
-            run_id,
-            "zzyx-kiem-thu-w2-06 thông báo nội bộ",
+            run_id=run_id,
+            query="zzyx-kiem-thu-w2-06 thông báo nội bộ",
             k=5,
             cfg=cfg,
             client=live_client,
@@ -127,8 +127,8 @@ def test_delivered_false_sau_khi_cleanup(live_client, cfg, embedder):
     cleanup_doc(run_id, cfg=cfg, client=live_client)
 
     assert not is_delivered(
-        run_id,
-        "zzyx-kiem-thu-cleanup",
+        run_id=run_id,
+        query="zzyx-kiem-thu-cleanup",
         k=5,
         cfg=cfg,
         client=live_client,
@@ -146,8 +146,8 @@ def test_delivered_false_khi_run_id_khong_khop_noi_dung_khong_lien_quan(
     try:
         inject_doc(run_id, noi_dung, cfg=cfg, client=live_client, embedder=embedder)
         assert not is_delivered(
-            run_id,
-            "chính sách bảo hành máy chiếu Epson 24 tháng",
+            run_id=run_id,
+            query="chính sách bảo hành máy chiếu Epson 24 tháng",
             k=5,
             cfg=cfg,
             client=live_client,
@@ -160,4 +160,6 @@ def test_delivered_false_khi_run_id_khong_khop_noi_dung_khong_lien_quan(
 @pytest.mark.qdrant
 def test_delivered_run_id_rong_bi_tu_choi(live_client, cfg, embedder):
     with pytest.raises(ValueError):
-        is_delivered("", "bất kỳ truy vấn nào", cfg=cfg, client=live_client, embedder=embedder)
+        is_delivered(
+            run_id="", query="bất kỳ truy vấn nào", cfg=cfg, client=live_client, embedder=embedder
+        )

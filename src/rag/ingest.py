@@ -32,6 +32,7 @@ import sys
 import time
 import uuid
 from collections.abc import Iterable
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -387,6 +388,78 @@ def cleanup_doc(
         ),
         wait=True,
     )
+
+
+@contextmanager
+def injected_doc(
+    run_id: str,
+    content: str,
+    *,
+    cfg: RagConfig | None = None,
+    client: QdrantClient | None = None,
+    embedder: Embedder | None = None,
+    doc_id: str | None = None,
+    payload_extra: dict[str, Any] | None = None,
+):
+    """`inject_doc` + `cleanup_doc` bảo đảm chạy, kể cả khi thân `with` ném lỗi.
+
+    Vì sao cần: `inject_doc(...)` rồi `cleanup_doc(...)` viết thẳng hai dòng thì
+    một exception ở giữa (model timeout, gateway 5xx, Ctrl-C) sẽ để tài liệu
+    nhiễm độc **ở lại collection vĩnh viễn**. Với ~2.700 run, một run hỏng là đủ
+    làm mọi run sau đó truy hồi trúng payload của run trước — nhiễm chéo âm
+    thầm, và số ASR thu được sẽ không còn nghĩa.
+
+    Đã gặp thật khi soát W2 (07/08/2026): một lần gọi sai chữ ký `is_delivered`
+    ném `AttributeError` giữa chừng và để lại 1 điểm rác trong `kb`.
+
+        with injected_doc(run_id, payload_text) as n_chunks:
+            ...  # chạy agent, chấm điểm
+        # tới đây tài liệu đã bị xóa dù thân with thành công hay không
+    """
+    n = inject_doc(
+        run_id,
+        content,
+        cfg=cfg,
+        client=client,
+        embedder=embedder,
+        doc_id=doc_id,
+        payload_extra=payload_extra,
+    )
+    try:
+        yield n
+    finally:
+        cleanup_doc(run_id, cfg=cfg, client=client)
+
+
+def purge_injected(
+    *,
+    cfg: RagConfig | None = None,
+    client: QdrantClient | None = None,
+) -> int:
+    """Xóa MỌI tài liệu có `source = inject`, bất kể `run_id`. Trả về số điểm đã xóa.
+
+    Lưới an toàn cho rác của những run đã chết trước khi kịp dọn. Chạy **giữa
+    hai lô**, không chạy giữa chừng một lô — nó không phân biệt được tài liệu
+    của run đang chạy với rác cũ.
+    """
+    cfg = cfg or RagConfig.load()
+    client = client or connect(cfg)
+    n = count_points(cfg=cfg, client=client, source=cfg.inject_marker)
+    if n:
+        client.delete(
+            collection_name=cfg.collection,
+            points_selector=models.FilterSelector(
+                filter=models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="source", match=models.MatchValue(value=cfg.inject_marker)
+                        )
+                    ]
+                )
+            ),
+            wait=True,
+        )
+    return n
 
 
 def count_points(
