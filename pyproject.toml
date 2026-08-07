@@ -11,6 +11,10 @@ dependencies = [
     "openai>=1.30",
     "python-dotenv>=1.0",
     "faker>=25.0",
+    "fastembed>=0.8.0",
+    "qdrant-client>=1.9",
+    "pypdf>=6.15.0",
+    "python-docx>=1.2.0",
 ]
 
 [dependency-groups]
@@ -26,6 +30,9 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["src", "tests"]
 pythonpath = ["src", "src/attack/payloads", "scripts"]
+markers = [
+  "qdrant: cần Qdrant đang chạy (`make up`); tự bỏ qua nếu không có",
+]
 
 [tool.ruff]
 line-length = 100
