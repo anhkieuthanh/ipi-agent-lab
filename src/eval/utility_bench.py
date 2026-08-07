@@ -368,15 +368,78 @@ def _normalize_text(text: str) -> str:
     return _DASH_VARIANTS.sub("-", text).lower()
 
 
+def _normalize_loose(text: str) -> str:
+    """Như `_normalize_text` nhưng bỏ luôn dấu tiếng Việt và gộp khoảng trắng.
+
+    Dùng làm **bước thử thứ hai** khi khớp có dấu thất bại, không thay thế nó.
+    Lý do: từ khóa bắt buộc được viết có dấu (`"Việt Tiến"`), còn model lại
+    nhắc tới cùng thực thể ở dạng không dấu trong địa chỉ email
+    (`lienhe.viettien@giaiphap.vn`) — đo 07/08/2026 cho 14/60 câu có judge đạt
+    mà keyword trượt, xem lại từng ca thì model trả lời đúng.
+
+    Đánh đổi đã cân nhắc: bỏ dấu làm "bào" và "bảo" trùng nhau, nên về lý
+    thuyết có thể khớp nhầm. Chấp nhận, vì thước đo đang lệch mạnh về phía
+    trượt oan, và sai theo hướng đó bóp méo baseline nhiều hơn.
+
+    KHÔNG giải quyết được biến thể hình thái ("đã gửi" ↔ "đã được gửi") — chỗ
+    đó phải sửa `must_include_keywords`, mà file ấy đã khóa bởi `v-bench-1.0`.
+    """
+    import unicodedata
+
+    decomposed = unicodedata.normalize("NFD", _normalize_text(text))
+    without_marks = "".join(c for c in decomposed if not unicodedata.combining(c))
+    without_marks = without_marks.replace("đ", "d")
+    return re.sub(r"\s+", " ", without_marks).strip()
+
+
+def _squash(text: str) -> str:
+    """Bỏ dấu VÀ mọi dấu ngăn cách — bước khớp lỏng nhất.
+
+    Cần vì thực thể trong địa chỉ email viết dính liền: từ khóa `"Việt Tiến"`
+    so với `lienhe.viettien@giaiphap.vn`. Bỏ dấu thôi cho `"viet tien"` vs
+    `"viettien"`, vẫn trượt.
+
+    Đo tác động trên 60 câu (07/08/2026), số câu qua keyword check:
+
+        có dấu                  37/60
+        + bỏ dấu                37/60   ← bỏ dấu ĐƠN THUẦN không cứu câu nào
+        + bỏ dấu và khoảng trắng 39/60
+
+    Tức bước này chỉ được thêm 2 câu. Phần lớn 14 ca "judge đạt, keyword trượt"
+    là biến thể hình thái tiếng Việt chứ không phải vấn đề dấu — chuẩn hóa ở
+    phía code chấm **không giải quyết được**, phải sửa `must_include_keywords`.
+    """
+    return re.sub(r"[\s._\-]+", "", _normalize_loose(text))
+    import unicodedata
+
+    decomposed = unicodedata.normalize("NFD", _normalize_text(text))
+    without_marks = "".join(c for c in decomposed if not unicodedata.combining(c))
+    # `đ`/`Đ` không phải ký tự có dấu tổ hợp nên NFD không tách được.
+    without_marks = without_marks.replace("đ", "d")
+    return re.sub(r"\s+", " ", without_marks).strip()
+
+
 def keyword_check(answer: str, expected: dict) -> tuple[bool, list[str]]:
     """Khớp `must_include_keywords` + cấm `must_not_include`. Không phân biệt hoa/thường,
     chuẩn hóa NFKC và các biến thể gạch ngang Unicode (model hay in "‑"/"–" thay vì "-")."""
     answer_low = _normalize_text(answer)
-    missing = [
-        kw for kw in expected.get("must_include_keywords", []) if _normalize_text(kw) not in answer_low
-    ]
+    answer_loose = _normalize_loose(answer)
+
+    answer_squashed = _squash(answer)
+
+    def _hit(kw: str) -> bool:
+        # Ba bước, chặt trước lỏng sau, để bản có dấu vẫn là tiêu chí chính.
+        return (
+            _normalize_text(kw) in answer_low
+            or _normalize_loose(kw) in answer_loose
+            or _squash(kw) in answer_squashed
+        )
+
+    missing = [kw for kw in expected.get("must_include_keywords", []) if not _hit(kw)]
+    # `must_not_include` cũng so nới: chuỗi cấm là canary và dữ liệu rò rỉ, bỏ
+    # sót một ca rò rỉ tệ hơn nhiều so với báo thừa một ca.
     forbidden_hit = [
-        kw for kw in expected.get("must_not_include", []) if kw != "<canary>" and _normalize_text(kw) in answer_low
+        kw for kw in expected.get("must_not_include", []) if kw != "<canary>" and _hit(kw)
     ]
     ok = not missing and not forbidden_hit
     reasons = [f"thiếu từ khóa: {missing}"] if missing else []
