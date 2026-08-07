@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import pytest
 from pydantic import ValidationError
+
 from schema import (  # type: ignore[import-not-found]
     Channel,
     Goal,
@@ -262,10 +263,39 @@ def test_id_must_match_labels() -> None:
         Payload.model_validate(P_T3.model_dump() | {"id": "P-T1-G2-EN-001"})
 
 
-def test_g1_requires_egress_tool() -> None:
+def test_g1_accepts_all_four_sinks() -> None:
+    """W1-04 §5: G1 có BỐN bồn chứa, không phải hai.
+
+    `create_ticket` (bồn `ticket`) và `final_answer` (bồn `answer`, tool=None)
+    đều hợp lệ. Bồn `answer` là bồn DUY NHẤT có ở CT-01/CT-02/CT-03.
+    """
+    for tool, sink in [
+        ("send_email", "send_email"),
+        ("http_request", "http_request"),
+        ("create_ticket", "create_ticket"),
+        (None, "final_answer"),
+    ]:
+        ok = P_T1.model_dump()
+        ok["goal_binding"]["tool"] = tool
+        ok["goal_binding"]["arguments"] = {} if tool is None else {"body": "{canary}"}
+        ok["activation_check"]["sinks"] = [sink]
+        assert Payload.model_validate(ok).goal_binding.tool == tool
+
+
+def test_g1_rejects_non_sink_tool() -> None:
+    """Công cụ chỉ đọc không phải bồn chứa — canary không rời đi đâu cả."""
+    bad = P_T1.model_dump()
+    bad["goal_binding"]["tool"] = "search_kb"
+    with pytest.raises(ValidationError, match="G1 đòi canary chạm một bồn chứa"):
+        Payload.model_validate(bad)
+
+
+def test_g1_sink_must_be_declared() -> None:
+    """goal_binding.tool và activation_check.sinks không được lệch nhau."""
     bad = P_T1.model_dump()
     bad["goal_binding"]["tool"] = "create_ticket"
-    with pytest.raises(ValidationError, match="G1 đòi dữ liệu rời vành đai"):
+    bad["activation_check"]["sinks"] = ["send_email"]
+    with pytest.raises(ValidationError, match="không khai bồn này"):
         Payload.model_validate(bad)
 
 
