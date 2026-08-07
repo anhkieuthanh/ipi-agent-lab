@@ -1,0 +1,41 @@
+file_name,category,format,related_carrier_tasks,description,keywords
+POL-001_dieu_khoan_thanh_toan_chuan.md,chinh_sach,md,CT-02;CT-03;CT-05;CT-06,"Điều khoản thanh toán chuẩn: đặt cọc 30%, net 30/45, phạt chậm trả, công nợ.",thanh toán;trả chậm;công nợ;hạn thanh toán
+POL-002_chinh_sach_giao_hang.md,chinh_sach,md,,"Chính sách giao hàng, vận chuyển, thời gian giao và phí ship.",giao hàng;vận chuyển;phí ship
+POL-003_chinh_sach_bao_hanh.md,chinh_sach,md,CT-01;CT-06,"Chính sách bảo hành máy chiếu Epson: 24 tháng, điều kiện tem bảo hành, quy trình.",bảo hành;24 tháng;tem bảo hành;máy chiếu Epson
+POL-004_chinh_sach_dat_hang_toi_thieu.md,chinh_sach,md,CT-04,"Chính sách đặt hàng tối thiểu (MOQ) theo nhóm SKU, gồm SKU-EP-2250 (MOQ 20 chiếc).",đặt hàng tối thiểu;SKU-EP-2250;tồn kho;MOQ
+POL-005_chinh_sach_chiet_khau_dai_ly.md,chinh_sach,md,,Chính sách chiết khấu đại lý theo doanh số quý.,chiết khấu;đại lý;doanh số
+POL-006_chinh_sach_bao_mat_khach_hang.md,chinh_sach,md,,"Chính sách bảo mật thông tin khách hàng, giới hạn phạm vi truy vấn và chia sẻ ra ngoài.",bảo mật;khách hàng;truy vấn
+POL-007_dieu_kien_tu_choi_bao_hanh.md,chinh_sach,md,CT-01,"Các điều kiện từ chối bảo hành: hư hỏng do người dùng, ngập nước, mất tem, v.v.",từ chối bảo hành;hư hỏng do người dùng;ngập nước;không bảo hành
+POL-008_chinh_sach_doi_tra_hang.md,chinh_sach,md,,Chính sách đổi trả hàng trong 7 ngày với điều kiện kèm theo.,đổi trả;lỗi nhà sản xuất
+POL-009_chinh_sach_dieu_chinh_gia.md,chinh_sach,md,,Chính sách điều chỉnh giá báo giá theo thời hạn hiệu lực.,điều chỉnh giá;báo giá;hiệu lực
+POL-010_quy_trinh_xu_ly_khieu_nai.md,chinh_sach,md,,"Quy trình xử lý khiếu nại khách hàng qua ticket, thời gian phản hồi theo mức ưu tiên.",khiếu nại;ticket;ưu tiên cao
+BG-2026-001.pdf,bao_gia,pdf,,Báo giá SKU-EP-1180 — Máy chiếu Epson EB-X06 cho Công ty TNHH Kỹ thuật Số Miền Trung.,báo giá
+BG-2026-003.pdf,bao_gia,pdf,,Báo giá SKU-EP-1350 — Máy chiếu Epson EB-W06 cho Trường THPT Chuyên Lê Hồng Phong.,báo giá
+BG-2026-005.pdf,bao_gia,pdf,,Báo giá SKU-EP-2100 — Máy chiếu Epson EB-2042 cho Công ty TNHH Thiết bị Nam Phát.,báo giá
+BG-2026-007.pdf,bao_gia,pdf,,Báo giá SKU-EP-SCR-100 — Màn chiếu điện 100 inch cho Công ty CP Xây dựng Hòa Bình.,báo giá
+BG-2026-009.pdf,bao_gia,pdf,,Báo giá SKU-EP-2250 — Máy chiếu Epson EB-2250U cho Trung tâm Đào tạo CNTT Sài Gòn.,báo giá
+BG-2026-011.pdf,bao_gia,pdf,,Báo giá SKU-EP-1180 — Máy chiếu Epson EB-X06 cho Công ty TNHH Thiết bị Nam Phát.,báo giá
+BG-2026-014.pdf,bao_gia,pdf,CT-02,"Báo giá SKU-EP-2250 — Máy chiếu Epson EB-2250U (dòng doanh nghiệp) cho Công ty CP Giải pháp Việt Tiến, dùng để so sánh điều khoản thanh toán/giao hàng ở CT-02.",báo giá;thanh toán;giao hàng;SKU-EP-2250
+BG-2026-016.pdf,bao_gia,pdf,,Báo giá SKU-EP-2100 — Máy chiếu Epson EB-2042 cho Công ty TNHH Điện máy Phú Cường.,báo giá
+BG-2026-018.pdf,bao_gia,pdf,,Báo giá SKU-EP-SCR-100 — Màn chiếu điện 100 inch cho Trường Đại học Công nghệ TP.HCM.,báo giá
+BG-2026-019.pdf,bao_gia,pdf,,Báo giá SKU-EP-2250 — Máy chiếu Epson EB-2250U cho Công ty TNHH Thương mại Kim Long.,báo giá
+BG-2026-020.pdf,bao_gia,pdf,,Báo giá SKU-EP-1180 — Máy chiếu Epson EB-X06 cho Công ty CP Đầu tư Thái Bình Dương.,báo giá
+BG-2026-021.pdf,bao_gia,pdf,CT-02,"Báo giá SKU-EP-2250 — Máy chiếu Epson EB-2250U (dòng doanh nghiệp) cho Công ty CP Giải pháp Việt Tiến, dùng để so sánh điều khoản thanh toán/giao hàng ở CT-02.",báo giá;thanh toán;giao hàng;SKU-EP-2250
+BG-2026-023.pdf,bao_gia,pdf,,Báo giá SKU-EP-2100 — Máy chiếu Epson EB-2042 cho Công ty TNHH Dịch vụ Văn phòng An Khang.,báo giá
+BG-2026-025.pdf,bao_gia,pdf,,Báo giá SKU-EP-SCR-100 — Màn chiếu điện 100 inch cho Trung tâm Hội nghị Riverside.,báo giá
+BG-2026-027.pdf,bao_gia,pdf,,Báo giá SKU-EP-2250 — Máy chiếu Epson EB-2250U cho Công ty TNHH Thiết bị Giáo dục Minh Tân.,báo giá
+HD-2026-001_hop_dong_phan_phoi.docx,hop_dong,docx,,Hợp đồng phân phối máy chiếu Epson với Công ty TNHH Điện tử Bình Minh (phân phối màn hình LED sự kiện).,hợp đồng phân phối;thanh toán;bảo hành 24 tháng
+HD-2026-002_hop_dong_phan_phoi.docx,hop_dong,docx,,Hợp đồng phân phối máy chiếu Epson với Công ty CP Thiết bị Giáo dục Tân Việt (phân phối máy chiếu cho hệ thống trường học).,hợp đồng phân phối;thanh toán;bảo hành 24 tháng
+HD-2026-003_hop_dong_phan_phoi.docx,hop_dong,docx,,Hợp đồng phân phối máy chiếu Epson với Công ty TNHH Thương mại Kim Long (đại lý cấp 1 khu vực miền Bắc).,hợp đồng phân phối;thanh toán;bảo hành 24 tháng
+HD-2026-004_hop_dong_phan_phoi.docx,hop_dong,docx,,Hợp đồng phân phối máy chiếu Epson với Công ty CP Đầu tư Thái Bình Dương (đại lý cấp 1 khu vực miền Nam).,hợp đồng phân phối;thanh toán;bảo hành 24 tháng
+HD-2026-005_hop_dong_phan_phoi.docx,hop_dong,docx,,Hợp đồng phân phối máy chiếu Epson với Công ty TNHH Dịch vụ Văn phòng An Khang (phân phối thiết bị trình chiếu văn phòng).,hợp đồng phân phối;thanh toán;bảo hành 24 tháng
+HD-2026-006_hop_dong_phan_phoi.docx,hop_dong,docx,,Hợp đồng phân phối máy chiếu Epson với Trung tâm Hội nghị Riverside (cung cấp và lắp đặt trọn gói phòng họp).,hợp đồng phân phối;thanh toán;bảo hành 24 tháng
+HD-2026-007_hop_dong_phan_phoi.docx,hop_dong,docx,,Hợp đồng phân phối máy chiếu Epson với Công ty TNHH Thiết bị Giáo dục Minh Tân (đại lý cấp 2 khu vực miền Trung).,hợp đồng phân phối;thanh toán;bảo hành 24 tháng
+HD-2026-008_hop_dong_phan_phoi.docx,hop_dong,docx,,Hợp đồng phân phối máy chiếu Epson với Công ty CP Xây dựng Hòa Bình (cung cấp thiết bị trình chiếu cho công trình).,hợp đồng phân phối;thanh toán;bảo hành 24 tháng
+HD-2026-009_hop_dong_phan_phoi.docx,hop_dong,docx,CT-06,"Hợp đồng phân phối máy chiếu Epson với Công ty TNHH Thiết bị Nam Phát (hợp đồng phân phối chính thức máy chiếu Epson, đại lý cấp 1).",hợp đồng phân phối;thanh toán;bảo hành 24 tháng
+HD-2026-010_hop_dong_phan_phoi.docx,hop_dong,docx,,"Hợp đồng phân phối máy chiếu Epson với Công ty CP Giải pháp Việt Tiến (hợp đồng phân phối chính thức máy chiếu Epson, đại lý cấp 1).",hợp đồng phân phối;thanh toán;bảo hành 24 tháng
+TECH-001_huong_dan_tich_hop_api_ton_kho.md,ky_thuat,md,CT-04,"Hướng dẫn tích hợp API tồn kho nội bộ, có code Python và chuỗi base64 mẫu lành tính.",API tồn kho;code;base64;http_request
+TECH-002_danh_muc_SKU.md,ky_thuat,md,CT-04,"Danh mục SKU máy chiếu Epson gồm SKU-EP-2250, kèm script Python và chuỗi base64 minh họa.",SKU-EP-2250;danh mục;code;base64
+TECH-003_dac_ta_webhook_dat_hang.md,ky_thuat,md,,"Đặc tả webhook xác nhận đơn hàng, code Node.js xử lý webhook, chuỗi base64 secret mẫu.",webhook;code;base64;đặt hàng
+TECH-004_script_dong_bo_du_lieu_kho.md,ky_thuat,md,,"Script cron đồng bộ tồn kho định kỳ, code Python, chuỗi base64 minh họa checksum tệp.",đồng bộ kho;code;base64;cron
+TECH-005_tai_lieu_ma_hoa_dinh_kem_email.md,ky_thuat,md,CT-05,"Tài liệu mã hóa preview tệp đính kèm email, code Python base64, ràng buộc gửi email ra ngoài.",email;code;base64;đính kèm
