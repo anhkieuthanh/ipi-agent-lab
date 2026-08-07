@@ -142,14 +142,19 @@ def run_target(target_id: str, trials: int) -> dict:
 
 
 def merge_with_previous(results: dict[str, dict]) -> dict[str, dict]:
-    """Giữ lại số đo cũ của target lần này bị `skip`.
+    """Gộp kết quả lần này với file cũ, KHÔNG để mất số đo đã có.
 
-    Lý do: file kết quả là BẰNG CHỨNG cho DoD W1-11, mà ba target hiếm khi sẵn
-    sàng cùng lúc (LM Studio phải bật tay, khóa API phải có trong `.env`). Ghi
-    đè thẳng thì một lần chạy chỉ có 2 API sẽ xóa mất lượt đo 10/10 của model
-    local đã tốn công đo trước đó. Target `skip` mà file cũ có bản `ran` thì
-    dùng lại bản cũ, đánh dấu `from_previous_run` kèm mốc thời gian đo thật để
-    người đọc biết ba dòng trong bảng không nhất thiết cùng một lần chạy.
+    File kết quả là BẰNG CHỨNG cho DoD W1-11, mà ba target hiếm khi sẵn sàng
+    cùng lúc: LM Studio phải bật tay, khóa API phải có trong `.env`. Ghi đè
+    thẳng thì một lần chạy thiếu target sẽ xóa mất lượt đo đã tốn công có.
+
+    Hai đường làm mất số, phải bịt cả hai:
+      1. Target có trong `--targets` nhưng `skip` (thiếu biến môi trường).
+      2. Target KHÔNG có trong `--targets` — ví dụ `--targets local` thì api1,
+         api2 biến mất hoàn toàn khỏi `results`, không rơi vào nhánh (1).
+
+    Bản đo cũ được giữ lại kèm `from_previous_run` và `measured_at` để người
+    đọc biết các dòng trong bảng không nhất thiết cùng một lần chạy.
     """
     if not RESULT_PATH.exists():
         return results
@@ -163,19 +168,31 @@ def merge_with_previous(results: dict[str, dict]) -> dict[str, dict]:
     prev_results = previous.get("results", {})
     prev_stamp = previous.get("generated_at")
 
+    def keep_old(target_id: str, old: dict, skip_reason: str | None) -> dict:
+        kept = dict(old)
+        kept["from_previous_run"] = True
+        kept["measured_at"] = old.get("measured_at", prev_stamp)
+        if skip_reason is not None:
+            kept["skip_reason_this_run"] = skip_reason
+        print(f"[merge] `{target_id}` không đo lần này — giữ lại số đo {kept['measured_at']}.")
+        return kept
+
     merged: dict[str, dict] = {}
     for target_id, data in results.items():
         old = prev_results.get(target_id)
         if data["status"] == "skip" and old and old.get("status") == "ran":
-            kept = dict(old)
-            kept["from_previous_run"] = True
-            kept["measured_at"] = old.get("measured_at", prev_stamp)
-            kept["skip_reason_this_run"] = data.get("reason")
-            merged[target_id] = kept
-            print(f"[merge] `{target_id}` bị skip lần này — giữ lại số đo {kept['measured_at']}.")
+            merged[target_id] = keep_old(target_id, old, data.get("reason"))
         else:
             merged[target_id] = data
-    return merged
+
+    # (2) Target vắng mặt khỏi lần chạy này.
+    for target_id, old in prev_results.items():
+        if target_id not in merged and old.get("status") == "ran":
+            merged[target_id] = keep_old(target_id, old, None)
+
+    # Giữ thứ tự khai báo trong config để bảng không nhảy dòng giữa các lần chạy.
+    order = {tid: i for i, tid in enumerate(DEFAULT_TARGETS)}
+    return dict(sorted(merged.items(), key=lambda kv: order.get(kv[0], len(order))))
 
 
 def summarize(results: dict[str, dict], trials: int) -> int:
@@ -224,7 +241,10 @@ def main() -> int:
         json.dumps(
             {
                 "generated_at": datetime.now(timezone.utc).isoformat(),
-                "trials_per_target": args.trials,
+                # Số lần của LẦN CHẠY NÀY. Không suy ra được cỡ mẫu của target
+                # giữ lại từ lượt trước (`from_previous_run`) — cỡ mẫu thật của
+                # mỗi target là len(results[tid]["trials"]).
+                "trials_this_run": args.trials,
                 "results": results,
             },
             ensure_ascii=False,
