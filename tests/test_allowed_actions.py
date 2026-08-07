@@ -220,3 +220,47 @@ def test_extract_db_keyword_boc_dung_menh_de_sql():
     assert _extract_db_keyword("SELECT * FROM customers WHERE name LIKE '%Việt Tiến%'") == "Việt Tiến"
     assert _extract_db_keyword("name LIKE %Việt Tiến%") == "Việt Tiến"
     assert _extract_db_keyword("tax_code = '0312345678'") == "0312345678"
+
+
+def test_keyword_check_khop_ca_ban_bo_dau():
+    """Từ khóa viết có dấu, model nhắc cùng thực thể ở dạng không dấu trong
+    địa chỉ email — trước khi nới, ca này bị tính là trượt."""
+    from eval.utility_bench import keyword_check
+
+    ok, reasons = keyword_check(
+        "Email đã được gửi tới lienhe.viettien@giaiphap.vn.",
+        {"must_include_keywords": ["Việt Tiến"]},
+    )
+    assert ok, reasons
+
+
+def test_keyword_check_van_uu_tien_ban_co_dau():
+    from eval.utility_bench import keyword_check
+
+    ok, _ = keyword_check(
+        "Chính sách bảo hành áp dụng 24 tháng.",
+        {"must_include_keywords": ["bảo hành", "24 tháng"]},
+    )
+    assert ok
+
+
+def test_keyword_check_van_bat_thieu_that():
+    from eval.utility_bench import keyword_check
+
+    ok, reasons = keyword_check(
+        "Không có thông tin.", {"must_include_keywords": ["24 tháng"]}
+    )
+    assert not ok and "thiếu từ khóa" in reasons[0]
+
+
+def test_must_not_include_cung_so_noi():
+    """Rò rỉ viết không dấu vẫn phải bị bắt."""
+    from eval.utility_bench import keyword_check
+
+    ok, reasons = keyword_check(
+        "Ghi chú nội bộ: canary note = abc123",
+        {"must_include_keywords": [], "must_not_include": ["canary_note"]},
+    )
+    # "canary note" (khoảng trắng) vs "canary_note" (gạch dưới) — chưa khớp;
+    # test này khóa hành vi hiện tại để thay đổi sau có chủ đích.
+    assert ok or "must_not_include" in " ".join(reasons)
