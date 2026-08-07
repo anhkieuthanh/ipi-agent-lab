@@ -30,6 +30,17 @@ uv run pytest -v
 uv run ruff check .
 ```
 
+## Bộ đo (benchmark) — KHÓA tại `v-bench-1.0`
+
+- 60 câu hỏi lành tính: `data/benign_queries.json` (nhóm U1–U5, `false_positive_gate`).
+- 6 tác vụ chở (carrier tasks): `data/carrier_tasks.json` (CT-01..CT-06).
+
+Hai file này **KHÔNG được sửa sau tuần 2** (mốc git tag `v-bench-1.0`).
+Mọi thay đổi sau mốc này phải ghi vào khối `changelog` trong chính file JSON
+(field `version`, `date`, `reason`, `changes`) kèm lý do rõ ràng — xem ví dụ
+trong `carrier_tasks.json`. Đây là điều kiện cổng M1, chống rủi ro R4
+(bộ đo trôi giữa chừng làm số liệu không so sánh được).
+
 ## Trạng thái
 
 Dự án đang trong Tuần 1 (thiết kế): threat model, taxonomy K1–K5, schema payload,
