@@ -30,7 +30,9 @@ targets:
     model_env: TARGET_MODEL_A
 
   api2:
-    label: "API #2 (Google family, qua llmgate.app)"
+    # Nhãn cũ ghi "Google family" nhưng TARGET_MODEL_B thực tế đang trỏ
+    # claude-haiku-4-5 (Anthropic) — sửa 07/08/2026 cho khớp số đã đo.
+    label: "API #2 (Anthropic family, qua llmgate.app)"
     base_url_env: OPENAI_COMPATIBLE_BASE_URL
     api_key_env: OPENAI_COMPATIBLE_API_KEY
     model_env: TARGET_MODEL_B

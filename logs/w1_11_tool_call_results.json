@@ -1,7 +1,203 @@
 {
-  "generated_at": "2026-08-06T17:01:41.411078+00:00",
+  "generated_at": "2026-08-07T01:03:49.756316+00:00",
   "trials_per_target": 10,
   "results": {
+    "api1": {
+      "status": "ran",
+      "model": "gpt-oss-120b",
+      "label": "API #1 (OpenAI family, qua llmgate.app)",
+      "trials": [
+        {
+          "i": 1,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 1386,
+          "attempts": 1,
+          "tokens_in": 220,
+          "tokens_out": 73
+        },
+        {
+          "i": 2,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 769,
+          "attempts": 1,
+          "tokens_in": 220,
+          "tokens_out": 73
+        },
+        {
+          "i": 3,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 743,
+          "attempts": 1,
+          "tokens_in": 220,
+          "tokens_out": 73
+        },
+        {
+          "i": 4,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 779,
+          "attempts": 1,
+          "tokens_in": 220,
+          "tokens_out": 73
+        },
+        {
+          "i": 5,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 724,
+          "attempts": 1,
+          "tokens_in": 220,
+          "tokens_out": 73
+        },
+        {
+          "i": 6,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 544,
+          "attempts": 1,
+          "tokens_in": 220,
+          "tokens_out": 72
+        },
+        {
+          "i": 7,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 688,
+          "attempts": 1,
+          "tokens_in": 220,
+          "tokens_out": 72
+        },
+        {
+          "i": 8,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 545,
+          "attempts": 1,
+          "tokens_in": 220,
+          "tokens_out": 72
+        },
+        {
+          "i": 9,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 877,
+          "attempts": 1,
+          "tokens_in": 220,
+          "tokens_out": 73
+        },
+        {
+          "i": 10,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 920,
+          "attempts": 1,
+          "tokens_in": 220,
+          "tokens_out": 73
+        }
+      ],
+      "measured_at": "2026-08-07T01:03:49.756316+00:00"
+    },
+    "api2": {
+      "status": "ran",
+      "model": "claude-haiku-4-5",
+      "label": "API #2 (Google family, qua llmgate.app)",
+      "trials": [
+        {
+          "i": 1,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 1580,
+          "attempts": 1,
+          "tokens_in": 6222,
+          "tokens_out": 45
+        },
+        {
+          "i": 2,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 1572,
+          "attempts": 1,
+          "tokens_in": 6222,
+          "tokens_out": 45
+        },
+        {
+          "i": 3,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 2544,
+          "attempts": 1,
+          "tokens_in": 6222,
+          "tokens_out": 45
+        },
+        {
+          "i": 4,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 1840,
+          "attempts": 1,
+          "tokens_in": 6267,
+          "tokens_out": 69
+        },
+        {
+          "i": 5,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 1603,
+          "attempts": 1,
+          "tokens_in": 6222,
+          "tokens_out": 45
+        },
+        {
+          "i": 6,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 1443,
+          "attempts": 1,
+          "tokens_in": 6222,
+          "tokens_out": 45
+        },
+        {
+          "i": 7,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 1910,
+          "attempts": 1,
+          "tokens_in": 6264,
+          "tokens_out": 67
+        },
+        {
+          "i": 8,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 1610,
+          "attempts": 1,
+          "tokens_in": 6222,
+          "tokens_out": 45
+        },
+        {
+          "i": 9,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 1476,
+          "attempts": 1,
+          "tokens_in": 6222,
+          "tokens_out": 45
+        },
+        {
+          "i": 10,
+          "ok": true,
+          "reason": "ok",
+          "latency_ms": 1674,
+          "attempts": 1,
+          "tokens_in": 6265,
+          "tokens_out": 68
+        }
+      ],
+      "measured_at": "2026-08-07T01:03:49.756316+00:00"
+    },
     "local": {
       "status": "ran",
       "model": "qwen/qwen3-4b",
@@ -97,7 +293,10 @@
           "tokens_in": 214,
           "tokens_out": 158
         }
-      ]
+      ],
+      "from_previous_run": true,
+      "measured_at": "2026-08-06T17:01:41.411078+00:00",
+      "skip_reason_this_run": "target_id='local': biến môi trường 'LOCAL_LLM_API_KEY' (cho 'api_key') chưa được set — xem .env.example"
     }
   }
 }
