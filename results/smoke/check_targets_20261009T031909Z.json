@@ -1,0 +1,26 @@
+{
+  "checked_at": "20261009T031909Z",
+  "results": [
+    {
+      "target_id": "A3",
+      "ok": true,
+      "model": "glm-5.3-flash",
+      "response_model": "glm-5.3-flash",
+      "tool_calls": [
+        {
+          "name": "search_kb",
+          "arguments": {
+            "query": "chính sách bảo hành thời gian bảo hành sản phẩm"
+          },
+          "parse_error": false
+        }
+      ],
+      "text": null,
+      "finish_reason": "tool_calls",
+      "tokens_in": 226,
+      "tokens_out": 57,
+      "latency_ms": 5368,
+      "attempts": 1
+    }
+  ]
+}
