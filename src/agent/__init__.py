@@ -1,1 +1,1 @@
-"""Lõi agent — W2-xx."""
+"""Lõi agent (STT-26)."""

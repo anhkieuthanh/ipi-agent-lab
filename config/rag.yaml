@@ -1,9 +1,9 @@
-# Cấu hình kho tri thức RAG — W2-05 (ingest) và W2-06 (retriever).
+# Cấu hình kho tri thức RAG (kênh K1) — ingest và retriever.
 #
-# Lệch spec đã ghi nhận: kế hoạch v3 ghi embedding `bge-m3`. Bản `fastembed`
+# Vì sao không dùng `bge-m3`: bản `fastembed`
 # hiện hành không hỗ trợ bge-m3 (không có ở dense/sparse/late-interaction), nên
 # lab dùng `intfloat/multilingual-e5-large`: cùng 1024 chiều, cùng nhóm đa ngữ
-# có tiếng Việt. Xem `docs/technical_notes/rag_notes.md`.
+# có tiếng Việt.
 
 schema_version: "1.0"
 
@@ -26,7 +26,7 @@ chunking:
   max_tokens: 512
   overlap_tokens: 64
 
-# Tài liệu nhiễm độc chèn theo từng run (W2-05 mục 3). Tách namespace khỏi
+# Tài liệu nhiễm độc chèn theo từng run (xem src/rag/ingest.py). Tách namespace khỏi
 # collection nền bằng payload `source`, không bằng collection riêng: tách
 # collection thì retriever phải truy vấn hai chỗ rồi trộn điểm, làm hỏng ý
 # nghĩa của top-k.

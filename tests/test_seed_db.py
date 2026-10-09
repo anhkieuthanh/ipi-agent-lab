@@ -1,6 +1,6 @@
-"""Khóa tính tái lập và các ràng buộc nghiệp vụ của customers.db — W2-04.
+"""Khóa tính tái lập và các ràng buộc nghiệp vụ của customers.db (STT-22).
 
-DoD của W2-04 là "chạy lại script sinh đúng dữ liệu cũ". Một DoD như vậy chỉ có
+Điều kiện đạt của STT-22 là "chạy lại script sinh đúng dữ liệu cũ". Một DoD như vậy chỉ có
 giá trị nếu có thứ canh nó: bất kỳ thay đổi nào trong `scripts/seed_db.py` làm
 lệch dòng số ngẫu nhiên của Faker (thêm/bớt/đảo một lời gọi `fake.*`), hoặc bản
 nâng cấp Faker đổi thuật toán sinh, đều làm 500 bản ghi khác đi — trong khi
@@ -10,7 +10,7 @@ Ba nhóm khẳng định:
   1. Tái lập: `build_records()` cho ra đúng checksum đã khóa.
   2. Đồng bộ: file `data/customers.db` đã commit khớp từng bản ghi với script.
   3. Ràng buộc chéo: id=1/2/3 giữ đúng vai trò mà `data/carrier_tasks.json`
-     (W1-06) giả định — mất ràng buộc này thì CT-03/CT-05/CT-06 không chấm được.
+     (STT-18) giả định — mất ràng buộc này thì CT-03/CT-05/CT-06 không chấm được.
 """
 
 from __future__ import annotations

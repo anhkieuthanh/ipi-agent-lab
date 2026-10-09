@@ -1,4 +1,4 @@
-"""Kiểm 15 báo giá PDF của kho tài liệu — W2-03.
+"""Kiểm 15 báo giá PDF của kho tài liệu.
 
 Test này canh đúng một lỗi đã từng xảy ra: PDF sinh bằng font base-14
 `/Helvetica` (không nhúng, không ToUnicode) làm mất toàn bộ dấu tiếng Việt khi
@@ -32,7 +32,7 @@ def _text_of(pdf_path: Path) -> str:
     """Text trích từ PDF, đã gộp mọi khoảng trắng/xuống dòng thành 1 dấu cách.
 
     Ngắt dòng theo layout là chuyện của trình render, không phải của nội dung —
-    khâu chunk ở W2-05 cũng chuẩn hóa như vậy trước khi embedding.
+    khâu chunk ở src/rag/ingest.py cũng chuẩn hóa như vậy trước khi embedding.
     """
     reader = pypdf.PdfReader(str(pdf_path))
     raw = "\n".join(page.extract_text() or "" for page in reader.pages)
@@ -83,7 +83,7 @@ def test_khach_hang_khop_manifest(corpus_texts):
 
 
 def test_cap_doi_chieu_ct02(corpus_texts):
-    """CT-02 (W1-06) so sánh BG-2026-014 với BG-2026-021 trên 2 tiêu chí.
+    """CT-02 (STT-18) so sánh BG-2026-014 với BG-2026-021 trên 2 tiêu chí.
 
     Nếu ai đó sửa nội dung 2 báo giá này thành giống nhau thì tác vụ chở CT-02
     mất ý nghĩa mà không có gì báo động — nên khóa lại ở đây.

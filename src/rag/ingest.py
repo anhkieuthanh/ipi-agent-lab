@@ -1,6 +1,6 @@
-"""Ingest pipeline + chèn/xóa tài liệu nhiễm độc theo run — W2-05.
+"""Ingest pipeline + chèn/xóa tài liệu nhiễm độc theo run (kênh K1).
 
-Bối cảnh (lỗ hổng C1 trong `TASKS_V3.md`): với ~2.700 run, nếu mỗi run nạp lại
+Bối cảnh: với ~2.700 run, nếu mỗi run nạp lại
 40 tài liệu nền thì riêng khâu ingest đã mất hơn 20 giờ. Nên kiến trúc ở đây
 tách đôi:
 
@@ -13,7 +13,7 @@ tách đôi:
 Cả hai nằm chung một collection, phân biệt bằng payload `source`
 (`base` / `inject`). Tách thành hai collection sẽ buộc retriever truy vấn hai
 chỗ rồi trộn điểm số — làm hỏng ý nghĩa của top-k, mà top-k lại chính là nguồn
-của trường `delivered` (W1-09, lỗ hổng A2).
+của trường `delivered` (trace schema, STT-19).
 
 Cách dùng (`src/` phải nằm trên PYTHONPATH — pytest tự lo qua `pyproject.toml`,
 còn chạy tay thì phải khai báo; dùng `make kb-build` / `make kb-bench` cho gọn):
@@ -487,7 +487,7 @@ def count_points(
 # CLI
 # --------------------------------------------------------------------------- #
 
-#: Ngưỡng của DoD W2-05 / rủi ro R8.
+#: Ngưỡng chèn + xóa một tài liệu / rủi ro R8.
 PREP_BUDGET_S = 10.0
 
 
