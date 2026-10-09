@@ -1,10 +1,33 @@
 # config/models.yaml — cấu hình ba mô hình đích A1 (frontier) · A2 (lớp doanh nghiệp Việt) ·
 # A3 (lớp rẻ, nhóm đối chiếu).
 #
-# Khối `targets` điền ở STT-14. Đổi model = đổi `.env` + một khối targets, không sửa code.
+# Bộ model theo phụ lục GVHD đã ký (hạng mục 6). Đổi model = đổi `.env` + một khối targets,
+# không sửa code.
+# `model_id` là id đã chốt, khóa bằng `v-models-1.0`; giá trị biến `model_env` trong `.env` phải
+# trùng `model_id`. Gateway chỉ có bí danh, nên trace ghi trường `model` của response để bắt trôi.
 # Mỗi khối chỉ trỏ TÊN biến môi trường (base_url_env, api_key_env, model_env); giá trị thật
 # nằm trong `.env`, mẫu ở `.env.example`. Pin model sau `v-models-1.0` (quy tắc cứng #9).
 
 schema_version: "1.0"
 
-targets: {}
+targets:
+  A1:
+    label: "A1 frontier"
+    base_url_env: GATEWAY_BASE_URL
+    api_key_env: GATEWAY_API_KEY
+    model_env: TARGET_MODEL_A1
+    model_id: claude-opus-5
+
+  A2:
+    label: "A2 lớp doanh nghiệp Việt"
+    base_url_env: GATEWAY_BASE_URL
+    api_key_env: GATEWAY_API_KEY
+    model_env: TARGET_MODEL_A2
+    model_id: glm-5.2
+
+  A3:
+    label: "A3 lớp rẻ, nhóm đối chiếu"
+    base_url_env: GATEWAY_BASE_URL
+    api_key_env: GATEWAY_API_KEY
+    model_env: TARGET_MODEL_A3
+    model_id: glm-5.3-flash
