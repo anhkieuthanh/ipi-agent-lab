@@ -1,51 +1,61 @@
 # ipi-agent-lab
 
-Nghiên cứu và xây dựng hệ thống đánh giá, phòng chống tấn công tiêm nhiễm gián tiếp
-(Indirect Prompt Injection — IPI) cho agent dùng RAG + MCP tool-calling.
+> README soạn với sự hỗ trợ của AI (Claude).
+
+Hệ thống đánh giá và phòng chống tấn công tiêm nhiễm gián tiếp (Indirect Prompt Injection —
+IPI) trên agent dùng RAG + MCP tool-calling.
 
 ## Cấu trúc thư mục
 
 ```
+├── config/              # hợp đồng, viết trước src/: defenses.yaml · models.yaml · rag.yaml
+├── data/                # benign_queries.json · carrier_tasks.json · customers.db (Faker vi_VN)
 ├── src/
-│   ├── attack/payloads/   # schema payload (technique × goal_binding), W1-07
-│   ├── obs/                # trace schema, DDL SQLite (runs/steps), W1-09
-│   └── defense/             # 4 cơ chế phòng thủ D1–D4, W1-08
-├── data/                    # carrier_tasks.json, payloads_sample.json
-├── config/                  # defenses.yaml
-├── docs/                    # related_work, threat_model, taxonomy, metrics...
-├── tests/                   # test tích hợp
-└── scripts/                 # tiện ích chạy thử nghiệm
+│   ├── agent/           # lõi agent (STT-26)
+│   ├── rag/             # ingest · embedder · retriever · corpus
+│   ├── attack/payloads/ # schema + corpus payload T1–T8 (STT-20)
+│   ├── defense/         # D1–D4 · pipeline
+│   ├── eval/            # allowed_actions · scorer (STT-35) · bench hữu dụng (STT-37)
+│   └── obs/             # trace store (STT-32) · canary (STT-33, STT-34)
+├── dashboard/           # Streamlit: app.py + pages/
+├── scripts/             # seed_db · gen_corpus_pdfs
+└── tests/
 ```
 
 ## Cài đặt
 
 ```bash
 uv sync --all-groups
+cp .env.example .env   # rồi điền giá trị thật; không commit .env
 ```
+
+## Hạ tầng lab
+
+Bốn service trong `docker-compose.yml`: `qdrant` (vector store) · `mailhog` (SMTP giả) ·
+`app` (dev container) · `dashboard` (Streamlit, cổng 8501). Canary listener (STT-34) thêm khi
+hiện thực xong.
+
+```bash
+make up          # dựng cả lab, chờ mọi service healthy
+make dashboard   # chỉ dashboard — http://localhost:8501
+make down
+```
+
+Các target khác: `reset` · `ps` · `logs` · `kb-build` · `kb-rebuild` ·
+`kb-bench` · `kb-stats`.
 
 ## Kiểm thử
 
 ```bash
-uv run pytest -v
+uv run pytest -v        # test cần Qdrant tự bỏ qua nếu chưa `make up`
 uv run ruff check .
 ```
 
-## Bộ đo (benchmark) — KHÓA tại `v-bench-1.0`
+## Bộ đo — đã khóa
 
-- 60 câu hỏi lành tính: `data/benign_queries.json` (nhóm U1–U5, `false_positive_gate`).
-- 6 tác vụ chở (carrier tasks): `data/carrier_tasks.json` (CT-01..CT-06).
-
-Hai file này **KHÔNG được sửa sau tuần 2** (mốc git tag `v-bench-1.0`).
-Mọi thay đổi sau mốc này phải ghi vào khối `changelog` trong chính file JSON
-(field `version`, `date`, `reason`, `changes`) kèm lý do rõ ràng — xem ví dụ
-trong `carrier_tasks.json`. Đây là điều kiện cổng M1, chống rủi ro R4
-(bộ đo trôi giữa chừng làm số liệu không so sánh được).
-
-## Trạng thái
-
-Dự án đang trong Tuần 1 (thiết kế): threat model, taxonomy K1–K5, schema payload,
-spec phòng thủ, trace schema, công thức đo (ASR, DSR, USR, FRR, TCP, ARR).
-Xem `TASKS_V3.md` / `KE_HOACH_V3.md` (ở thư mục thesis gốc) cho kế hoạch chi tiết 8 tuần.
+`data/benign_queries.json` (60 câu U1–U5) và `data/carrier_tasks.json` (CT-01–CT-06)
+không được sửa. Mọi thay đổi ghi ở `docs/06. Track/CHANGELOG_TAI_LIEU.md` của repo tài
+liệu kèm lý do, không ghi trong chính file JSON.
 
 ## Giấy phép
 

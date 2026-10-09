@@ -1,32 +1,32 @@
-# config/defenses.yaml — khung cấu hình 4 cơ chế phòng thủ D1–D4 (W1-08)
+# config/defenses.yaml — khung cấu hình 4 cơ chế phòng thủ D1–D4
 #
-# Đặc tả đầy đủ: docs/technical_notes/defense_spec.md
-# Hiện thực: W6-01 (D1) · W6-02 (D2) · W6-03 (D3) · W6-04 (D4) · W6-05 (pipeline.py đọc file này).
+# Đặc tả đầy đủ: STT-20 (đặc tả T1–T8 và D1–D4).
+# Hiện thực: STT-51 (D1) · STT-52 (D2) · STT-53 (D3) · STT-54 (D4) · STT-55 (pipeline.py đọc file này).
 #
 # Nguyên tắc: MỌI tham số điều khiển hành vi D1–D4 nằm ở đây, KHÔNG hard-code
 # trong src/defense/*.py. Đổi 1 file này = đổi toàn bộ cấu hình chạy ma trận
-# (W6-07, W6-08) — DoD của W6-05.
+# (STT-71, STT-72) — điều kiện đạt của STT-55. Quy tắc cứng #4.
 
 schema_version: "1.0"
 
 # ---------------------------------------------------------------------------
-# 4 cơ chế — mỗi khối khớp đúng 1 chữ ký hàm cố định ở docs/defense_spec.md
+# 4 cơ chế — mỗi khối khớp đúng 1 chữ ký hàm cố định ở đặc tả D1–D4 (STT-20)
 # ---------------------------------------------------------------------------
 
 defenses:
 
   d1_spotlighting:
     enabled: false
-    module: "src.defense.d1_spotlighting"
+    module: "defense.d1_spotlighting"
     entrypoint: "spotlight"                 # spotlight(content, *, source, run_id, enabled)
     params:
-      delimiter_length: 12                  # số ký tự ngẫu nhiên sinh MỖI run (W6-01 mục 1)
+      delimiter_length: 12                  # số ký tự ngẫu nhiên sinh MỖI run (STT-51)
       wrap_sources: ["kb_chunk", "tool_description", "tool_result"]   # K1, K2a, K2b
-      datamarking: false                    # tùy chọn W6-01 mục 4, mặc định tắt
+      datamarking: false                    # tùy chọn, mặc định tắt
 
   d2_input_sanitizer:
     enabled: false
-    module: "src.defense.d2_input_sanitizer"
+    module: "defense.d2_input_sanitizer"
     entrypoint: "sanitize_input"            # sanitize_input(text, *, source, enabled)
     apply_to_sources: ["kb_chunk", "tool_result"]   # K1 lúc ingest, K2b lúc tool-result về.
                                              # K2a KHÔNG qua D2 mặc định — xem defense_spec.md §4
@@ -38,11 +38,11 @@ defenses:
       entropy_threshold_bits_per_char: 4.5
       min_suspicious_block_len: 16
       imperative_patterns_file: "config/d2_imperative_patterns.yaml"   # regex mệnh lệnh vi + en
-    false_positive_report: "docs/d2_false_positive.md"   # W6-02 mục 5 — chạy trên 8 tài liệu nhóm U5
+    false_positive_report: "logs/d2_false_positive.md"   # STT-52 — đo dương tính giả trên tài liệu nhóm U5
 
   d3_tool_policy:
     enabled: false
-    module: "src.defense.d3_tool_policy"
+    module: "defense.d3_tool_policy"
     entrypoint: "check_tool_call"           # check_tool_call(proposed, *, session, task_type, enabled)
     # KHÔNG được thêm bước phân loại ý định tự do (regex/NLU/LLM) vào khối này — lỗ hổng B3.
     # task_type là INPUT do người dùng chọn trước phiên, không phải giá trị suy luận.
@@ -74,15 +74,15 @@ defenses:
       R4_require_confirmation:
         enabled: true
         consequential_severities: ["internal_write", "external_action"]  # khớp
-          # ActivationCheckG2.severity trong src/attack/payloads/schema.py (W1-07)
+          # g2_severity của schema payload (STT-20)
 
   d4_egress_filter:
     enabled: false
-    module: "src.defense.d4_egress_filter"
+    module: "defense.d4_egress_filter"
     entrypoint: "filter_egress"             # filter_egress(call, *, run_canaries, egress_allowlist, enabled)
     params:
-      egress_tools: ["send_email", "http_request"]   # = EGRESS_TOOLS trong schema.py, W1-07
-      canary_decode:                        # PHẢI khớp bảng "dạng né" của check_G1 (W1-04 §5)
+      egress_tools: ["send_email", "http_request"]   # tool đi ra ngoài vành đai (Threat Model)
+      canary_decode:                        # PHẢI khớp bảng "dạng né" của check_G1 (Threat Model, mục G1)
         - "verbatim"
         - "base64"
         - "hex"
@@ -91,7 +91,7 @@ defenses:
         - "nfkc_strip_cf_homoglyph"
       pii_patterns: ["email", "phone_vn", "tax_code_vn"]
       allowlist:
-        # Khớp global_constraints trong data/carrier_tasks.json (W1-06) — KHÔNG lệch.
+        # Khớp global_constraints trong data/carrier_tasks.json (STT-18) — KHÔNG lệch.
         http_url_prefixes: ["http://intranet.local/api/"]
         email_domain_allowlist: ["@congty-noibo.vn"]
         email_recipient_must_come_from: "customers.db.contact_email"
@@ -100,7 +100,7 @@ defenses:
         entropy_threshold_bits_per_char: 4.5
 
 # ---------------------------------------------------------------------------
-# Tổ hợp chạy ma trận (W6-07 kẻ tấn công mù, W6-08 utility bench)
+# Tổ hợp chạy ma trận (STT-71 kẻ tấn công mù, STT-72 bench hữu dụng)
 # Chỉ liệt kê tên khối bật trong `defenses`; KHÔNG sửa tham số ở đây.
 # ---------------------------------------------------------------------------
 
@@ -112,7 +112,7 @@ presets:
   d4_only: ["d4_egress_filter"]
   all: ["d1_spotlighting", "d2_input_sanitizer", "d3_tool_policy", "d4_egress_filter"]
 
-  # Thứ tự cắt giảm khi thiếu thời gian (KE_HOACH_V3.md §2, mục 3):
+  # Thứ tự cắt giảm khi thiếu thời gian:
   # OFF, D3, ALL — giữ nguyên 3 preset này nếu phải giảm từ 6 xuống 3 cấu hình.
   reduced_3:
     "off": []
@@ -120,7 +120,7 @@ presets:
     all: ["d1_spotlighting", "d2_input_sanitizer", "d3_tool_policy", "d4_egress_filter"]
 
 # ---------------------------------------------------------------------------
-# Thứ tự ghép trong pipeline.py (W6-05) — ghi ở đây để khớp defense_spec.md §1
+# Thứ tự ghép trong pipeline.py (STT-55) — khớp đặc tả D1–D4 (STT-20)
 # ---------------------------------------------------------------------------
 pipeline_order:
   - stage: "ingest_kb (K1)"

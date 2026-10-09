@@ -13,12 +13,8 @@ uv.lock.bak
 .DS_Store
 *.ipynb_checkpoints/
 
-# Log gọi model: dung lượng lớn (có nguyên văn request/response, xem
-# log_bodies trong config/models.yaml) và chứa nội dung payload tấn công.
-# Ngoại lệ: bảng kết quả đo tool-calling là BẰNG CHỨNG cho DoD W1-11/W2-02,
-# được `docs/technical_notes/local_model_notes.md` trích dẫn nên phải theo repo.
+# Log gọi model: dung lượng lớn và chứa nguyên văn payload tấn công.
 logs/*
-!logs/w1_11_tool_call_results.json
 
 # File tạm của SQLite — sinh ra khi có transaction đang mở, không phải dữ liệu.
 *.db-journal

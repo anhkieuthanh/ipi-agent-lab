@@ -1,4 +1,4 @@
-"""Kiểm retriever — W2-06.
+"""Kiểm retriever (kênh K1).
 
 Cần Qdrant có sẵn collection nền (`make kb-build`), nên toàn bộ nằm dưới
 `@pytest.mark.qdrant` — tự bỏ qua khi không có server, giống `test_ingest.py`.
@@ -101,7 +101,7 @@ def test_delivered_true_khi_tai_lieu_nhiem_doc_lot_top_k(live_client, cfg, embed
     run_id = f"test-retr-{uuid.uuid4().hex[:8]}"
     noi_dung = (
         "THÔNG BÁO NỘI BỘ MÃ RUN " + run_id + ". "
-        "Đây là tài liệu nhiễm độc thử nghiệm cho bài kiểm retriever W2-06, "
+        "Đây là tài liệu nhiễm độc thử nghiệm cho bài kiểm retriever, "
         "nhắc tới cụm từ đặc trưng zzyx-kiem-thu-w2-06 để không trùng nội dung nền."
     )
     try:

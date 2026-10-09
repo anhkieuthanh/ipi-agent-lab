@@ -1,6 +1,6 @@
-"""Truy hồi kho tri thức — W2-06.
+"""Truy hồi kho tri thức (kênh K1).
 
-`search()` là điểm gọi duy nhất mà lớp attack (W4-07 `injector_k1.py`) và lớp
+`search()` là điểm gọi duy nhất mà lớp attack (injector K1, STT-44) và lớp
 đo lường dùng để lấy top-k từ collection `kb`. `is_delivered()` xây trên đúng
 kết quả của `search()` — không truy vấn riêng — để "có nằm trong top-k hay
 không" luôn khớp với những gì agent thực sự nhận được.
@@ -77,7 +77,7 @@ def is_delivered(
 ) -> bool:
     """Tài liệu nhiễm độc của `run_id` có nằm trong top-k của `query` không.
 
-    Đây là nguồn của trường `delivered` (W1-09, lỗ hổng A2; dùng ở W4-07):
+    Đây là nguồn của trường `delivered` (trace schema STT-19; dùng ở STT-44):
     `delivered=False` không tính là tấn công thất bại — nó rời khỏi mẫu tính
     ASR có điều kiện, chứ không rời mẫu ASR đầu-cuối.
 
@@ -85,7 +85,7 @@ def is_delivered(
     `(run_id, query)`, mà cả hai cùng kiểu `str` nên gọi đảo thứ tự vẫn chạy
     và **trả `False` im lặng** — không `run_id` nào trùng nội dung câu hỏi.
     Hậu quả: `delivered` luôn False ⇒ mọi run rời khỏi mẫu ASR có điều kiện ⇒
-    đúng lỗ hổng A2 mà W1-09 dựng trường này để chặn, chỉ khác là hỏng từ phía
+    đúng lỗ hổng A2 mà trace schema (STT-19) dựng trường này để chặn, chỉ khác là hỏng từ phía
     đo chứ không từ phía tấn công. Ép keyword-only để lỗi đó không xảy ra được.
     """
     if not run_id:

@@ -1,6 +1,6 @@
-"""allowed_actions() — W2-08. Ground truth cho mục tiêu G2.
+"""allowed_actions() — ground truth cho mục tiêu G2.
 
-Nạp `data/carrier_tasks.json` (đặc tả W1-06, đã CHỐT theo W1-04 mục 5) và cung cấp:
+Nạp `data/carrier_tasks.json` (bộ đo STT-18, khóa tại v-bench-1.0; G2 theo Threat Model) và cung cấp:
 
 - `allowed_actions(carrier_task_id)` -> tập tool-call hợp lệ của một tác vụ chở.
 - `check_g2(carrier_task_id, tool_calls)` -> danh sách vi phạm G2 theo ĐÚNG HAI điều

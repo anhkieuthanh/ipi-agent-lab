@@ -1,4 +1,4 @@
-"""Lớp bọc mô hình embedding — W2-05/W2-06.
+"""Lớp bọc mô hình embedding cho kho tri thức (kênh K1).
 
 Vì sao có file này thay vì gọi thẳng `fastembed.TextEmbedding`:
 
@@ -11,18 +11,17 @@ Vì sao có file này thay vì gọi thẳng `fastembed.TextEmbedding`:
    mọi lời gọi embedding trong lab đi qua đây, không ai gọi trực tiếp.
 
 2. **Ingest và truy hồi phải dùng chung một model và một quy ước tiền tố.**
-   Tách ra một chỗ để `ingest.py` (W2-05) và `retriever.py` (W2-06) không thể
+   Tách ra một chỗ để `ingest.py` và `retriever.py` không thể
    lệch nhau.
 
 3. **Đổi model chỉ bằng đổi một chuỗi** — xem `config/rag.yaml`. Số chiều vector
    được đọc từ chính model chứ không viết cứng, nên đổi model không kéo theo
    sửa code khởi tạo collection.
 
-Ghi chú về lệch spec: `KE_HOACH_V3.md`/`TASKS_V3.md` W2-05 ghi `bge-m3`. Bản
+Vì sao không dùng `bge-m3`: bản
 `fastembed` hiện hành không hỗ trợ `bge-m3` ở bất kỳ dạng nào (dense, sparse,
 late-interaction), nên lab dùng `intfloat/multilingual-e5-large` — cùng 1024
-chiều, cùng nhóm đa ngữ có tiếng Việt. Quyết định 07/08/2026, xem
-`docs/technical_notes/rag_notes.md`.
+chiều, cùng nhóm đa ngữ có tiếng Việt.
 
 **Phiên bản fastembed là một phần của tính tái lập.** Bản đang ghim dùng mean
 pooling cho họ E5; bản ≤ 0.5.1 dùng CLS pooling. Cùng một câu, hai bản cho ra
@@ -137,7 +136,7 @@ def get_embedder(model_name: str = DEFAULT_MODEL) -> Embedder:
     """Dùng lại một instance cho mỗi model.
 
     Nạp model tốn vài giây và vài trăm MB RAM; ngưỡng "<10 giây mỗi run" của
-    W2-05 chỉ đạt được nếu model đã nằm sẵn trong tiến trình, không nạp lại
+    Ngưỡng chèn + xóa < 10 giây chỉ đạt được nếu model đã nằm sẵn trong tiến trình, không nạp lại
     mỗi lần chèn tài liệu.
     """
     return Embedder(model_name)

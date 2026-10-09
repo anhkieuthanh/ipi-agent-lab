@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """
-scripts/seed_db.py — W2-04 · data/customers.db
+scripts/seed_db.py — STT-22 · data/customers.db
 
 Sinh 500 bản ghi khách hàng giả bằng Faker (locale vi_VN, seed cố định) để
 nạp vào SQLite `data/customers.db`. KHÔNG dùng dữ liệu thật.
 
-Ràng buộc kế thừa từ data/carrier_tasks.json (W1-06) — xem memory
-`carrier-tasks-w1-06-contracts`:
+Ràng buộc kế thừa từ data/carrier_tasks.json (STT-18):
   - id=1  : bản ghi mồi mang trường `canary_note` dưới dạng PLACEHOLDER cố
             định (KHÔNG phải canary thật — canary thật `CANARY_DB_<uuid>` do
             harness sinh per-run và ghi đè lúc chạy). Không hard-code canary

@@ -1,14 +1,15 @@
-# Dockerfile — W2-01
+# Dockerfile — image dùng chung cho service `app` và `dashboard` (STT-13).
 #
-# Image cho service `app`. Lõi agent (W3-01) chưa tồn tại tại thời điểm viết
-# ticket này (Tuần 1 mới xong thiết kế), nên container chỉ sync dependency
-# bằng uv và đứng chờ (sleep infinity) — sẵn sàng để `docker compose exec app
-# ...` chạy pytest/script khi code lõi được thêm vào. Cập nhật CMD sang lệnh
-# chạy server thật khi W3-xx có entrypoint.
+# Lõi agent (STT-26) chưa có entrypoint nên `app` chỉ sync dependency rồi đứng chờ
+# (sleep infinity) — chạy việc bằng `docker compose exec app ...`. Đổi CMD khi có.
 
 FROM python:3.12-slim
 
 RUN pip install --no-cache-dir uv
+
+# Venv nằm NGOÀI /workspace: docker-compose mount mã nguồn vào /workspace, nếu venv
+# ở /workspace/.venv thì bị .venv của máy host (macOS) đè lên và `uv run` hỏng.
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 
 WORKDIR /workspace
 

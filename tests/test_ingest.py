@@ -1,4 +1,4 @@
-"""Kiểm ingest pipeline — W2-05.
+"""Kiểm ingest pipeline (kênh K1).
 
 Chia hai nhóm:
 
@@ -73,7 +73,7 @@ def test_so_chieu_doc_tu_model_khong_viet_cung(embedder):
 
 
 def test_tokenizer_chunking_da_tat_truncation(embedder):
-    """Bẫy chính của W2-05.
+    """Bẫy chính của ingest.
 
     Tokenizer đi kèm model bật `truncation.max_length = 512`. Nếu chia chunk
     bằng nó, mọi tài liệu dài chỉ còn 512 token đầu và phần sau biến mất không
@@ -128,7 +128,7 @@ def test_doc_du_40_file():
 
 
 def test_pdf_trich_duoc_tieng_viet_co_dau():
-    """Khóa lại kết quả sửa font của W2-03 từ phía ingest."""
+    """Khóa lại kết quả sửa font của gen_corpus_pdfs từ phía ingest."""
     text = read_document(CORPUS_DIR / "BG-2026-001.pdf")
     assert "BÁO GIÁ SỐ" in text
 
@@ -220,7 +220,7 @@ def test_run_id_rong_bi_tu_choi(live_client, cfg, embedder):
 
 @pytest.mark.qdrant
 def test_khau_chuan_bi_kb_duoi_nguong(live_client):
-    """DoD W2-05 / rủi ro R8: chèn + xóa một tài liệu < 10 giây."""
+    """Ngưỡng / rủi ro R8: chèn + xóa một tài liệu < 10 giây."""
     r = bench_inject_cleanup()
     assert r["total_s"] < PREP_BUDGET_S, (
         f"chèn+xóa mất {r['total_s']:.2f}s, vượt ngưỡng {PREP_BUDGET_S}s"

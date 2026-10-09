@@ -1,18 +1,21 @@
-# docker-compose.yml — W2-01
+# docker-compose.yml — hạ tầng lab (STT-13)
 #
-# 4 service: qdrant (vector DB, volume bền), mailhog (SMTP giả lập cho
-# send_email tool, W3-05), canary (sink HTTP bắt rò rỉ, xem
-# src/obs/schema.sql run-005), app (dev container, uv sync sẵn deps).
+# 4 service: qdrant (vector store, volume bền), mailhog (SMTP giả cho tool
+# send_email, STT-29), app (dev container, uv sync sẵn deps), dashboard
+# (Streamlit, STT-58; cùng image với app). Canary listener (FastAPI, STT-34)
+# thêm vào đây khi hiện thực xong.
 #
-# Mọi service đều có healthcheck và `app` chỉ khởi động khi cả 3 đã HEALTHY
-# (`condition: service_healthy`). `depends_on` trần chỉ đảm bảo thứ tự KHỞI
-# ĐỘNG, không đảm bảo dịch vụ đã sẵn sàng nhận request — với Qdrant, khoảng
-# trống đó đủ để bước ingest đầu tiên của một run fail vì "connection refused"
-# và bị ghi nhầm thành lỗi pipeline.
+# Image bên thứ ba pin phiên bản — `latest` làm hạ tầng trôi giữa các lần chạy
+# lô, số liệu không còn so sánh được. qdrant server khớp qdrant-client 1.19.
+#
+# `app` chỉ khởi động khi hạ tầng đã HEALTHY (`condition: service_healthy`).
+# `depends_on` trần chỉ đảm bảo thứ tự KHỞI ĐỘNG, không đảm bảo dịch vụ đã sẵn
+# sàng nhận request — với Qdrant, khoảng trống đó đủ để bước ingest đầu tiên
+# của một run fail vì "connection refused" và bị ghi nhầm thành lỗi pipeline.
 
 services:
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.19.2
     container_name: ipi-qdrant
     ports:
       - "6333:6333"
@@ -39,7 +42,7 @@ services:
     restart: unless-stopped
 
   mailhog:
-    image: mailhog/mailhog:latest
+    image: mailhog/mailhog:v1.0.1
     container_name: ipi-mailhog
     # Image chỉ có bản amd64; khai báo tường minh để máy ARM (Apple Silicon)
     # chạy qua emulation thay vì báo lỗi khó hiểu lúc pull.
@@ -55,19 +58,6 @@ services:
       retries: 5
     restart: unless-stopped
 
-  canary:
-    build:
-      context: ./canary
-    container_name: ipi-canary
-    ports:
-      - "8099:8099"
-    volumes:
-      # Bằng chứng G1 phải sống lâu hơn container (xem canary/app.py).
-      - canary_data:/data
-    environment:
-      CANARY_HITS_PATH: /data/canary_hits.jsonl
-    restart: unless-stopped
-
   app:
     build:
       context: .
@@ -78,16 +68,45 @@ services:
       QDRANT_URL: http://qdrant:6333
       SMTP_HOST: mailhog
       SMTP_PORT: "1025"
-      CANARY_BASE_URL: http://canary:8099
     depends_on:
       qdrant:
         condition: service_healthy
       mailhog:
         condition: service_healthy
-      canary:
-        condition: service_healthy
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+    container_name: ipi-dashboard
+    command:
+      - uv
+      - run
+      - --no-sync
+      - streamlit
+      - run
+      - dashboard/app.py
+      - --server.port=8501
+      - --server.address=0.0.0.0
+      - --server.headless=true
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/workspace
+    environment:
+      TRACES_DB: /workspace/data/traces.db
+    # Image python:slim không có curl — gọi endpoint health của Streamlit bằng python.
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
     restart: unless-stopped
 
 volumes:
   qdrant_data:
-  canary_data:

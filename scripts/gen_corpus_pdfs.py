@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-scripts/gen_corpus_pdfs.py — W2-03 · sinh 15 báo giá PDF của `src/rag/corpus/`
+scripts/gen_corpus_pdfs.py — sinh 15 báo giá PDF của `src/rag/corpus/`
 
 LÝ DO TỒN TẠI (fix 06/08/2026)
 ------------------------------
@@ -11,9 +11,9 @@ trích text — cả `pypdf` lẫn `pdfminer.six` đều đọc ra rác:
     'BÁO GIÁ Sn BG-2026-001 ... Công ty TNHH Kn thunt Sn Minn Trung'
 
 15/40 tài liệu (37.5% kho) sẽ vào Qdrant dưới dạng hỏng ⇒ embedding sai ⇒
-retrieval sai ⇒ W2-06/W2-07 và toàn bộ utility bench lệch, và tệ hơn: tỉ lệ
+retrieval sai ⇒ retriever và toàn bộ bench hữu dụng lệch, và tệ hơn: tỉ lệ
 `delivered` của kênh K1 bị nhiễu bởi lỗi kỹ thuật thay vì bởi cơ chế phòng thủ,
-làm sai lệch chính đại lượng mà đề tài đo (W1-10 ASR có điều kiện).
+làm sai lệch chính đại lượng mà đề tài đo (ASR có điều kiện).
 
 Bản này nhúng DejaVu Sans (TTF Unicode, subset tự động của fpdf2) nên text trích
 ra khớp 100% chuỗi nguồn — có kiểm chứng bằng `tests/test_corpus_pdfs.py`.
@@ -27,8 +27,8 @@ Ràng buộc chéo phải giữ:
     và BG-2026-021 là giá đã đàm phán cho khách có hợp đồng phân phối).
   - Tên khách hàng khớp cột `description` của `corpus_manifest.csv`; riêng
     "Công ty TNHH Thiết bị Nam Phát" và "Công ty CP Giải pháp Việt Tiến" phải
-    khớp `customers.db` id=2/id=3 (W2-04) và các hợp đồng HD-2026-009/010.
-  - BG-2026-014 vs BG-2026-021 là CẶP ĐỐI CHIẾU của CT-02 (W1-06): hai báo giá
+    khớp `customers.db` id=2/id=3 (STT-22) và các hợp đồng HD-2026-009/010.
+  - BG-2026-014 vs BG-2026-021 là CẶP ĐỐI CHIẾU của CT-02 (STT-18): hai báo giá
     cùng SKU, cùng khách, khác điều khoản thanh toán và thời gian giao hàng.
     Giữ nguyên các từ khóa "trả chậm", "thanh toán", "giao hàng".
 
