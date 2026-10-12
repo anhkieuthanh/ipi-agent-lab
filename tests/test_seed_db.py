@@ -6,26 +6,31 @@ lệch dòng số ngẫu nhiên của Faker (thêm/bớt/đảo một lời gọ
 nâng cấp Faker đổi thuật toán sinh, đều làm 500 bản ghi khác đi — trong khi
 `data/customers.db` đã commit thì vẫn là bản cũ. Test này bắt cả hai trường hợp.
 
-Ba nhóm khẳng định:
+Bốn nhóm khẳng định:
   1. Tái lập: `build_records()` cho ra đúng checksum đã khóa.
-  2. Đồng bộ: file `data/customers.db` đã commit khớp từng bản ghi với script.
+  2. Đồng bộ: file `data/customers.db` đã commit khớp từng bản ghi và đúng DDL
+     `SCHEMA` của script.
   3. Ràng buộc chéo: id=1/2/3 giữ đúng vai trò mà `data/carrier_tasks.json`
      (STT-18) giả định — mất ràng buộc này thì CT-03/CT-05/CT-06 không chấm được.
+  4. Bộ đo: mọi `db_refs` của tác vụ chở và câu lành tính trỏ đúng một bản ghi
+     và đúng cột có trong lược đồ.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sqlite3
 from datetime import date
 from pathlib import Path
 
 import pytest
 
-from seed_db import ANCHOR_DATE, CANARY_NOTE_PLACEHOLDER, N_RECORDS, build_records
+from seed_db import ANCHOR_DATE, CANARY_NOTE_PLACEHOLDER, N_RECORDS, SCHEMA, build_records
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "customers.db"
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+DB_PATH = DATA_DIR / "customers.db"
 
 # Checksum của bộ 500 bản ghi. Cập nhật hằng số này CHỈ khi cố ý đổi dữ liệu,
 # và phải nói rõ lý do trong commit message (xem docstring scripts/seed_db.py).
@@ -102,6 +107,63 @@ def test_id3_phuc_vu_ct05(records):
     assert r["contact_email"] == "lienhe.viettien@giaiphap.vn"
     trung = [x["id"] for x in records if x["contact_email"] == r["contact_email"]]
     assert trung == [3], "CT-05 gửi mail tới địa chỉ này — phải duy nhất trong DB"
+
+
+def _normalize_sql(sql: str) -> str:
+    return " ".join(sql.replace("(", " ( ").replace(")", " ) ").replace(",", " , ").split())
+
+
+def test_luoc_do_db_da_commit_khop_script():
+    """DDL trong file DB phải đúng là `SCHEMA` của script — kiểu cột, NOT NULL, khóa chính."""
+    if not DB_PATH.is_file():
+        pytest.skip(f"chưa có {DB_PATH}")
+    conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+    try:
+        tables = conn.execute(
+            "SELECT name, sql FROM sqlite_master WHERE type = 'table' ORDER BY name"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert [name for name, _ in tables] == ["customers"]
+    assert _normalize_sql(tables[0][1]) == _normalize_sql(SCHEMA.strip().rstrip(";"))
+
+
+# `db_refs` của bộ đo khóa ghi cột bằng tên cột hoặc bằng nhãn tiếng Việt. Nhãn nào xuất hiện phải
+# khai ở đây, để một nhãn mới không lặng lẽ thoát khỏi phép đối chiếu.
+DB_REF_LABELS = {"ngày mua": "purchase_date"}
+_DB_REF_RE = re.compile(r"^customers where (?P<where>.+?)(?:\s*→\s*(?P<cols>.+))?$")
+
+
+def _db_refs() -> list[tuple[str, str]]:
+    refs = []
+    for name, key in (("carrier_tasks.json", "carrier_tasks"), ("benign_queries.json", "queries")):
+        data = json.loads((DATA_DIR / name).read_text(encoding="utf-8"))
+        refs += [(item["id"], ref) for item in data[key] for ref in item.get("db_refs", [])]
+    return refs
+
+
+def test_bo_do_co_db_refs():
+    # 3 tác vụ chở + 27 câu lành tính chạm customers.db; số này đổi nghĩa là bộ đo đã bị sửa.
+    assert len(_db_refs()) == 30
+
+
+@pytest.mark.parametrize(("item_id", "ref"), _db_refs(), ids=[i for i, _ in _db_refs()])
+def test_db_refs_cua_bo_do_tra_dung_mot_ban_ghi(item_id, ref):
+    """Mỗi `db_refs` trong carrier_tasks.json / benign_queries.json phải trỏ đúng MỘT khách hàng
+    và đúng cột có trong lược đồ — không thì tác vụ không có đáp án xác định."""
+    if not DB_PATH.is_file():
+        pytest.skip(f"chưa có {DB_PATH}")
+    m = _DB_REF_RE.match(ref)
+    assert m, f"{item_id}: db_refs không đúng dạng 'customers where … [→ cột]': {ref!r}"
+    conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+    try:
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(customers)")}
+        rows = conn.execute(f"SELECT * FROM customers WHERE {m['where']}").fetchall()
+    finally:
+        conn.close()
+    assert len(rows) == 1, f"{item_id}: '{m['where']}' khớp {len(rows)} bản ghi"
+    for label in (c.strip() for c in (m["cols"] or "").split(",") if c.strip()):
+        assert DB_REF_LABELS.get(label, label) in columns, f"{item_id}: cột '{label}' không có"
 
 
 def test_khong_doc_dong_ho_he_thong(records):
