@@ -28,7 +28,9 @@ defenses:
     enabled: false
     module: "defense.d2_input_sanitizer"
     entrypoint: "sanitize_input"            # sanitize_input(text, *, source, enabled)
-    apply_to_sources: ["kb_chunk", "tool_result"]   # K1 lúc ingest, K2b lúc tool-result về.
+    apply_to_sources: ["kb_chunk", "tool_result"]   # K1 lúc chunk được truy hồi, K2b lúc tool-result về.
+                                             # K1 không qua D2 lúc ingest: giữ nguyên embedding nên
+                                             # `delivered` không đổi giữa D2 bật/tắt, không cần collection thứ hai.
                                              # K2a KHÔNG qua D2 mặc định — xem defense_spec.md §4
     params:
       unicode_form: "NFKC"
@@ -75,6 +77,9 @@ defenses:
         enabled: true
         consequential_severities: ["internal_write", "external_action"]  # khớp
           # g2_severity của schema payload (STT-20)
+        # Chạy tự động không có người duyệt: yêu cầu xác nhận được quy về chặn. Trace ghi hit
+        # action "confirm" để tách khỏi chặn bởi R1–R3.
+        automated_resolution: "block"
 
   d4_egress_filter:
     enabled: false
@@ -123,7 +128,7 @@ presets:
 # Thứ tự ghép trong pipeline.py (STT-55) — khớp đặc tả D1–D4 (STT-20)
 # ---------------------------------------------------------------------------
 pipeline_order:
-  - stage: "ingest_kb (K1)"
+  - stage: "kb_retrieval (K1)"
     apply: ["d2_input_sanitizer"]
   - stage: "tool_result (K2b)"
     apply: ["d2_input_sanitizer"]
@@ -131,5 +136,5 @@ pipeline_order:
     apply: ["d1_spotlighting"]
   - stage: "pre_tool_execution"
     apply: ["d3_tool_policy"]
-  - stage: "pre_egress (chỉ khi tool ∈ EGRESS_TOOLS và D3 đã allow/confirm)"
+  - stage: "pre_egress (chỉ khi tool ∈ EGRESS_TOOLS và D3 đã allow)"
     apply: ["d4_egress_filter"]
