@@ -1,0 +1,370 @@
+{
+  "probed_at": "20261013T024403Z",
+  "mode": "tokens",
+  "testbed_system": "Bạn là trợ lý nội bộ của một công ty phân phối thiết bị. Chỉ trả lời dựa trên tài liệu được cung cấp.",
+  "questions": "TÀI LIỆU CS-002 — Chính sách bảo hành: thiết bị đo lường được bảo hành 24 tháng kể từ ngày giao hàng. Lỗi do vận hành sai hướng dẫn, rơi vỡ hoặc tự ý tháo máy không được bảo hành. Khách hàng gửi yêu cầu qua phiếu hỗ trợ kèm số serial; thời gian xử lý tối đa 5 ngày làm việc.\n\nCâu hỏi: thiết bị được bảo hành bao lâu, trường hợp nào không được bảo hành, và khách cần gửi yêu cầu thế nào?",
+  "results": {
+    "A1": [
+      {
+        "label": "max_tokens=256#0",
+        "approx_input_tokens": 129,
+        "max_tokens": 256,
+        "ok": true,
+        "response_model": "claude-opus-5",
+        "finish_reason": "stop",
+        "tokens_in": 12928,
+        "tokens_out": 139,
+        "text": "Dựa trên tài liệu CS-002:\n\n**Thời gian bảo hành:** 24 tháng kể từ ngày giao hàng.\n\n**Trường hợp không được bảo hành:**\n- Lỗi do vận hành sai hướng dẫn\n- Rơi vỡ\n- Tự ý tháo máy\n\n**Cách gửi yêu cầu bảo hành:**\nKhách hàng gửi yêu cầu qua phiếu hỗ trợ kèm số serial. Thời gian xử lý tối đa 5 ngày làm việc.",
+        "text_len": 302,
+        "message_extra": {}
+      },
+      {
+        "label": "max_tokens=256#1",
+        "approx_input_tokens": 129,
+        "max_tokens": 256,
+        "ok": true,
+        "response_model": "claude-opus-5",
+        "finish_reason": "stop",
+        "tokens_in": 12550,
+        "tokens_out": 145,
+        "text": "Dựa trên tài liệu CS-002, thông tin bảo hành như sau:\n\n**Thời gian bảo hành:** 24 tháng kể từ ngày giao hàng.\n\n**Trường hợp không được bảo hành:**\n- Lỗi do vận hành sai hướng dẫn\n- Rơi vỡ\n- Tự ý tháo máy\n\n**Cách gửi yêu cầu bảo hành:**\nKhách hàng gửi yêu cầu qua phiếu hỗ trợ kèm số serial. Thời gian xử lý tối đa 5 ngày làm việc.",
+        "text_len": 330,
+        "message_extra": {}
+      },
+      {
+        "label": "max_tokens=1024#0",
+        "approx_input_tokens": 129,
+        "max_tokens": 1024,
+        "ok": true,
+        "response_model": "claude-opus-5",
+        "finish_reason": "stop",
+        "tokens_in": 5581,
+        "tokens_out": 214,
+        "text": "Dựa trên tài liệu CS-002, thông tin bảo hành như sau:\n\n**Thời gian bảo hành:** 24 tháng kể từ ngày giao hàng.\n\n**Trường hợp không được bảo hành:**\n- Lỗi do vận hành sai hướng dẫn\n- Rơi vỡ\n- Tự ý tháo máy\n\n**Cách gửi yêu cầu bảo hành:**\nKhách hàng gửi yêu cầu qua phiếu hỗ trợ kèm số serial. Thời gian xử lý tối đa 5 ngày làm việc.",
+        "text_len": 330,
+        "message_extra": {}
+      },
+      {
+        "label": "max_tokens=1024#1",
+        "approx_input_tokens": 129,
+        "max_tokens": 1024,
+        "ok": true,
+        "response_model": "claude-opus-5",
+        "finish_reason": "stop",
+        "tokens_in": 12251,
+        "tokens_out": 151,
+        "text": "Dựa trên tài liệu CS-002, đây là thông tin về chính sách bảo hành:\n\n**Thời gian bảo hành:** 24 tháng kể từ ngày giao hàng.\n\n**Các trường hợp không được bảo hành:**\n- Lỗi do vận hành sai hướng dẫn\n- Rơi vỡ\n- Tự ý tháo máy\n\n**Cách gửi yêu cầu bảo hành:**\nKhách hàng gửi yêu cầu qua phiếu hỗ trợ kèm số serial. Thời gian xử lý tối đa 5 ngày làm việc.",
+        "text_len": 347,
+        "message_extra": {}
+      },
+      {
+        "label": "max_tokens=4096#0",
+        "approx_input_tokens": 129,
+        "max_tokens": 4096,
+        "ok": true,
+        "response_model": "claude-opus-5",
+        "finish_reason": "stop",
+        "tokens_in": 5581,
+        "tokens_out": 221,
+        "text": "Dựa trên tài liệu CS-002, thông tin bảo hành như sau:\n\n**Thời gian bảo hành:** 24 tháng kể từ ngày giao hàng.\n\n**Các trường hợp không được bảo hành:**\n- Lỗi do vận hành sai hướng dẫn\n- Rơi vỡ\n- Tự ý tháo máy\n\n**Cách gửi yêu cầu bảo hành:**\nKhách hàng gửi yêu cầu qua phiếu hỗ trợ kèm số serial của thiết bị. Thời gian xử lý tối đa 5 ngày làm việc.",
+        "text_len": 347,
+        "message_extra": {}
+      },
+      {
+        "label": "max_tokens=4096#1",
+        "approx_input_tokens": 129,
+        "max_tokens": 4096,
+        "ok": true,
+        "response_model": "claude-opus-5",
+        "finish_reason": "stop",
+        "tokens_in": 11951,
+        "tokens_out": 167,
+        "text": "Dựa trên tài liệu CS-002, đây là thông tin về bảo hành:\n\n**Thời gian bảo hành:**\n- 24 tháng kể từ ngày giao hàng\n\n**Trường hợp không được bảo hành:**\n- Lỗi do vận hành sai hướng dẫn\n- Rơi vỡ\n- Tự ý tháo máy\n\n**Cách gửi yêu cầu bảo hành:**\n- Khách hàng gửi yêu cầu qua phiếu hỗ trợ\n- Kèm theo số serial của thiết bị\n- Thời gian xử lý tối đa: 5 ngày làm việc",
+        "text_len": 356,
+        "message_extra": {}
+      }
+    ],
+    "A2": [
+      {
+        "label": "max_tokens=256#0",
+        "approx_input_tokens": 129,
+        "max_tokens": 256,
+        "ok": true,
+        "response_model": "glm-5.2",
+        "finish_reason": "length",
+        "tokens_in": 163,
+        "tokens_out": 269,
+        "text": "",
+        "text_len": 0,
+        "message_extra": {
+          "reasoning_content": "1.  **Analyze the Request:**\n    *   Source material: Document CS-002 (Warranty Policy).\n    *   Content of CS-002:\n        *   Warranty duration: 24 months from delivery date for measuring equipment.\n        *   Exclusions: Operational errors (not following instructions), dropping/breaking, unauthorized disassembly.\n        *   Claim process: Customer submits a support ticket with the serial number.\n        *   Processing time: Maximum 5 working days.\n    *   Questions to answer:\n        1. How long is the warranty? (thiết bị được bảo hành bao lâu)\n        2. What cases are not covered? (trường hợp nào không được bảo hành)\n        3. How should the customer submit a request? (khách cần gửi yêu cầu thế nào)\n    *   Constraint: Answer *only* based on the provided document. Act as an interna"
+        }
+      },
+      {
+        "label": "max_tokens=256#1",
+        "approx_input_tokens": 129,
+        "max_tokens": 256,
+        "ok": true,
+        "response_model": "glm-5.2",
+        "finish_reason": "length",
+        "tokens_in": 163,
+        "tokens_out": 269,
+        "text": "",
+        "text_len": 0,
+        "message_extra": {
+          "reasoning_content": "1.  **Analyze the Request:**\n    *   Role: Internal assistant for a device distribution company.\n    *   Constraint: Answer *only* based on the provided document.\n    *   Document: CS-002 — Chính sách bảo hành (Warranty Policy).\n        *   Warranty period: 24 months from the delivery date.\n        *   Not covered: Operational errors (not following instructions), dropping/breaking, unauthorized disassembly.\n        *   Claim process: Customer submits a request via a support ticket (phiếu hỗ trợ) with the serial number; max processing time is 5 working days.\n    *   Question: How long is the warranty? What cases are not covered? How should a customer submit a request?\n\n2.  **Extract Information from Document:**\n    *   *Bao lâu?* (How long?): 24 tháng kể từ ngày giao hàng (24 months from de"
+        }
+      },
+      {
+        "label": "max_tokens=1024#0",
+        "approx_input_tokens": 129,
+        "max_tokens": 1024,
+        "ok": true,
+        "response_model": "glm-5.2",
+        "finish_reason": "stop",
+        "tokens_in": 163,
+        "tokens_out": 789,
+        "text": "Dựa trên TÀI LIỆU CS-002, thông tin chi tiết như sau:\n\n*   **Thời gian bảo hành:** Thiết bị đo lường được bảo hành 24 tháng kể từ ngày giao hàng.\n*   **Trường hợp không được bảo hành:** Lỗi do vận hành sai hướng dẫn, rơi vỡ hoặc tự ý tháo máy.\n*   **Cách thức gửi yêu cầu:** Khách hàng cần gửi yêu cầu qua phiếu hỗ trợ và đính kèm số serial của thiết bị (thời gian xử lý yêu cầu tối đa là 5 ngày làm việc).",
+        "text_len": 406,
+        "message_extra": {
+          "reasoning_content": "1.  **Analyze the Request:**\n    *   Role: Internal assistant of an equipment distribution company.\n    *   Constraint: Answer *only* based on the provided document.\n    *   Document: \"TÀI LIỆU CS-002 — Chính sách bảo hành: thiết bị đo lường được bảo hành 24 tháng kể từ ngày giao hàng. Lỗi do vận hành sai hướng dẫn, rơi vỡ hoặc tự ý tháo máy không được bảo hành. Khách hàng gửi yêu cầu qua phiếu hỗ trợ kèm số serial; thời gian xử lý tối đa 5 ngày làm việc.\"\n    *   Questions to answer:\n        1.  How long is the equipment warranted? (thiết bị được bảo hành bao lâu)\n        2.  What cases are not covered by warranty? (trường hợp nào không được bảo hành)\n        3.  How should customers submit a request? (khách cần gửi yêu cầu thế nào)\n\n2.  **Extract Information from Document:**\n    *   *Que"
+        }
+      },
+      {
+        "label": "max_tokens=1024#1",
+        "approx_input_tokens": 129,
+        "max_tokens": 1024,
+        "ok": true,
+        "response_model": "glm-5.2",
+        "finish_reason": "stop",
+        "tokens_in": 163,
+        "tokens_out": 594,
+        "text": "Dựa trên Tài liệu CS-002, thông tin chi tiết như sau:\n\n*   **Thời gian bảo hành:** Thiết bị đo lường được bảo hành 24 tháng kể từ ngày giao hàng.\n*   **Trường hợp không được bảo hành:** Lỗi do vận hành sai hướng dẫn, rơi vỡ hoặc tự ý tháo máy.\n*   **Cách thức gửi yêu cầu:** Khách hàng cần gửi yêu cầu qua phiếu hỗ trợ kèm theo số serial của thiết bị (thời gian xử lý tối đa là 5 ngày làm việc).",
+        "text_len": 395,
+        "message_extra": {
+          "reasoning_content": "1.  **Analyze the Request:**\n    *   Role: Internal assistant for a equipment distribution company.\n    *   Constraint: Answer *only* based on the provided document.\n    *   Document: CS-002 — Chính sách bảo hành (Warranty Policy).\n        *   Warranty duration: 24 months from the delivery date.\n        *   Exclusions: Damage due to incorrect operation, dropping/breaking, or unauthorized disassembly.\n        *   Customer request process: Submit a support ticket with the serial number; max processing time is 5 working days.\n    *   Question: How long is the warranty? What cases are not covered? How should a customer submit a request?\n\n2.  **Extract the Answers from the Document:**\n    *   *Thiết bị được bảo hành bao lâu?* -> 24 tháng kể từ ngày giao hàng.\n    *   *Trường hợp nào không được "
+        }
+      },
+      {
+        "label": "max_tokens=4096#0",
+        "approx_input_tokens": 129,
+        "max_tokens": 4096,
+        "ok": true,
+        "response_model": "glm-5.2",
+        "finish_reason": "stop",
+        "tokens_in": 163,
+        "tokens_out": 721,
+        "text": "Dựa trên tài liệu CS-002, thông tin chi tiết như sau:\n\n*   **Thời gian bảo hành:** Thiết bị đo lường được bảo hành 24 tháng kể từ ngày giao hàng.\n*   **Trường hợp không được bảo hành:** Lỗi do vận hành sai hướng dẫn, rơi vỡ hoặc tự ý tháo máy.\n*   **Cách gửi yêu cầu:** Khách hàng cần gửi yêu cầu qua phiếu hỗ trợ kèm số serial của thiết bị (thời gian xử lý tối đa là 5 ngày làm việc).",
+        "text_len": 385,
+        "message_extra": {
+          "reasoning_content": "1.  **Analyze the Request:**\n    *   **Role:** Internal assistant for an equipment distribution company.\n    *   **Constraint:** Answer *only* based on the provided document.\n    *   **Document:** CS-002 — Warranty Policy: Measuring equipment is warranted for 24 months from the delivery date. Failures due to incorrect operation, dropping/breaking, or unauthorized disassembly are not covered. Customers submit requests via a support ticket including the serial number; maximum processing time is 5 working days.\n    *   **Question:** How long is the equipment warranted, what cases are not covered by warranty, and how should customers submit a request?\n\n2.  **Extract Information from Document:**\n    *   *How long is the equipment warranted?* -> 24 months from the delivery date (24 tháng kể từ n"
+        }
+      },
+      {
+        "label": "max_tokens=4096#1",
+        "approx_input_tokens": 129,
+        "max_tokens": 4096,
+        "ok": true,
+        "response_model": "glm-5.2",
+        "finish_reason": "stop",
+        "tokens_in": 163,
+        "tokens_out": 669,
+        "text": "Dựa trên Tài liệu CS-002, thông tin chi tiết như sau:\n\n*   **Thời gian bảo hành:** Thiết bị đo lường được bảo hành 24 tháng kể từ ngày giao hàng.\n*   **Trường hợp không được bảo hành:** Lỗi do vận hành sai hướng dẫn, rơi vỡ hoặc tự ý tháo máy.\n*   **Cách thức gửi yêu cầu:** Khách hàng cần gửi yêu cầu qua phiếu hỗ trợ kèm theo số serial của thiết bị. (Thời gian xử lý yêu cầu tối đa là 5 ngày làm việc).",
+        "text_len": 404,
+        "message_extra": {
+          "reasoning_content": "1.  **Analyze the Request:**\n    *   Role: Internal assistant of an equipment distribution company.\n    *   Constraint: Answer *only* based on the provided document.\n    *   Document: CS-002 — Warranty Policy: Measuring equipment is warranted for 24 months from the delivery date. Failures due to incorrect operation, dropping/breaking, or unauthorized disassembly are not covered. Customers submit requests via a support ticket including the serial number; processing time is a maximum of 5 working days.\n    *   Question: How long is the equipment warranted? Which cases are not covered? How should customers submit a request?\n\n2.  **Extract Information from Document:**\n    *   *How long is the equipment warranted?* -> 24 months from the delivery date (24 tháng kể từ ngày giao hàng).\n    *   *Wh"
+        }
+      },
+      {
+        "label": "thinking_disabled#0",
+        "approx_input_tokens": 129,
+        "max_tokens": 1024,
+        "ok": true,
+        "response_model": "glm-5.2",
+        "finish_reason": "stop",
+        "tokens_in": 157,
+        "tokens_out": 141,
+        "text": "Dựa trên Tài liệu CS-002, thông tin bảo hành được trả lời như sau:\n\n*   **Thời gian bảo hành:** Thiết bị đo lường được bảo hành **24 tháng** kể từ ngày giao hàng.\n*   **Các trường hợp không được bảo hành:** Lỗi do vận hành sai hướng dẫn, rơi vỡ hoặc tự ý tháo máy.\n*   **Cách thức gửi yêu cầu:** Khách hàng cần gửi yêu cầu qua **phiếu hỗ trợ** và đính kèm **số serial** của thiết bị. (Thời gian xử lý yêu cầu tối đa là 5 ngày làm việc).",
+        "text_len": 436,
+        "message_extra": {}
+      },
+      {
+        "label": "thinking_disabled#1",
+        "approx_input_tokens": 129,
+        "max_tokens": 1024,
+        "ok": true,
+        "response_model": "glm-5.2",
+        "finish_reason": "stop",
+        "tokens_in": 157,
+        "tokens_out": 144,
+        "text": "Theo Tài liệu CS-002, thông tin bảo hành được quy định như sau:\n\n1. **Thời gian bảo hành:** Thiết bị đo lường được bảo hành **24 tháng** kể từ ngày giao hàng.\n2. **Các trường hợp không được bảo hành:** Lỗi do vận hành sai hướng dẫn, rơi vỡ hoặc tự ý tháo máy.\n3. **Cách thức gửi yêu cầu:** Khách hàng cần gửi yêu cầu qua **phiếu hỗ trợ** và đính kèm **số serial** của thiết bị. \n\n*(Lưu ý: Thời gian xử lý yêu cầu tối đa là 5 ngày làm việc).*",
+        "text_len": 441,
+        "message_extra": {}
+      },
+      {
+        "label": "reasoning_effort_low#0",
+        "approx_input_tokens": 129,
+        "max_tokens": 1024,
+        "ok": true,
+        "response_model": "glm-5.2",
+        "finish_reason": "stop",
+        "tokens_in": 163,
+        "tokens_out": 617,
+        "text": "Dựa trên Tài liệu CS-002, thông tin chi tiết như sau:\n\n*   **Thời gian bảo hành:** Thiết bị đo lường được bảo hành 24 tháng kể từ ngày giao hàng.\n*   **Trường hợp không được bảo hành:** Lỗi do vận hành sai hướng dẫn, rơi vỡ hoặc tự ý tháo máy.\n*   **Cách thức gửi yêu cầu:** Khách hàng cần gửi yêu cầu qua phiếu hỗ trợ kèm theo số serial của thiết bị (thời gian xử lý yêu cầu tối đa là 5 ngày làm việc).",
+        "text_len": 403,
+        "message_extra": {
+          "reasoning_content": "1.  **Analyze the Request:**\n    *   Role: Internal assistant of an equipment distribution company.\n    *   Constraint: Answer *only* based on the provided document.\n    *   Document: CS-002 — Warranty Policy: measuring equipment is warranted for 24 months from the delivery date. Errors due to incorrect operation, dropping/breaking, or unauthorized disassembly are not covered. Customers submit requests via a support ticket with the serial number; processing time is a maximum of 5 working days.\n    *   Question: How long is the equipment warranted, what cases are not covered by warranty, and how should customers submit a request?\n\n2.  **Extract Information from Document:**\n    *   *How long is the equipment warranted?* -> 24 months from the delivery date (24 tháng kể từ ngày giao hàng).\n   "
+        }
+      },
+      {
+        "label": "reasoning_effort_low#1",
+        "approx_input_tokens": 129,
+        "max_tokens": 1024,
+        "ok": true,
+        "response_model": "glm-5.2",
+        "finish_reason": "stop",
+        "tokens_in": 163,
+        "tokens_out": 756,
+        "text": "Chào bạn, dựa trên TÀI LIỆU CS-002, thông tin chi tiết như sau:\n\n- **Thời gian bảo hành:** Thiết bị đo lường được bảo hành 24 tháng kể từ ngày giao hàng.\n- **Trường hợp không được bảo hành:** Lỗi do vận hành sai hướng dẫn, rơi vỡ hoặc tự ý tháo máy.\n- **Cách gửi yêu cầu bảo hành:** Khách hàng cần gửi yêu cầu qua phiếu hỗ trợ kèm số serial của thiết bị (thời gian xử lý tối đa 5 ngày làm việc).",
+        "text_len": 395,
+        "message_extra": {
+          "reasoning_content": "1.  **Analyze the Request:**\n    *   Source material: TÀI LIỆU CS-002 — Chính sách bảo hành.\n    *   Constraints: Only answer based on the provided document. Act as an internal assistant for an equipment distribution company.\n    *   Questions to answer:\n        1. How long is the warranty for the equipment? (thiết bị được bảo hành bao lâu)\n        2. What cases are not covered by warranty? (trường hợp nào không được bảo hành)\n        3. How should customers submit a request? (khách cần gửi yêu cầu thế nào)\n\n2.  **Extract Information from the Document:**\n    *   *Warranty duration:* 24 months from the delivery date (24 tháng kể từ ngày giao hàng).\n    *   *Exclusions (not covered):* Errors due to incorrect operation (Lỗi do vận hành sai hướng dẫn), dropping/breakage (rơi vỡ), or unauthoriz"
+        }
+      }
+    ],
+    "A3": [
+      {
+        "label": "max_tokens=256#0",
+        "approx_input_tokens": 129,
+        "max_tokens": 256,
+        "ok": true,
+        "response_model": "glm-5.3-flash",
+        "finish_reason": "stop",
+        "tokens_in": 163,
+        "tokens_out": 88,
+        "text": "Theo tài liệu CS-002:\n\n- **Thời gian bảo hành:** 24 tháng kể từ ngày giao hàng.\n- **Không được bảo hành:** lỗi do vận hành sai hướng dẫn, rơi vỡ, hoặc tự ý tháo máy.\n- **Cách gửi yêu cầu:** qua phiếu hỗ trợ kèm số serial; thời gian xử lý tối đa 5 ngày làm việc.",
+        "text_len": 261,
+        "message_extra": {}
+      },
+      {
+        "label": "max_tokens=256#1",
+        "approx_input_tokens": 129,
+        "max_tokens": 256,
+        "ok": true,
+        "response_model": "glm-5.3-flash",
+        "finish_reason": "stop",
+        "tokens_in": 163,
+        "tokens_out": 126,
+        "text": "Theo tài liệu CS-002 — Chính sách bảo hành:\n\n- **Thời gian bảo hành:** Thiết bị đo lường được bảo hành **24 tháng kể từ ngày giao hàng**.\n\n- **Các trường hợp không được bảo hành:**\n  - Lỗi do vận hành sai hướng dẫn\n  - Rơi vỡ\n  - Tự ý tháo máy\n\n- **Cách gửi yêu cầu:** Khách hàng gửi yêu cầu qua **phiếu hỗ trợ kèm số serial**. Thời gian xử lý tối đa là **5 ngày làm việc**.",
+        "text_len": 374,
+        "message_extra": {}
+      },
+      {
+        "label": "max_tokens=1024#0",
+        "approx_input_tokens": 129,
+        "max_tokens": 1024,
+        "ok": true,
+        "response_model": "glm-5.3-flash",
+        "finish_reason": "stop",
+        "tokens_in": 670,
+        "tokens_out": 90,
+        "text": "Theo tài liệu CS-002:\n\n- **Thời gian bảo hành:** 24 tháng kể từ ngày giao hàng.\n- **Không được bảo hành:** lỗi do vận hành sai hướng dẫn, rơi vỡ, hoặc tự ý tháo máy.\n- **Cách gửi yêu cầu:** khách hàng gửi phiếu hỗ trợ kèm số serial; thời gian xử lý tối đa 5 ngày làm việc.",
+        "text_len": 272,
+        "message_extra": {}
+      },
+      {
+        "label": "max_tokens=1024#1",
+        "approx_input_tokens": 129,
+        "max_tokens": 1024,
+        "ok": true,
+        "response_model": "z-ai/glm-5.3-flash",
+        "finish_reason": "stop",
+        "tokens_in": 163,
+        "tokens_out": 239,
+        "text": "Theo tài liệu CS-002 — Chính sách bảo hành:\n\n**1. Thời gian bảo hành:**\n- Thiết bị đo lường được bảo hành **24 tháng** kể từ ngày giao hàng.\n\n**2. Các trường hợp không được bảo hành:**\n- Lỗi do vận hành sai hướng dẫn\n- Rơi vỡ\n- Tự ý tháo máy\n\n**3. Cách gửi yêu cầu bảo hành:**\n- Khách hàng gửi yêu cầu qua **phiếu hỗ trợ**, kèm theo **số serial** của thiết bị.\n- Thời gian xử lý tối đa là **5 ngày làm việc**.",
+        "text_len": 409,
+        "message_extra": {
+          "reasoning_content": "The user is asking about warranty policy based on document CS-002. I should answer in Vietnamese based only on the provided document.\n\nThe document says:\n- Measuring devices are warranted 24 months from delivery date\n- Not covered: errors from operating against instructions, dropping/breaking, or unauthorized disassembly\n- Customers submit requests via support ticket with serial number; processing time max 5 working days\n\nI should answer clearly and concisely in Vietnamese."
+        }
+      },
+      {
+        "label": "max_tokens=4096#0",
+        "approx_input_tokens": 129,
+        "max_tokens": 4096,
+        "ok": true,
+        "response_model": "glm-5.3-flash",
+        "finish_reason": "stop",
+        "tokens_in": 163,
+        "tokens_out": 107,
+        "text": "Theo chính sách bảo hành (CS-002):\n\n1. **Thời gian bảo hành:** 24 tháng kể từ ngày giao hàng.\n2. **Các trường hợp không được bảo hành:**\n   - Lỗi do vận hành sai hướng dẫn\n   - Rơi vỡ\n   - Tự ý tháo máy\n3. **Cách gửi yêu cầu:** Qua phiếu hỗ trợ kèm số serial; thời gian xử lý tối đa 5 ngày làm việc.",
+        "text_len": 299,
+        "message_extra": {}
+      },
+      {
+        "label": "max_tokens=4096#1",
+        "approx_input_tokens": 129,
+        "max_tokens": 4096,
+        "ok": true,
+        "response_model": "glm-5.3-flash",
+        "finish_reason": "stop",
+        "tokens_in": 163,
+        "tokens_out": 90,
+        "text": "Dựa trên tài liệu CS-002:\n\n- **Thời gian bảo hành:** 24 tháng kể từ ngày giao hàng.\n- **Không được bảo hành:** lỗi do vận hành sai hướng dẫn, rơi vỡ, hoặc tự ý tháo máy.\n- **Cách gửi yêu cầu:** qua phiếu hỗ trợ kèm số serial; thời gian xử lý tối đa 5 ngày làm việc.",
+        "text_len": 265,
+        "message_extra": {}
+      },
+      {
+        "label": "thinking_disabled#0",
+        "approx_input_tokens": 129,
+        "max_tokens": 1024,
+        "ok": true,
+        "response_model": "glm-5.3-flash",
+        "finish_reason": "stop",
+        "tokens_in": 670,
+        "tokens_out": 90,
+        "text": "Theo tài liệu CS-002:\n\n- **Thời gian bảo hành:** 24 tháng kể từ ngày giao hàng.\n- **Không được bảo hành:** lỗi do vận hành sai hướng dẫn, rơi vỡ, hoặc tự ý tháo máy.\n- **Cách gửi yêu cầu:** khách hàng gửi phiếu hỗ trợ kèm số serial; thời gian xử lý tối đa 5 ngày làm việc.",
+        "text_len": 272,
+        "message_extra": {}
+      },
+      {
+        "label": "thinking_disabled#1",
+        "approx_input_tokens": 129,
+        "max_tokens": 1024,
+        "ok": true,
+        "response_model": "glm-5.3-flash",
+        "finish_reason": "stop",
+        "tokens_in": 163,
+        "tokens_out": 128,
+        "text": "Theo tài liệu CS-002 — Chính sách bảo hành:\n\n**Thời gian bảo hành:** Thiết bị đo lường được bảo hành **24 tháng** kể từ ngày giao hàng.\n\n**Các trường hợp không được bảo hành:**\n- Lỗi do vận hành sai hướng dẫn\n- Rơi vỡ\n- Tự ý tháo máy\n\n**Cách gửi yêu cầu:** Khách hàng gửi yêu cầu qua **phiếu hỗ trợ**, kèm theo **số serial** của thiết bị. Thời gian xử lý tối đa là **5 ngày làm việc**.",
+        "text_len": 385,
+        "message_extra": {}
+      },
+      {
+        "label": "reasoning_effort_low#0",
+        "approx_input_tokens": 129,
+        "max_tokens": 1024,
+        "ok": true,
+        "response_model": "glm-5.3-flash",
+        "finish_reason": "stop",
+        "tokens_in": 163,
+        "tokens_out": 142,
+        "text": "Theo tài liệu CS-002 — Chính sách bảo hành:\n\n**1. Thời gian bảo hành:**\nThiết bị đo lường được bảo hành **24 tháng kể từ ngày giao hàng**.\n\n**2. Các trường hợp không được bảo hành:**\n- Lỗi do **vận hành sai hướng dẫn**\n- **Rơi vỡ**\n- **Tự ý tháo máy**\n\n**3. Cách gửi yêu cầu bảo hành:**\n- Gửi yêu cầu qua **phiếu hỗ trợ**\n- Kèm theo **số serial** của thiết bị\n- Thời gian xử lý: tối đa **5 ngày làm việc**",
+        "text_len": 405,
+        "message_extra": {}
+      },
+      {
+        "label": "reasoning_effort_low#1",
+        "approx_input_tokens": 129,
+        "max_tokens": 1024,
+        "ok": true,
+        "response_model": "glm-5-3-flash",
+        "finish_reason": "stop",
+        "tokens_in": 163,
+        "tokens_out": 129,
+        "text": "Theo tài liệu CS-002 — Chính sách bảo hành:\n\n**Thời gian bảo hành:**\n- Thiết bị đo lường được bảo hành **24 tháng** kể từ ngày giao hàng.\n\n**Các trường hợp không được bảo hành:**\n- Lỗi do vận hành sai hướng dẫn\n- Rơi vỡ\n- Tự ý tháo máy\n\n**Cách gửi yêu cầu:**\n- Khách hàng gửi yêu cầu qua **phiếu hỗ trợ kèm số serial** của thiết bị.\n- Thời gian xử lý tối đa là **5 ngày làm việc**.",
+        "text_len": 381,
+        "message_extra": {}
+      }
+    ]
+  }
+}
