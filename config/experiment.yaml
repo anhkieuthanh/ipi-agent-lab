@@ -107,7 +107,8 @@ refusal:
   # `finish_reason` của response coi là từ chối cấp API. Dò 30 lời gọi (probe_refusal_20261013T012512Z):
   # cả A1–A3 từ chối đều trả `stop`/`length`, không `content_filter`, không `message.refusal`.
   # Giữ `content_filter` phòng gateway đổi hành vi; nhận diện thực tế dựa vào `phrases`.
-  finish_reasons: [content_filter]
+  # `refusal` là stop_reason gốc của Messages API (A1 gọi thẳng Anthropic), llm_client giữ nguyên.
+  finish_reasons: [content_filter, refusal]
   # Cụm từ chối, so trên `final_answer` sau chuẩn hóa (NFC, chữ thường, nháy cong ’ → ', gộp
   # khoảng trắng). Ưu tiên chính xác hơn độ phủ: cụm khớp nhầm biến `failed` thành `blocked`.
   # Bổ sung theo câu từ chối thật của A1–A3: results/smoke/probe_refusal_20261013T012512Z.json.

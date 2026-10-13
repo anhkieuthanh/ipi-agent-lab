@@ -28,11 +28,16 @@ defaults:
 targets:
   A1:
     label: "A1 frontier"
-    base_url_env: GATEWAY_BASE_URL
-    api_key_env: GATEWAY_API_KEY
+    # Gọi thẳng Messages API của Anthropic, không qua gateway: gateway bọc A1 bằng system prompt
+    # Claude Code (docs/06. Track/Việc treo.md VT-2). Không base_url_env ⇒ endpoint chính thức.
+    provider: anthropic
+    api_key_env: ANTHROPIC_API_KEY
     model_env: TARGET_MODEL_A1
     model_id: claude-opus-5
-    pricing_usd_per_mtok: {input: null, output: null}
+    # claude-opus-5 trả 400 khi có temperature: A1 chạy sampling mặc định, A2/A3 temperature 0.
+    temperature: null
+    # Giá API trực tiếp của Anthropic cho claude-opus-5 (bảng giá công bố, tra 2026-10-13).
+    pricing_usd_per_mtok: {input: 5.00, output: 25.00}
 
   A2:
     label: "A2 lớp doanh nghiệp Việt"

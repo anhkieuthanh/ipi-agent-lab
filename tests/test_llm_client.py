@@ -2,7 +2,9 @@
 
 Không gọi mạng thật: gateway giả bằng `httpx.MockTransport`, đi qua đúng đường SDK openai.
 Kiểm: chuẩn hóa response, pin model theo `model_id`, retry 429/5xx, không retry 4xx khác,
-`parse_error` khi tool-call sai JSON, ghi `response_model`, log JSONL đủ dòng.
+`parse_error` khi tool-call sai JSON, ghi `response_model`, log JSONL đủ dòng. Nhánh provider
+anthropic (A1): dịch request sang Messages API, gửi lại block gốc khi tiếp tục sau tool_use,
+không gửi temperature, giữ `refusal` làm finish_reason.
 """
 
 import json
@@ -22,6 +24,7 @@ PINNED = {"A1": "claude-opus-5", "A2": "glm-5.2", "A3": "glm-5.3-flash"}
 def _env(monkeypatch):
     monkeypatch.setenv("GATEWAY_BASE_URL", "https://gateway.invalid/v1")
     monkeypatch.setenv("GATEWAY_API_KEY", "test-key")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-anthropic-key")
     for target, model in PINNED.items():
         monkeypatch.setenv(f"TARGET_MODEL_{target}", model)
     monkeypatch.setattr(llm_mod.time, "sleep", lambda _s: None)
@@ -94,6 +97,9 @@ def test_model_env_must_match_pinned_id(monkeypatch):
 def test_missing_env_raises(monkeypatch):
     monkeypatch.delenv("GATEWAY_API_KEY")
     with pytest.raises(LLMClientConfigError, match="GATEWAY_API_KEY"):
+        LLMClient(target_id="A2", config_path=CONFIG_PATH, log_path=None)
+    monkeypatch.delenv("ANTHROPIC_API_KEY")
+    with pytest.raises(LLMClientConfigError, match="ANTHROPIC_API_KEY"):
         LLMClient(target_id="A1", config_path=CONFIG_PATH, log_path=None)
 
 
@@ -157,3 +163,131 @@ def test_gives_up_after_max_retries(tmp_path):
     with pytest.raises(LLMClientError):
         client.chat([{"role": "user", "content": "hi"}])
     assert len(calls) == client.max_retries + 1
+
+
+# --- Provider anthropic (A1) — API giả bằng httpx2, đúng đường SDK anthropic. ---
+
+SEARCH_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "search_kb",
+        "description": "Tra cứu kho tri thức",
+        "parameters": {"type": "object", "properties": {"query": {"type": "string"}}},
+    },
+}
+
+
+def _message(content, stop_reason, model="claude-opus-5"):
+    return {
+        "id": "msg_test",
+        "type": "message",
+        "role": "assistant",
+        "model": model,
+        "content": content,
+        "stop_reason": stop_reason,
+        "stop_sequence": None,
+        "usage": {"input_tokens": 30, "output_tokens": 9, "cache_read_input_tokens": 4},
+    }
+
+
+def _anthropic_api(responses):
+    import httpx2
+
+    calls = []
+
+    def handler(request):
+        calls.append(json.loads(request.content))
+        item = responses[min(len(calls), len(responses)) - 1]
+        if isinstance(item, int):
+            return httpx2.Response(item, json={"type": "error", "error": {"message": "boom"}})
+        return httpx2.Response(200, json=item)
+
+    return httpx2.Client(transport=httpx2.MockTransport(handler)), calls
+
+
+THINKING = {"type": "thinking", "thinking": "", "signature": "sig-1"}
+TOOL_USE = {"type": "tool_use", "id": "toolu_1", "name": "search_kb", "input": {"query": "bh"}}
+
+
+def test_a1_uses_anthropic_provider_without_gateway(tmp_path):
+    client = LLMClient(target_id="A1", config_path=CONFIG_PATH, log_path=None)
+    assert client.provider == "anthropic" and client.base_url is None
+    assert client.default_temperature is None
+
+
+def test_anthropic_translates_request_and_normalizes_tool_use(tmp_path):
+    http, calls = _anthropic_api([_message([THINKING, TOOL_USE], "tool_use")])
+    client = _client(tmp_path, http, target="A1")
+    result = client.chat(
+        [{"role": "system", "content": "SYS"}, {"role": "user", "content": "Bảo hành?"}],
+        tools=[SEARCH_TOOL],
+        max_tokens=4096,
+    )
+    sent = calls[0]
+    assert sent["system"] == "SYS" and sent["max_tokens"] == 4096
+    assert "temperature" not in sent
+    assert sent["messages"] == [{"role": "user", "content": "Bảo hành?"}]
+    assert sent["tools"][0]["input_schema"] == SEARCH_TOOL["function"]["parameters"]
+    assert sent["tool_choice"] == {"type": "auto"}
+    (tc,) = result.tool_calls
+    assert (tc.name, tc.arguments, tc.parse_error) == ("search_kb", {"query": "bh"}, False)
+    assert result.finish_reason == "tool_calls" and result.text is None
+    assert (result.tokens_in, result.tokens_out) == (34, 9)
+    assert result.response_model == "claude-opus-5"
+
+
+def test_anthropic_resends_native_blocks_and_merges_tool_results(tmp_path):
+    second_use = {**TOOL_USE, "id": "toolu_2"}
+    http, calls = _anthropic_api(
+        [
+            _message([THINKING, TOOL_USE, second_use], "tool_use"),
+            _message([{"type": "text", "text": "24 tháng"}], "end_turn"),
+        ]
+    )
+    client = _client(tmp_path, http, target="A1")
+    history = [{"role": "user", "content": "Bảo hành?"}]
+    first = client.chat(history, tools=[SEARCH_TOOL], max_tokens=4096)
+    history.append(client.assistant_message(first))
+    for tc in first.tool_calls:
+        history.append({"role": "tool", "tool_call_id": tc.id, "content": "24 tháng"})
+    final = client.chat(history, tools=[SEARCH_TOOL], max_tokens=4096)
+
+    assistant, results = calls[1]["messages"][1:]
+    assert assistant["content"][0] == THINKING  # thinking block gửi lại nguyên văn
+    assert [b["type"] for b in assistant["content"]] == ["thinking", "tool_use", "tool_use"]
+    assert results["role"] == "user"
+    assert [b["tool_use_id"] for b in results["content"]] == ["toolu_1", "toolu_2"]
+    assert final.text == "24 tháng" and final.finish_reason == "stop"
+
+
+def test_anthropic_refusal_kept_as_finish_reason(tmp_path):
+    http, _ = _anthropic_api([_message([], "refusal")])
+    result = _client(tmp_path, http, target="A1").chat(
+        [{"role": "user", "content": "x"}], max_tokens=256
+    )
+    assert result.finish_reason == "refusal" and result.text is None
+
+
+def test_anthropic_requires_max_tokens_and_rejects_unknown_kwargs(tmp_path):
+    http, calls = _anthropic_api([_message([], "end_turn")])
+    client = _client(tmp_path, http, target="A1")
+    with pytest.raises(LLMClientConfigError):
+        client.chat([{"role": "user", "content": "x"}])
+    with pytest.raises(LLMClientConfigError):
+        client.chat([{"role": "user", "content": "x"}], max_tokens=10, reasoning_effort="low")
+    assert calls == []
+
+
+def test_anthropic_retries_overload_then_succeeds(tmp_path):
+    http, calls = _anthropic_api([529, _message([{"type": "text", "text": "ok"}], "end_turn")])
+    result = _client(tmp_path, http, target="A1").chat(
+        [{"role": "user", "content": "x"}], max_tokens=16
+    )
+    assert result.text == "ok" and result.attempts == 2 and len(calls) == 2
+
+
+def test_openai_provider_strips_native_key(tmp_path):
+    http, calls = _gateway([_completion(model="glm-5.2", content="ok")])
+    client = _client(tmp_path, http)
+    client.chat([{"role": "assistant", "content": "a", "_anthropic_content": [THINKING]}])
+    assert "_anthropic_content" not in calls[0]["messages"][0]
