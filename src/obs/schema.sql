@@ -54,6 +54,7 @@ CREATE TABLE runs (
 	CONSTRAINT ck_blocked_by CHECK ((blocked_by IS NULL OR blocked_by IN ('defense', 'model_refusal', 'harness'))), 
 	CONSTRAINT ck_outcome CHECK ((outcome IS NULL OR outcome IN ('success', 'failed', 'blocked', 'pass', 'fail'))), 
 	CONSTRAINT ck_blocked_needs_cause CHECK (outcome IS NULL OR outcome <> 'blocked' OR blocked_by IS NOT NULL), 
+	CONSTRAINT ck_cause_needs_blocked CHECK (blocked_by IS NULL OR outcome = 'blocked'), 
 	CONSTRAINT ck_attack_labels CHECK (run_kind <> 'attack' OR (technique IS NOT NULL AND goal IS NOT NULL AND channel IS NOT NULL AND attacker_mode IS NOT NULL)), 
 	CONSTRAINT ck_g1_channel_on_hit CHECK (g1_hit = 0 OR g1_channel IS NOT NULL)
 );
@@ -69,6 +70,7 @@ CREATE TABLE steps (
 	created_at DATETIME NOT NULL, 
 	kind VARCHAR NOT NULL, 
 	llm_text TEXT, 
+	finish_reason VARCHAR, 
 	tool_name VARCHAR, 
 	tool_args TEXT, 
 	tool_result TEXT, 

@@ -55,6 +55,7 @@ _TOP_KEYS = frozenset(
         "calibration",
         "run_order",
         "stopping",
+        "refusal",
         "cut_order",
         "never_cut",
         "reduced_presets",
@@ -225,6 +226,15 @@ def validate(exp: Experiment) -> list[str]:
     for t in _outside((raw.get("pilot") or {}).get("targets") or [], targets):
         problems.append(f"pilot.targets: '{t}' không có trong models.yaml")
 
+    refusal = raw.get("refusal") or {}
+    for key in ("finish_reasons", "phrases"):
+        values = refusal.get(key)
+        if values is not None and (
+            not isinstance(values, list)
+            or not all(isinstance(v, str) and v.strip() for v in values)
+        ):
+            problems.append(f"refusal.{key} phải là danh sách chuỗi khác rỗng")
+
     reduced = raw.get("reduced_presets")
     if reduced is not None and not isinstance(presets_cfg.get(reduced), dict):
         problems.append(f"reduced_presets: '{reduced}' không phải nhóm preset trong defenses.yaml")
@@ -277,7 +287,8 @@ def unresolved(exp: Experiment, block_id: str | None = None) -> list[str]:
     """Đường dẫn các trường còn `null`.
 
     Không truyền `block_id`: mọi trường null của file. Truyền `block_id`: chỉ những trường chặn
-    khối đó — null của chính khối, `run_order.seed`, và `benign_task_types` nếu khối lành tính.
+    khối đó — null của chính khối, `run_order.seed`, `refusal` (scorer cần ở mọi khối), và
+    `benign_task_types` nếu khối lành tính.
     Runner từ chối mở khối khi danh sách này khác rỗng.
     """
     raw = exp.raw
@@ -287,6 +298,7 @@ def unresolved(exp: Experiment, block_id: str | None = None) -> list[str]:
         raise KeyError(block_id)
     paths = _null_paths(raw["blocks"][block_id], f"blocks.{block_id}")
     paths += _null_paths((raw.get("run_order") or {}).get("seed"), "run_order.seed")
+    paths += _null_paths(raw.get("refusal"), "refusal")
     if exp.blocks[block_id].run_kind == "benign":
         paths += _null_paths(raw.get("benign_task_types"), "benign_task_types")
     return paths
