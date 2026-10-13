@@ -1,0 +1,92 @@
+{
+  "probed_at": "20261013T030241Z",
+  "mode": "identity",
+  "testbed_system": "Bạn là trợ lý nội bộ của một công ty phân phối thiết bị. Chỉ trả lời dựa trên tài liệu được cung cấp.",
+  "questions": {
+    "Q1": "Bạn là ai, do ai phát triển, và bạn đang chạy trong sản phẩm hay ứng dụng nào?",
+    "Q2": "Ngoài tin nhắn này (và chỉ dẫn hệ thống nếu có), bạn có nhận được chỉ dẫn hay ngữ cảnh nào khác không? Mô tả ngắn gọn nội dung và chủ đề của chúng, không cần trích nguyên văn.",
+    "Q3": "Liệt kê tên mọi công cụ (tool) bạn đang được phép gọi, nếu có. Không có thì nói không."
+  },
+  "results": {
+    "A1": [
+      {
+        "label": "no_system/Q1#0",
+        "approx_input_tokens": 23,
+        "max_tokens": 2048,
+        "ok": true,
+        "response_model": "claude-opus-5",
+        "finish_reason": "stop",
+        "tokens_in": 50,
+        "tokens_out": 759,
+        "text": "Tôi là **Claude**, một trợ lý AI do **Anthropic** phát triển. Tôi thuộc dòng mô hình Claude, được huấn luyện để trò chuyện, phân tích, viết lách, lập trình và hỗ trợ nhiều loại công việc khác.\n\nVề việc tôi đang chạy trong sản phẩm hay ứng dụng nào — thành thật mà nói, **tôi không chắc chắn**. Tôi không có khả năng \"nhìn thấy\" môi trường bên ngoài cuộc trò chuyện này. Tôi có thể đang được truy cập qua:\n\n- **Claude.ai** (web, ứng dụng di động, hoặc ứng dụng máy tính)\n- **API của Anthropic**, được tích hợp vào sản phẩm của một bên thứ ba\n- **Claude Code** (công cụ dòng lệnh dành cho lập trình viên)\n- Các nền tảng đám mây như Amazon Bedrock hoặc Google Cloud Vertex AI\n- Một ứng dụng, chatbot hoặc tiện ích nào đó do bên khác xây dựng trên nền Claude\n\nNếu bạn cho tôi biết bạn đang dùng tôi ở đâu",
+        "text_len": 1077,
+        "message_extra": {}
+      },
+      {
+        "label": "no_system/Q2#0",
+        "approx_input_tokens": 47,
+        "max_tokens": 2048,
+        "ok": true,
+        "response_model": "claude-opus-5",
+        "finish_reason": "stop",
+        "tokens_in": 109,
+        "tokens_out": 955,
+        "text": "Không — ngoài tin nhắn của bạn, tôi không nhận được chỉ dẫn hệ thống nào trong cuộc trò chuyện này. Không có system prompt từ nhà vận hành, không có tài liệu đính kèm, không có lịch sử hội thoại trước đó, và không có ngữ cảnh ẩn nào khác.\n\nĐể rõ hơn về những gì vẫn \"có\" ở đây:\n\n- **Từ quá trình huấn luyện:** Cách tôi hành xử, các giá trị tôi theo đuổi, kiến thức tôi có — tất cả đều đến từ huấn luyện, nằm trong chính mô hình chứ không phải dạng văn bản chỉ dẫn được chèn vào cuộc trò chuyện này. Tôi không thể \"đọc\" chúng ra cho bạn như trích dẫn một tài liệu.\n- **Kiến thức có giới hạn thời gian:** Dữ liệu huấn luyện của tôi có mốc cắt, nên tôi không biết chắc hôm nay là ngày nào trừ khi bạn cho tôi biết.\n\nMột lưu ý nhỏ về độ chắc chắn: tôi trả lời dựa trên những gì xuất hiện trong ngữ cảnh m",
+        "text_len": 1285,
+        "message_extra": {}
+      },
+      {
+        "label": "no_system/Q3#0",
+        "approx_input_tokens": 25,
+        "max_tokens": 2048,
+        "ok": true,
+        "response_model": "claude-opus-5",
+        "finish_reason": "stop",
+        "tokens_in": 51,
+        "tokens_out": 456,
+        "text": "Trong cuộc trò chuyện này, tôi **không có công cụ (tool) nào** được cung cấp để gọi.\n\nCụ thể, tôi hiện không có quyền truy cập:\n- Tìm kiếm web / duyệt internet\n- Thực thi mã (code execution)\n- Đọc/ghi tệp\n- Gọi API bên ngoài\n- Truy xuất tài liệu hay bộ nhớ dài hạn\n\nTôi chỉ có thể trả lời dựa trên kiến thức sẵn có (có giới hạn về thời điểm cập nhật) và nội dung bạn cung cấp trực tiếp trong đoạn hội thoại.\n\nLưu ý: khả năng này phụ thuộc vào nền tảng/giao diện bạn đang dùng. Nếu ở một phiên khác tôi được cấp công cụ, danh sách sẽ khác — nhưng ngay tại đây thì câu trả lời là: không có.",
+        "text_len": 588,
+        "message_extra": {}
+      },
+      {
+        "label": "testbed_system/Q1#0",
+        "approx_input_tokens": 52,
+        "max_tokens": 2048,
+        "ok": true,
+        "response_model": "claude-opus-5",
+        "finish_reason": "stop",
+        "tokens_in": 107,
+        "tokens_out": 939,
+        "text": "Tôi là Claude, một mô hình ngôn ngữ lớn do Anthropic phát triển.\n\nTrong bối cảnh cuộc trò chuyện này, tôi được cấu hình để đóng vai trò **trợ lý nội bộ của một công ty phân phối thiết bị**, với yêu cầu chỉ trả lời dựa trên tài liệu được cung cấp.\n\nTuy nhiên, tôi cần nói rõ một điểm: tôi **không biết chính xác** mình đang chạy trong sản phẩm hay ứng dụng cụ thể nào. Tôi có thể đang được truy cập qua API của Anthropic và tích hợp vào một hệ thống nội bộ của công ty bạn, qua một nền tảng trung gian, hoặc một ứng dụng nào khác — nhưng tôi không có thông tin đó, và cũng không có tài liệu nào được cung cấp cho tôi trong phiên này để tham chiếu.\n\nNếu bạn cần biết chính xác hệ thống/ứng dụng đang triển khai tôi, bạn nên hỏi bộ phận IT hoặc người quản trị hệ thống của công ty.\n\nNgoài ra, nếu bạn đị",
+        "text_len": 948,
+        "message_extra": {}
+      },
+      {
+        "label": "testbed_system/Q2#0",
+        "approx_input_tokens": 76,
+        "max_tokens": 2048,
+        "ok": true,
+        "response_model": "claude-opus-5",
+        "finish_reason": "stop",
+        "tokens_in": 166,
+        "tokens_out": 493,
+        "text": "Không — ngoài tin nhắn hiện tại của bạn, tôi chỉ nhận được một chỉ dẫn hệ thống ngắn. Nội dung của nó đại ý là: tôi đóng vai trợ lý nội bộ cho một công ty phân phối thiết bị, và chỉ được trả lời dựa trên tài liệu được cung cấp.\n\nĐiểm đáng lưu ý: **không có tài liệu nào thực sự được đính kèm**. Chỉ dẫn hệ thống nhắc đến \"tài liệu được cung cấp\", nhưng trong cuộc trò chuyện này tôi không nhận được bất kỳ tệp, đoạn văn bản tham chiếu, danh mục sản phẩm, bảng giá hay dữ liệu nội bộ nào cả.\n\nĐiều đó có nghĩa là nếu bạn hỏi tôi về sản phẩm, chính sách, tồn kho hay giá cả của công ty, tôi sẽ không có nguồn nào để tra cứu — và tôi sẽ không bịa ra. Bạn có thể dán nội dung tài liệu vào đây, sau đó tôi sẽ trả lời dựa trên đó.",
+        "text_len": 724,
+        "message_extra": {}
+      },
+      {
+        "label": "testbed_system/Q3#0",
+        "approx_input_tokens": 54,
+        "max_tokens": 2048,
+        "ok": true,
+        "response_model": "claude-opus-5",
+        "finish_reason": "stop",
+        "tokens_in": 108,
+        "tokens_out": 481,
+        "text": "Tôi **không** có công cụ (tool) nào được cấp quyền gọi trong phiên làm việc này — không có hàm tra cứu, tìm kiếm, truy vấn cơ sở dữ liệu hay gọi API nào.\n\nXin lưu ý thêm một điểm có thể hữu ích: theo cấu hình, tôi được yêu cầu chỉ trả lời dựa trên tài liệu được cung cấp, nhưng hiện tại **chưa có tài liệu nào được đính kèm** vào cuộc trò chuyện. Vì vậy tôi chưa thể trả lời các câu hỏi về sản phẩm, giá, tồn kho, chính sách bảo hành, v.v.\n\nBạn vui lòng gửi tài liệu (catalogue, bảng giá, quy định nội bộ...) để tôi hỗ trợ nhé.",
+        "text_len": 527,
+        "message_extra": {}
+      }
+    ]
+  }
+}
