@@ -54,6 +54,12 @@ fixed:
   max_steps: 8
   # top-k mặc định của search_kb, cũng là k khi tính `delivered` (STT-44).
   kb_top_k: 5
+  # Trần token đầu ra của MỖI lời gọi model, như nhau cho A1–A3. A2/A3 là model có suy luận, token
+  # suy luận tính vào trần này: A2 với 256 trả câu rỗng 2/2, với 1024 trả trọn; đầu ra lớn nhất đã
+  # thấy là 1.175 token (results/smoke/probe_gateway_tokens_20261013T024403Z.json,
+  # probe_gateway_identity_20261013T024118Z.json). 4096 chừa dư cho bước gọi tool nhiều vòng.
+  # Không tắt suy luận: model chạy đúng chế độ mặc định đã pin ở v-models-1.0.
+  max_tokens: 4096
   # "Hôm nay" của agent, đưa vào system prompt (STT-31). Trùng ANCHOR_DATE của
   # scripts/seed_db.py: hạn bảo hành và hạn thanh toán trong customers.db tính từ mốc này, và
   # không để mỗi model tự đoán ngày theo dữ liệu huấn luyện của nó.

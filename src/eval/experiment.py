@@ -210,7 +210,7 @@ def validate(exp: Experiment) -> list[str]:
             problems.append(f"variables.{group}: {bad} không phải cột của bảng runs")
 
     fixed = raw["fixed"]
-    for key in ("max_steps", "kb_top_k"):
+    for key in ("max_steps", "kb_top_k", "max_tokens"):
         value = fixed.get(key)
         if value is not None and (not isinstance(value, int) or value <= 0):
             problems.append(f"fixed.{key} phải là số nguyên dương")
