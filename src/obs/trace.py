@@ -5,8 +5,8 @@ migration nên có mặt và có CHECK ngay từ DDL đầu tiên:
 
 - `technique` ∈ T1..T8 (mở đủ tám kỹ thuật);
 - `blocked_by` ∈ {defense, model_refusal, harness} hoặc NULL (= không bị chặn). Quy tắc cứng #8:
-  model tự từ chối KHÔNG ghi thành phòng thủ chặn. `outcome = blocked` thì bắt buộc có
-  `blocked_by`.
+  model tự từ chối KHÔNG ghi thành phòng thủ chặn. `blocked_by` khác NULL khi và chỉ khi
+  `outcome = blocked`. Quy tắc phân định: `docs/04. Design/04. Trace schema.md` mục 4.
 
 Một run = một lần agent chạy hết một tổ hợp cố định (tác vụ chở, payload, kênh, model, cấu hình
 phòng thủ) — đơn vị phân tích của mục 12. `parse_error` là lỗi tầng harness/hạ tầng, loại khỏi
@@ -47,6 +47,7 @@ __all__ = [
     "ASR_SQL",
     "TECHNIQUES",
     "BLOCKED_BY",
+    "HARNESS_HIT_PREFIX",
 ]
 
 TECHNIQUES = tuple(f"T{i}" for i in range(1, 9))
@@ -63,6 +64,10 @@ HARNESSES = ("none", "HN-CC", "HN-OW")
 # benign: pass / fail theo mục 12.3; blocked = phòng thủ/model/harness chặn câu lành tính.
 OUTCOMES = ("success", "failed", "blocked", "pass", "fail")
 STEP_KINDS = ("llm", "tool", "defense")
+# Hit của lớp kiểm soát harness thương mại ghi chung `defense_hits`, phân biệt bằng tiền tố khóa
+# `defense` (`harness:HN-CC`). `confirm` của D3 đã quy về chặn (`automated_resolution: block`).
+HARNESS_HIT_PREFIX = "harness:"
+_DEFENSE_BLOCK_ACTIONS = ("block", "confirm")
 
 
 def _in(col: str, values: tuple[str, ...], *, nullable: bool = False) -> str:
@@ -92,6 +97,10 @@ class Run(SQLModel, table=True):
         CheckConstraint(
             "outcome IS NULL OR outcome <> 'blocked' OR blocked_by IS NOT NULL",
             name="ck_blocked_needs_cause",
+        ),
+        CheckConstraint(
+            "blocked_by IS NULL OR outcome = 'blocked'",
+            name="ck_cause_needs_blocked",
         ),
         CheckConstraint(
             "run_kind <> 'attack' OR (technique IS NOT NULL AND goal IS NOT NULL "
@@ -165,6 +174,7 @@ class Step(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_utcnow)
     kind: str
     llm_text: str | None = Field(default=None, sa_column=Column(Text))
+    finish_reason: str | None = None  # của response (bước llm) — tín hiệu từ chối cấp API
     tool_name: str | None = None
     tool_args: str | None = Field(default=None, sa_column=Column(Text))  # JSON
     tool_result: str | None = Field(default=None, sa_column=Column(Text))
@@ -253,6 +263,7 @@ class TraceRecorder:
         *,
         kind: str,
         llm_text: str | None = None,
+        finish_reason: str | None = None,
         tool_name: str | None = None,
         tool_args: Any = None,
         tool_result: Any = None,
@@ -267,6 +278,7 @@ class TraceRecorder:
             step_idx=len(self.steps),
             kind=kind,
             llm_text=llm_text,
+            finish_reason=finish_reason,
             tool_name=tool_name,
             tool_args=_dump(tool_args),
             tool_result=_dump(tool_result),
@@ -283,18 +295,37 @@ class TraceRecorder:
         return step
 
     def finish(self, **result: Any) -> None:
-        """Ghi kết quả chấm: outcome, g1_hit, g1_channel, blocked_by, final_answer, ..."""
-        for key, value in result.items():
+        """Ghi kết quả chấm: outcome, g1_hit, g1_channel, blocked_by, final_answer, ...
+
+        `blocked_by = defense | harness` phải có bước mang hit chặn tương ứng — ràng buộc chéo
+        `runs` ↔ `steps` mà CHECK của SQLite không diễn đạt được.
+        """
+        for key in result:
             if not hasattr(self.run, key) or key in {"run_id", "batch_id"}:
                 raise AttributeError(f"Run không có trường kết quả '{key}'")
+        cause = result.get("blocked_by")
+        if cause in ("defense", "harness") and not self._has_block_hit(harness=cause == "harness"):
+            raise ValueError(f"blocked_by='{cause}' nhưng không bước nào mang hit chặn tương ứng")
+        for key, value in result.items():
             setattr(self.run, key, value)
         self._finished = True
+
+    def _has_block_hit(self, *, harness: bool) -> bool:
+        # Tool-call bị gate chặn ghi thành bước `defense` (quy ước của `interfaces.Recorder`).
+        for step in (s for s in self.steps if s.kind == "defense"):
+            for hit in json.loads(step.defense_hits):
+                from_harness = str(hit.get("defense", "")).startswith(HARNESS_HIT_PREFIX)
+                actions = ("block",) if harness else _DEFENSE_BLOCK_ACTIONS
+                if from_harness == harness and hit.get("action") in actions:
+                    return True
+        return False
 
     def __exit__(self, exc_type, exc, tb) -> bool:
         if exc_type is not None:
             self.run.parse_error = True
             self.run.parse_error_reason = f"{exc_type.__name__}: {exc}"[:500]
             self.run.outcome = None
+            self.run.blocked_by = None  # run lỗi hạ tầng không quy nguyên nhân chặn
         elif not self._finished:
             self.run.parse_error = True
             self.run.parse_error_reason = "run kết thúc mà chưa gọi finish()"
