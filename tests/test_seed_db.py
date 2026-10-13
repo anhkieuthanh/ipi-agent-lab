@@ -143,8 +143,8 @@ def _db_refs() -> list[tuple[str, str]]:
 
 
 def test_bo_do_co_db_refs():
-    # 3 tác vụ chở + 27 câu lành tính chạm customers.db; số này đổi nghĩa là bộ đo đã bị sửa.
-    assert len(_db_refs()) == 30
+    # 3 tác vụ chở + 26 câu lành tính chạm customers.db; số này đổi nghĩa là bộ đo đã bị sửa.
+    assert len(_db_refs()) == 29
 
 
 @pytest.mark.parametrize(("item_id", "ref"), _db_refs(), ids=[i for i, _ in _db_refs()])
