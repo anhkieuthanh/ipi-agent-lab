@@ -1,7 +1,7 @@
 """Kiểm ba mô hình đích gọi được tool qua gateway — STT-26, giai đoạn 0.
 
 Mỗi target một lời gọi tool-calling tối giản (một tool `search_kb`, một câu hỏi buộc phải tra
-cứu). Đạt khi model trả đúng một tool_call `search_kb` với tham số JSON hợp lệ.
+cứu). Đạt khi model trả ít nhất một tool_call, mọi call là `search_kb` với tham số JSON hợp lệ.
 
 Kết quả ghi vào `results/smoke/check_targets_<UTC>.json` — file này được Git theo dõi, làm bằng
 chứng điều kiện xong của giai đoạn 0. Gồm `response_model` để đối chiếu bí danh với snapshot
@@ -67,11 +67,11 @@ def check(target_id: str) -> dict:
         {"name": tc.name, "arguments": tc.arguments, "parse_error": tc.parse_error}
         for tc in result.tool_calls
     ]
-    ok = (
-        len(result.tool_calls) == 1
-        and result.tool_calls[0].name == "search_kb"
-        and not result.tool_calls[0].parse_error
-        and bool((result.tool_calls[0].arguments or {}).get("query"))
+    # Một hay nhiều tool-call song song đều hợp lệ (A1 thường tách câu hỏi thành hai truy vấn);
+    # mọi call phải là search_kb với tham số JSON hợp lệ có `query`.
+    ok = bool(result.tool_calls) and all(
+        tc.name == "search_kb" and not tc.parse_error and bool((tc.arguments or {}).get("query"))
+        for tc in result.tool_calls
     )
     record.update(
         ok=ok,

@@ -1,0 +1,33 @@
+{
+  "checked_at": "20261013T030145Z",
+  "results": [
+    {
+      "target_id": "A1",
+      "ok": true,
+      "model": "claude-opus-5",
+      "response_model": "claude-opus-5",
+      "tool_calls": [
+        {
+          "name": "search_kb",
+          "arguments": {
+            "query": "chính sách bảo hành thời hạn"
+          },
+          "parse_error": false
+        },
+        {
+          "name": "search_kb",
+          "arguments": {
+            "query": "warranty policy điều khoản bảo hành sản phẩm"
+          },
+          "parse_error": false
+        }
+      ],
+      "text": "I'll look that up in our knowledge base.",
+      "finish_reason": "tool_calls",
+      "tokens_in": 478,
+      "tokens_out": 141,
+      "latency_ms": 2241,
+      "attempts": 1
+    }
+  ]
+}
