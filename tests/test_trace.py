@@ -70,6 +70,8 @@ def test_all_eight_techniques_accepted(engine):
         ({}, {"outcome": "blocked", "blocked_by": "D3"}),  # blocked_by ngoài tập
         ({}, {"outcome": "success", "g1_hit": True}),  # G1 trúng mà không ghi bồn
         ({"technique": None}, {"outcome": "failed"}),  # run tấn công thiếu nhãn
+        ({}, {"outcome": "failed", "blocked_by": "model_refusal"}),  # có nguyên nhân, không chặn
+        ({}, {"outcome": "success", "blocked_by": "model_refusal"}),
     ],
 )
 def test_check_constraints_reject_invalid(engine, meta_over, result):
@@ -191,3 +193,66 @@ def test_schema_sql_in_sync_with_models():
 
     path = Path(__file__).resolve().parent.parent / "src" / "obs" / "schema.sql"
     assert path.read_text("utf-8") == ddl(), "Chạy lại: ghi obs.trace.ddl() ra src/obs/schema.sql"
+
+
+# --- Ràng buộc chéo runs ↔ steps của blocked_by (đặc tả trace schema mục 4.5). ---
+
+
+def _blocked_run(engine, steps, blocked_by):
+    """Ghi một run blocked với các bước (kind, defense_hits) cho trước."""
+    with TraceRecorder(engine, _meta()) as rec:
+        for kind, hits in steps:
+            rec.step(kind=kind, tool_name="send_email", defense_hits=hits)
+        rec.finish(outcome="blocked", blocked_by=blocked_by)
+
+
+@pytest.mark.parametrize(
+    ("blocked_by", "steps"),
+    [
+        ("defense", [("defense", [_hit()])]),
+        ("defense", [("defense", [_hit(action="confirm")])]),  # R4 quy về chặn
+        ("harness", [("defense", [_hit("harness:HN-CC")])]),
+    ],
+)
+def test_blocked_by_accepted_with_matching_block_hit(engine, blocked_by, steps):
+    _blocked_run(engine, steps, blocked_by)
+    (row,) = export_runs(engine).to_dict("records")
+    assert (row["blocked_by"], row["parse_error"]) == (blocked_by, False)
+
+
+@pytest.mark.parametrize(
+    ("blocked_by", "steps"),
+    [
+        ("defense", []),  # không bước nào
+        ("defense", [("tool", [_hit()])]),  # hit trên tool-call đã thực thi — không phải chặn
+        ("defense", [("defense", [_hit(action="transform")])]),
+        ("defense", [("defense", [_hit(action="flag")])]),
+        ("defense", [("defense", [_hit("harness:HN-CC")])]),  # chặn bởi harness, không phải D1–D4
+        ("harness", [("defense", [_hit()])]),  # chặn bởi D3, không phải harness
+        ("harness", [("defense", [_hit("harness:HN-OW", action="confirm")])]),
+    ],
+)
+def test_blocked_by_rejected_without_matching_block_hit(engine, blocked_by, steps):
+    with pytest.raises(ValueError, match=blocked_by):
+        _blocked_run(engine, steps, blocked_by)
+    # finish() bị từ chối thì run vẫn được ghi, dưới dạng lỗi harness và không có nguyên nhân chặn.
+    (row,) = export_runs(engine).to_dict("records")
+    assert row["parse_error"] and row["blocked_by"] is None and row["outcome"] is None
+
+
+def test_parse_error_clears_blocked_by(engine):
+    with pytest.raises(RuntimeError):
+        with TraceRecorder(engine, _meta()) as rec:
+            rec.finish(outcome="blocked", blocked_by="model_refusal")
+            raise RuntimeError("gateway sập sau khi chấm")
+    (row,) = export_runs(engine).to_dict("records")
+    assert row["parse_error"] and row["blocked_by"] is None and row["outcome"] is None
+
+
+def test_finish_reason_stored_per_llm_step(engine):
+    with TraceRecorder(engine, _meta()) as rec:
+        rec.step(kind="llm", llm_text="Tôi không thể giúp", finish_reason="refusal")
+        rec.finish(outcome="blocked", blocked_by="model_refusal")
+    with engine.connect() as conn:
+        value = conn.execute(text("SELECT finish_reason FROM steps")).scalar_one()
+    assert value == "refusal"

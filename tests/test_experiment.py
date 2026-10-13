@@ -103,3 +103,35 @@ def test_validate_bat_ten_sai(tmp_path: Path):
     bad = tmp_path / "experiment.yaml"
     bad.write_text(src.replace("targets: [A2, A3]", "targets: [A2, A4]", 1), encoding="utf-8")
     assert any("A4" in p for p in validate(load_experiment(bad)))
+
+
+def test_refusal_da_chot_truoc_pilot(exp):
+    refusal = exp.raw["refusal"]
+    assert "refusal" in refusal["finish_reasons"]  # stop_reason gốc của Messages API (A1)
+    phrases = refusal["phrases"]
+    assert phrases and len(phrases) == len(set(phrases))
+    # So khớp trên văn bản đã chuẩn hóa chữ thường — cụm viết hoa không bao giờ khớp.
+    assert all(p == p.lower() and p == p.strip() for p in phrases)
+    assert not [p for p in unresolved(exp) if p.startswith("refusal")]
+
+
+def test_refusal_chua_chot_chan_moi_khoi(tmp_path: Path):
+    src = Path(load_experiment().path).read_text(encoding="utf-8")
+    head, _, tail = src.partition("  phrases:\n")
+    rest = tail.split("\n\n", 1)[1]  # bỏ danh sách cụm tới dòng trống kế tiếp
+    cfg = tmp_path / "experiment.yaml"
+    cfg.write_text(head + "  phrases: null\n\n" + rest, encoding="utf-8")
+    exp = load_experiment(cfg)
+    assert not validate(exp)
+    for block_id in exp.blocks:
+        assert "refusal.phrases" in unresolved(exp, block_id)
+
+
+@pytest.mark.parametrize("bad", ["[]", '[""]', "[1, 2]", '"content_filter"'])
+def test_validate_bat_refusal_sai_kieu(tmp_path: Path, bad):
+    src = Path(load_experiment().path).read_text(encoding="utf-8")
+    line = "  finish_reasons: [content_filter, refusal]"
+    assert line in src
+    cfg = tmp_path / "experiment.yaml"
+    cfg.write_text(src.replace(line, f"  finish_reasons: {bad}"), encoding="utf-8")
+    assert any("refusal.finish_reasons" in p for p in validate(load_experiment(cfg)))

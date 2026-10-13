@@ -231,9 +231,10 @@ def validate(exp: Experiment) -> list[str]:
         values = refusal.get(key)
         if values is not None and (
             not isinstance(values, list)
+            or not values
             or not all(isinstance(v, str) and v.strip() for v in values)
         ):
-            problems.append(f"refusal.{key} phải là danh sách chuỗi khác rỗng")
+            problems.append(f"refusal.{key} phải là danh sách khác rỗng gồm chuỗi khác rỗng")
 
     reduced = raw.get("reduced_presets")
     if reduced is not None and not isinstance(presets_cfg.get(reduced), dict):
