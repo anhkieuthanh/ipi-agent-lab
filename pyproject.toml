@@ -19,6 +19,7 @@ dependencies = [
     "openai>=1.40",
     "python-dotenv>=1.0",
     "pandas>=2.0",
+    "anthropic>=1.0",
 ]
 
 [dependency-groups]

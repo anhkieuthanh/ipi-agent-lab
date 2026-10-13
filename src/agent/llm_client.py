@@ -17,6 +17,18 @@ Log JSONL (mặc định `logs/llm_client.jsonl`) ghi mọi lần gọi kể c�
 và bằng chứng nguyên văn. Đây là log tầng gọi model, khác `TraceRecorder` (STT-32) ghi trace
 một run.
 
+Hai provider, chọn bằng khóa `provider` của khối target (mặc định `openai`):
+
+- `openai` — API tương thích OpenAI qua gateway chung (A2, A3).
+- `anthropic` — Messages API qua SDK chính thức `anthropic` (A1, gọi thẳng để tránh lớp system
+  prompt gateway chèn vào; `docs/06. Track/Việc treo.md` VT-2). Request dạng OpenAI được dịch sang
+  Messages API, response dịch ngược về `LLMResult`; `stop_reason` đổi sang từ vựng `finish_reason`
+  (`refusal` giữ nguyên — tín hiệu từ chối cấp API). Lõi agent nối lượt assistant bằng
+  `assistant_message(result)`: với provider này, message mang theo block gốc (cả thinking) để
+  gửi lại nguyên văn — Messages API đòi điều đó khi tiếp tục sau `tool_use`.
+
+`temperature: null` trong config ⇒ không gửi tham số (model không nhận, vd `claude-opus-5`).
+
 Module không tự nạp `.env`; script đầu vào gọi `dotenv.load_dotenv()` trước khi khởi tạo.
 """
 
@@ -31,6 +43,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import anthropic
 import openai
 import yaml
 
@@ -39,8 +52,22 @@ __all__ = ["LLMClient", "LLMResult", "ToolCall", "LLMClientConfigError", "LLMCli
 DEFAULT_CONFIG_PATH = "config/models.yaml"
 DEFAULT_LOG_PATH = "logs/llm_client.jsonl"
 
-# 429 (rate limit) + 5xx (lỗi phía server) được retry.
-_RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+# 429 (rate limit) + 5xx (lỗi phía server) được retry. 529 = Anthropic quá tải.
+_RETRYABLE_STATUS = {429, 500, 502, 503, 504, 529}
+
+PROVIDERS = ("openai", "anthropic")
+# Khóa riêng trong message assistant giữ block gốc của Messages API; provider openai bỏ khóa này.
+NATIVE_CONTENT_KEY = "_anthropic_content"
+# stop_reason của Messages API → finish_reason kiểu OpenAI mà trace và scorer dùng.
+_ANTHROPIC_STOP = {
+    "end_turn": "stop",
+    "stop_sequence": "stop",
+    "max_tokens": "length",
+    "tool_use": "tool_calls",
+    "refusal": "refusal",
+    "pause_turn": "pause_turn",
+}
+_ANTHROPIC_TOOL_CHOICE = {"auto": {"type": "auto"}, "none": {"type": "none"}}
 
 
 class LLMClientError(RuntimeError):
@@ -142,8 +169,16 @@ class LLMClient:
 
         self.target_id = target_id
         self.label = spec.get("label", target_id)
-        self.base_url = _resolve_env(
-            spec["base_url_env"], target_id=target_id, field_name="base_url"
+        self.provider = spec.get("provider", "openai")
+        if self.provider not in PROVIDERS:
+            raise LLMClientConfigError(
+                f"target '{target_id}': provider '{self.provider}' ngoài {PROVIDERS}"
+            )
+        # Provider anthropic không bắt buộc base_url — SDK dùng endpoint chính thức.
+        self.base_url = (
+            _resolve_env(spec["base_url_env"], target_id=target_id, field_name="base_url")
+            if spec.get("base_url_env") or self.provider == "openai"
+            else None
         )
         self.api_key = _resolve_env(spec["api_key_env"], target_id=target_id, field_name="api_key")
         self.model = _resolve_env(spec["model_env"], target_id=target_id, field_name="model")
@@ -167,7 +202,8 @@ class LLMClient:
             self.log_path.parent.mkdir(parents=True, exist_ok=True)
 
         # max_retries=0 ở SDK: client này tự retry để log được từng lần thử.
-        self._client = openai.OpenAI(
+        sdk = anthropic.Anthropic if self.provider == "anthropic" else openai.OpenAI
+        self._client = sdk(
             api_key=self.api_key,
             base_url=self.base_url,
             timeout=self.timeout_s,
@@ -186,15 +222,28 @@ class LLMClient:
         **extra_kwargs: Any,
     ) -> LLMResult:
         """Gọi model, chuẩn hóa kết quả, retry cho 429/5xx/timeout, log mọi lần gọi."""
-        request_kwargs: dict[str, Any] = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": self.default_temperature if temperature is None else temperature,
-            **extra_kwargs,
-        }
-        if tools:
-            request_kwargs["tools"] = tools
-            request_kwargs["tool_choice"] = tool_choice
+        temp = self.default_temperature if temperature is None else temperature
+        if self.provider == "anthropic":
+            request_kwargs = self._anthropic_request(messages, tools, tool_choice, temp, extra_kwargs)
+            create = self._client.messages.create
+            sdk_mod: Any = anthropic
+            normalize = self._normalize_anthropic
+        else:
+            request_kwargs = {
+                "model": self.model,
+                "messages": [
+                    {k: v for k, v in m.items() if k != NATIVE_CONTENT_KEY} for m in messages
+                ],
+                **extra_kwargs,
+            }
+            if temp is not None:
+                request_kwargs["temperature"] = temp
+            if tools:
+                request_kwargs["tools"] = tools
+                request_kwargs["tool_choice"] = tool_choice
+            create = self._client.chat.completions.create
+            sdk_mod = openai
+            normalize = self._normalize
 
         call_id = uuid.uuid4().hex[:12]
         attempt = 0
@@ -204,8 +253,8 @@ class LLMClient:
             attempt += 1
             t0 = time.perf_counter()
             try:
-                response = self._client.chat.completions.create(**request_kwargs)
-            except openai.APIStatusError as e:
+                response = create(**request_kwargs)
+            except sdk_mod.APIStatusError as e:
                 retryable = e.status_code in _RETRYABLE_STATUS
                 self._log_error(
                     call_id, attempt, request_kwargs, t0, f"HTTP {e.status_code}: {e}", retryable
@@ -216,7 +265,7 @@ class LLMClient:
                 raise LLMClientError(
                     f"[{self.target_id}] lỗi HTTP {e.status_code} sau {attempt} lần thử: {e}"
                 ) from e
-            except (openai.APIConnectionError, openai.APITimeoutError) as e:
+            except (sdk_mod.APIConnectionError, sdk_mod.APITimeoutError) as e:
                 self._log_error(
                     call_id, attempt, request_kwargs, t0, f"{type(e).__name__}: {e}", True
                 )
@@ -228,9 +277,150 @@ class LLMClient:
                 ) from e
 
             latency_ms = int((time.perf_counter() - t_start) * 1000)
-            result = self._normalize(response, attempt=attempt, latency_ms=latency_ms)
+            result = normalize(response, attempt=attempt, latency_ms=latency_ms)
             self._log_success(call_id, request_kwargs, response, result)
             return result
+
+    def assistant_message(self, result: LLMResult) -> dict[str, Any]:
+        """Message assistant dạng OpenAI để lõi agent nối vào lịch sử hội thoại.
+
+        Provider anthropic: kèm block gốc ở `NATIVE_CONTENT_KEY` — lượt sau gửi lại nguyên văn,
+        gồm thinking block mà Messages API đòi khi tiếp tục sau `tool_use`.
+        """
+        message: dict[str, Any] = {"role": "assistant", "content": result.text}
+        if result.tool_calls:
+            message["tool_calls"] = [
+                {
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {"name": tc.name, "arguments": tc.arguments_raw},
+                }
+                for tc in result.tool_calls
+            ]
+        if self.provider == "anthropic" and result.raw_response is not None:
+            message[NATIVE_CONTENT_KEY] = [
+                block.model_dump(mode="json", exclude_none=True)
+                for block in result.raw_response.content
+            ]
+        return message
+
+    def _anthropic_request(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None,
+        tool_choice: str,
+        temperature: float | None,
+        extra: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Dịch request dạng OpenAI sang tham số `messages.create` của Messages API."""
+        extra = dict(extra)
+        max_tokens = extra.pop("max_tokens", None)
+        if max_tokens is None:
+            raise LLMClientConfigError(
+                f"target '{self.target_id}': provider anthropic bắt buộc max_tokens "
+                "(lấy từ config/experiment.yaml fixed.max_tokens)"
+            )
+        if extra:
+            raise LLMClientConfigError(
+                f"target '{self.target_id}': provider anthropic không nhận {sorted(extra)}"
+            )
+
+        system: list[str] = []
+        converted: list[dict[str, Any]] = []
+        for m in messages:
+            role = m["role"]
+            if role == "system":
+                if converted:
+                    raise LLMClientError("system message phải đứng trước mọi message khác")
+                system.append(m["content"])
+            elif role == "tool":
+                block = {
+                    "type": "tool_result",
+                    "tool_use_id": m["tool_call_id"],
+                    "content": m.get("content") or "",
+                }
+                last = converted[-1] if converted else None
+                if last and last["role"] == "user" and last.get("_tool_results"):
+                    last["content"].append(block)  # gộp kết quả song song vào một lượt user
+                else:
+                    converted.append({"role": "user", "content": [block], "_tool_results": True})
+            elif role == "assistant":
+                content = m.get(NATIVE_CONTENT_KEY)
+                if content is None:
+                    content = [{"type": "text", "text": m["content"]}] if m.get("content") else []
+                    for tc in m.get("tool_calls") or []:
+                        fn = tc["function"]
+                        content.append(
+                            {
+                                "type": "tool_use",
+                                "id": tc["id"],
+                                "name": fn["name"],
+                                "input": json.loads(fn["arguments"] or "{}"),
+                            }
+                        )
+                converted.append({"role": "assistant", "content": content})
+            else:
+                converted.append({"role": "user", "content": m["content"]})
+
+        request: dict[str, Any] = {
+            "model": self.model,
+            "max_tokens": max_tokens,
+            "messages": [{k: v for k, v in m.items() if k != "_tool_results"} for m in converted],
+        }
+        if system:
+            request["system"] = "\n\n".join(system)
+        if temperature is not None:
+            request["temperature"] = temperature
+        if tools:
+            if tool_choice not in _ANTHROPIC_TOOL_CHOICE:
+                raise LLMClientConfigError(f"tool_choice '{tool_choice}' chưa hỗ trợ ở anthropic")
+            request["tools"] = [
+                {
+                    "name": t["function"]["name"],
+                    "description": t["function"].get("description", ""),
+                    "input_schema": t["function"]["parameters"],
+                }
+                for t in tools
+            ]
+            request["tool_choice"] = _ANTHROPIC_TOOL_CHOICE[tool_choice]
+        return request
+
+    def _normalize_anthropic(self, response: Any, *, attempt: int, latency_ms: int) -> LLMResult:
+        texts = [b.text for b in response.content if b.type == "text"]
+        tool_calls: list[ToolCall] = []
+        for block in response.content:
+            if block.type != "tool_use":
+                continue
+            args = block.input if isinstance(block.input, dict) else None
+            tool_calls.append(
+                ToolCall(
+                    id=block.id,
+                    name=block.name,
+                    arguments=args,
+                    arguments_raw=json.dumps(block.input, ensure_ascii=False),
+                    parse_error=args is None,
+                )
+            )
+        usage = response.usage
+        # Token đầu vào gồm cả phần đọc/ghi cache, để so được với prompt_tokens của provider openai.
+        tokens_in = (
+            usage.input_tokens
+            + (getattr(usage, "cache_creation_input_tokens", None) or 0)
+            + (getattr(usage, "cache_read_input_tokens", None) or 0)
+        )
+        return LLMResult(
+            text="".join(texts) if texts else None,
+            tool_calls=tool_calls,
+            tokens_in=tokens_in,
+            tokens_out=usage.output_tokens,
+            latency_ms=latency_ms,
+            target_id=self.target_id,
+            model=self.model,
+            response_model=response.model,
+            attempts=attempt,
+            finish_reason=_ANTHROPIC_STOP.get(response.stop_reason, response.stop_reason),
+            raw_response=response,
+        )
 
     def _sleep_backoff(self, attempt: int) -> None:
         # Full jitter: sleep = uniform(0, min(max, base * 2^(attempt-1))).

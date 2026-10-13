@@ -38,8 +38,8 @@ def test_real_config_refuses_while_prices_are_null():
 def test_load_prices_only_for_requested_targets(tmp_path):
     path = _config_with_prices(tmp_path, {"A2": (0.5, 2.0)})
     assert load_prices(path, targets=["A2"]) == {"A2": Price(0.5, 2.0)}
-    with pytest.raises(CostConfigError, match="A1"):
-        load_prices(path, targets=["A1", "A2"])
+    with pytest.raises(CostConfigError, match="A3"):
+        load_prices(path, targets=["A2", "A3"])
 
 
 def test_price_cost():
