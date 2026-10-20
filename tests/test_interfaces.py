@@ -183,6 +183,7 @@ def test_defense_hit_ghi_duoc_vao_trace():
         model_id="glm-5.3-flash",
         batch_id="test",
         harness_version="core-a@test",
+        env_hash="env@test",
     )
     with TraceRecorder(engine, meta) as rec:
         rec.step(kind="defense", tool_name="send_email", defense_hits=[hit.to_json()])

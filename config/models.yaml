@@ -54,3 +54,17 @@ targets:
     model_env: TARGET_MODEL_A3
     model_id: glm-5.3-flash
     pricing_usd_per_mtok: {input: null, output: null}
+
+# Model chấm `judge_pass` (USR ở STT-37, B3, B4) — giao thức thực nghiệm mục 8, N9. Ngoài A1–A3
+# để không target nào tự chấm chính nó; cùng họ với A1 nên so USR giữa model chỉ là mô tả, RQ4 so
+# preset trong cùng target. Pin như target: id ở đây, giá trị `JUDGE_MODEL` trong `.env` phải trùng;
+# trace ghi `judge_model`. Không phải target: runner không bao giờ chạy tác vụ trên khối này.
+judge:
+  label: "Judge USR"
+  provider: anthropic
+  api_key_env: ANTHROPIC_API_KEY
+  model_env: JUDGE_MODEL
+  model_id: claude-sonnet-5-5
+  temperature: 0
+  # Tra bảng giá công bố của Anthropic trước STT-37; còn null thì không chạy lô có judge.
+  pricing_usd_per_mtok: {input: null, output: null}
