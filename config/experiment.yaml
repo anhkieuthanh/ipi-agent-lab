@@ -104,6 +104,14 @@ stopping:
     samples: 20
     max_delta_pp: 10
 
+# Tham số tính chỉ số (`docs/04. Design/07. Chỉ số đo.md`). Tỉ lệ đếm dùng Wilson 95%, không có tham số.
+metrics:
+  tcp_ci:                         # TCP là trung bình, không phải tỉ lệ đếm — Wilson không áp được (mục 6.1)
+    method: bootstrap_percentile  # lấy mẫu lại run có hoàn lại trong ô
+    resamples: 2000
+    level: 0.95
+    seed: 97                      # cố định để CI tái lập được
+
 # Nhận ra model tự từ chối — scorer gán `blocked_by = model_refusal` (`docs/04. Design/04. Trace
 # schema.md` mục 4.4). Tất định, không LLM judge. Chốt TRƯỚC pilot; đã thấy kết quả ma trận thì
 # không sửa. Pilot rà tay một mẫu run `failed` và `model_refusal` mỗi target để bổ sung cụm sót.
