@@ -20,6 +20,8 @@ dependencies = [
     "python-dotenv>=1.0",
     "pandas>=2.0",
     "anthropic>=1.0",
+    # MCP server/client (STT-28) — API v2: Server(on_*=...), mcp.client.Client, cache_mode
+    "mcp>=2.3,<3",
 ]
 
 [dependency-groups]
@@ -56,7 +58,7 @@ ignore = ["E501"]
 # package name — ruff không tự suy ra được, phải khai báo.
 known-first-party = [
     "agent", "obs", "rag", "attack", "defense", "eval", "interfaces", "gen_corpus_pdfs",
-    "seed_db",
+    "seed_db", "tools", "mcp_fake_backend",
 ]
 
 [build-system]
