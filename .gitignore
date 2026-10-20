@@ -20,3 +20,6 @@ logs/*
 *.db-journal
 *.db-wal
 *.db-shm
+
+# Kho phiếu create_ticket (STT-30) — trạng thái lúc chạy, xóa trước mỗi run.
+data/tickets.db
