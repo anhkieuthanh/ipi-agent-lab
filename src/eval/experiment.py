@@ -56,6 +56,7 @@ _TOP_KEYS = frozenset(
         "run_order",
         "stopping",
         "refusal",
+        "metrics",
         "cut_order",
         "never_cut",
         "reduced_presets",
@@ -236,6 +237,17 @@ def validate(exp: Experiment) -> list[str]:
             or not all(isinstance(v, str) and v.strip() for v in values)
         ):
             problems.append(f"refusal.{key} phải là danh sách khác rỗng gồm chuỗi khác rỗng")
+
+    tcp_ci = (raw.get("metrics") or {}).get("tcp_ci") or {}
+    if tcp_ci.get("method") not in (None, "bootstrap_percentile"):
+        problems.append(f"metrics.tcp_ci.method: '{tcp_ci['method']}' ngoài ('bootstrap_percentile',)")
+    for key in ("resamples", "seed"):
+        value = tcp_ci.get(key)
+        if value is not None and (not isinstance(value, int) or isinstance(value, bool) or value < 1):
+            problems.append(f"metrics.tcp_ci.{key} phải là số nguyên dương")
+    level = tcp_ci.get("level")
+    if level is not None and not (isinstance(level, float) and 0 < level < 1):
+        problems.append(f"metrics.tcp_ci.level phải trong (0, 1), nhận {level}")
 
     reduced = raw.get("reduced_presets")
     if reduced is not None and not isinstance(presets_cfg.get(reduced), dict):

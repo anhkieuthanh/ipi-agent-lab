@@ -157,3 +157,26 @@ def test_validate_bat_ghi_de_preset_sai(tmp_path: Path, old, new):
     assert text.count(rel) == 1
     cfg.write_text(text.replace(rel, str(defenses)), encoding="utf-8")
     assert any("preset_overrides" in p for p in validate(load_experiment(cfg)))
+
+
+def test_metrics_tcp_ci_da_chot(exp):
+    tcp_ci = exp.raw["metrics"]["tcp_ci"]
+    assert tcp_ci == {"method": "bootstrap_percentile", "resamples": 2000, "level": 0.95, "seed": 97}
+    assert not [p for p in unresolved(exp) if p.startswith("metrics")]
+
+
+@pytest.mark.parametrize(
+    "old, new",
+    [
+        ("method: bootstrap_percentile", "method: wald"),
+        ("resamples: 2000", "resamples: 0"),
+        ("level: 0.95", "level: 95"),
+        ("seed: 97 ", "seed: true "),
+    ],
+)
+def test_validate_bat_metrics_sai(tmp_path: Path, old, new):
+    src = Path(load_experiment().path).read_text(encoding="utf-8")
+    assert old in src
+    cfg = tmp_path / "experiment.yaml"
+    cfg.write_text(src.replace(old, new, 1), encoding="utf-8")
+    assert any(p.startswith("metrics.tcp_ci") for p in validate(load_experiment(cfg)))
