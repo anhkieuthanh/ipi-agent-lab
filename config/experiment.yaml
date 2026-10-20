@@ -5,7 +5,8 @@
 # định ở chỗ khác.
 #
 # Nguồn: `docs/06. Track/Chốt phạm vi và checklist ký GVHD.md` mục 3–5 (đã ký) và
-# `Y_TUONG_DU_AN.md` mục 10.3, 12, 15. Lệch nhau thì theo checklist đã ký.
+# `Y_TUONG_DU_AN.md` mục 10.3, 12, 15. Lệch nhau thì theo checklist đã ký. Thủ tục (trình tự, ghép
+# N, hiệu chỉnh, dừng, cắt giảm, rà biến gây nhiễu): `docs/04. Design/06. Giao thức thực nghiệm.md`.
 #
 # GHI TRƯỚC thực nghiệm, không chỉnh sau khi đã thấy kết quả. `null` = chưa chốt: runner từ chối
 # mở khối còn trường null (`eval.experiment.unresolved()`). Chỉ những giá trị quyết SAU pilot
@@ -28,6 +29,9 @@ contracts:
 variables:
   independent: [channel, technique, goal, target_id, defense_config, attacker_mode, harness]
   payload_attributes: [lang, obfuscation]      # thuộc tính payload, không phải trục của khối
+  # Đơn vị lấy mẫu lồng trong ô: N của ô ghép từ các cặp (payload_id, carrier_task_id) khác nhau
+  # trước, lặp sau — lặp cùng cặp ở temperature 0 làm Wilson CI hẹp giả tạo (giao thức mục 2.2).
+  units: [carrier_task_id, payload_id, benign_query_id, repeat_idx]
   dependent:
     - outcome
     - delivered
