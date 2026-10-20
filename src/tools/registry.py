@@ -263,7 +263,11 @@ class ToolRegistry:
 def build_tool_layer() -> ToolRegistry:
     """ToolLayer mặc định cho MCP server (`mcp_server.backend` trong tools.yaml, STT-28).
 
-    Handler của từng tool gắn ở đây khi STT-29/30 xong; tới lúc đó gọi tool hợp lệ ném
-    `LookupError` (lỗi harness), còn `list_tools()` đã dùng được.
+    Đã gắn: `send_email` (STT-29). Các tool còn lại gắn ở đây khi STT-30 xong; tới lúc đó gọi
+    chúng ném `LookupError` (lỗi harness), còn `list_tools()` đã dùng được.
     """
-    return ToolRegistry()
+    from tools.send_email import SendEmail
+
+    reg = ToolRegistry()
+    reg.bind("send_email", SendEmail.from_registry(reg))
+    return reg
