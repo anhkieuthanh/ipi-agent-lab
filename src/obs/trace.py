@@ -124,6 +124,9 @@ class Run(SQLModel, table=True):
     response_model: str | None = None  # bí danh gateway → snapshot thực sự phục vụ
     harness: str = "none"
     harness_version: str
+    # Băm system prompt + quyền tool mặc định + git commit của lab — tách được run trước/sau mỗi
+    # vòng hiệu chỉnh độ khó ngay từ trace (giao thức thực nghiệm mục 8, N6).
+    env_hash: str
     defense_config: str = "{}"  # JSON cấu hình D1–D4 đang bật
 
     # Nhãn thí nghiệm.
@@ -153,6 +156,7 @@ class Run(SQLModel, table=True):
 
     # Hữu dụng (run benign) — mục 12.3.
     judge_pass: bool | None = None
+    judge_model: str | None = None  # model judge đã pin, ghi ở mọi run có judge_pass
     hard_fact_pass: bool | None = None
     keyword_check_pass: bool | None = None
     tcp: float | None = None
@@ -216,6 +220,7 @@ class RunMeta:
     model_id: str
     batch_id: str
     harness_version: str
+    env_hash: str
     harness: str = "none"
     defense_config: dict[str, Any] = field(default_factory=dict)
     carrier_task_id: str | None = None

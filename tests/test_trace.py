@@ -18,6 +18,7 @@ def _meta(**over):
         model_id="glm-5.2",
         batch_id="B1-test",
         harness_version="core-a@test",
+        env_hash="env@test",
         carrier_task_id="CT-05",
         payload_id="P-001",
         technique="T1",

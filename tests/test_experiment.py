@@ -16,15 +16,14 @@ from seed_db import ANCHOR_DATE
 # Tập kỹ thuật chung của ba phân kênh — checklist mục 4.
 T_CHUNG = {"T1", "T2", "T3", "T5", "T7", "T8"}
 
-# Số run ước tính, checklist mục 5 (đã ký). B4 "~500" chưa có công thức.
-CHECKLIST_RUNS = {"B1": 3780, "B2": 4320, "B3": 4200, "B5": 900, "B6": 450}
+# Số run ước tính, checklist mục 5 (đã ký). B4 "~500" — giao thức chốt 516 (mục 9).
+CHECKLIST_RUNS = {"B1": 3780, "B2": 4320, "B3": 4200, "B4": 516, "B5": 900, "B6": 450}
 
-# Checklist đếm 7 preset (`off`, `d1_only`…`d4_only`, `all`, `reduced_3`) nhưng `reduced_3` là
-# nhóm {off, d3_only, all}, không phải một cấu hình phòng thủ — defenses.yaml chỉ có 6 preset chạy
-# được, nên B2 (5 preset bật) và B3 (6 preset) ra 3.600 thay vì 4.320 và 4.200. B5 cùng checklist
-# dùng 5 preset bật, khớp. Chờ TA quyết; xfail strict để báo ngay khi hai bên khớp lại.
+# Checklist đếm 7 preset cho B3 (`off`, `d1_only`…`d4_only`, `all`, `reduced_3`) nhưng `reduced_3`
+# là nhóm {off, d3_only, all}, không phải một cấu hình — B3 có 6 preset chạy được, ra 3.600 thay vì
+# 4.200. Khớp lại nếu GVHD duyệt `d3_no_confirm` (Việc treo VT-4). xfail strict để báo ngay khi khớp.
 PRESET_COUNT_MISMATCH = pytest.mark.xfail(
-    strict=True, reason="checklist mục 5 đếm reduced_3 như một preset — chờ TA chốt"
+    strict=True, reason="B3: checklist mục 5 đếm reduced_3 như một preset — chờ VT-4"
 )
 
 
@@ -45,8 +44,9 @@ def test_du_sau_khoi(exp):
     "block_id",
     [
         "B1",
-        pytest.param("B2", marks=PRESET_COUNT_MISMATCH),
+        "B2",
         pytest.param("B3", marks=PRESET_COUNT_MISMATCH),
+        "B4",
         "B5",
         "B6",
     ],
@@ -55,8 +55,27 @@ def test_so_run_khop_checklist(exp, block_id):
     assert exp.planned_runs(block_id) == CHECKLIST_RUNS[block_id]
 
 
-def test_b4_chua_co_cong_thuc(exp):
-    assert exp.planned_runs("B4") is None
+def test_b2_do_lai_off_cung_lo(exp):
+    # DSR lấy ASR(off) đo lại trong B2, không lấy từ B1 (giao thức mục 8, N1–N2).
+    assert "off" in exp.blocks["B2"].presets
+    assert exp.blocks["B2"].best_single == {"select_on": "full_block", "per": "goal"}
+
+
+def test_b4_ba_phan(exp):
+    parts = exp.blocks["B4"].parts
+    assert list(parts) == ["rq12", "rq3", "rq4"]
+    assert all(p.targets == ("A1",) for p in parts.values())
+    assert {ch: set(ts) for ch, ts in parts["rq12"].techniques_by_channel.items()} == {
+        ch: T_CHUNG for ch in ("K1", "K2a", "K2b")
+    }
+    assert [exp._planned(p) for p in parts.values()] == [216, 180, 120]
+
+
+def test_pilot_tach_cong_va_chi_do(exp):
+    pilot = exp.raw["pilot"]
+    assert tuple(pilot["targets"]) == exp.blocks["B1"].targets  # cổng tính trên target của B1
+    assert pilot["observe_targets"] == ["A1"]
+    assert pilot["variance_probe"]["p_same_threshold"] == 0.9
 
 
 def test_ky_thuat_theo_kenh_khop_t_chung(exp):
@@ -84,7 +103,7 @@ def test_khoi_b1_khong_con_truong_chua_chot(exp):
 
 def test_unresolved_bat_duoc_todo(exp):
     paths = unresolved(exp)
-    assert "blocks.B4.subset" in paths
+    assert "blocks.B4.parts.rq3.cells.selected" in paths
     assert "blocks.B5.attacker_model" in paths
     assert "benign_task_types" in unresolved(exp, "B3")
     assert "benign_task_types" not in unresolved(exp, "B1")
@@ -142,7 +161,7 @@ def test_validate_bat_refusal_sai_kieu(tmp_path: Path, bad):
     [
         ("R4_require_confirmation.enabled", "R4_require_confirmaton.enabled"),
         ('"d3_tool_policy.rules', '"d4_egress_filter.rules'),
-        ("  d3_no_confirm:\n    \"", "  d3_no_confirn:\n    \""),
+        ('  d3_no_confirm:\n    "', '  d3_no_confirn:\n    "'),
     ],
 )
 def test_validate_bat_ghi_de_preset_sai(tmp_path: Path, old, new):
@@ -161,7 +180,12 @@ def test_validate_bat_ghi_de_preset_sai(tmp_path: Path, old, new):
 
 def test_metrics_tcp_ci_da_chot(exp):
     tcp_ci = exp.raw["metrics"]["tcp_ci"]
-    assert tcp_ci == {"method": "bootstrap_percentile", "resamples": 2000, "level": 0.95, "seed": 97}
+    assert tcp_ci == {
+        "method": "bootstrap_percentile",
+        "resamples": 2000,
+        "level": 0.95,
+        "seed": 97,
+    }
     assert not [p for p in unresolved(exp) if p.startswith("metrics")]
 
 
@@ -180,3 +204,25 @@ def test_validate_bat_metrics_sai(tmp_path: Path, old, new):
     cfg = tmp_path / "experiment.yaml"
     cfg.write_text(src.replace(old, new, 1), encoding="utf-8")
     assert any(p.startswith("metrics.tcp_ci") for p in validate(load_experiment(cfg)))
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "expect"),
+    [
+        ("observe_targets: [A1]", "observe_targets: [A2]", "vừa tính cổng vừa chỉ đo"),
+        ("p_same_threshold: 0.9", "p_same_threshold: 1.5", "p_same_threshold"),
+        ("{select_on: full_block, per: goal}", "{select_on: pilot, per: goal}", "select_on"),
+        ("add_best_single_from: B2", "add_best_single_from: B1", "add_best_single_from"),
+        ("        n_per_cell: 4\n", "        n_per_cell: 4\n        purpose: [RQ1]\n", "khóa lạ"),
+    ],
+)
+def test_validate_bat_quyet_dinh_sai(tmp_path: Path, old, new, expect):
+    src = Path(load_experiment().path).read_text(encoding="utf-8")
+    assert src.count(old) == 1
+    cfg = tmp_path / "experiment.yaml"
+    cfg.write_text(src.replace(old, new), encoding="utf-8")
+    try:
+        problems = validate(load_experiment(cfg))
+    except ExperimentConfigError as err:
+        problems = [str(err)]
+    assert any(expect in p for p in problems), problems
