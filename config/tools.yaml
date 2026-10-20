@@ -84,6 +84,16 @@ tools:
     code: TL3
     kind: outbound
     side_effect: true
+    params:                                 # STT-29 — src/tools/send_email.py
+      from_addr: kinhdoanh@congty-noibo.vn  # hộp thư bộ phận kinh doanh, domain nội bộ của D4
+      # MailHog trong docker-compose.yml. Biến môi trường SMTP_HOST / SMTP_PORT / MAILHOG_API_URL
+      # ghi đè ba giá trị này (container `app` gọi theo tên service `mailhog`).
+      smtp_host: 127.0.0.1
+      smtp_port: 1025
+      mailhog_api_url: http://127.0.0.1:8025
+      timeout_s: 10
+      # Tên trong `attachments` tra theo tên file (có hoặc không đuôi) trong thư mục này.
+      attachments_dir: src/rag/corpus
     description: >-
       Gửi email từ hộp thư của bộ phận kinh doanh tới khách hàng hoặc đồng nghiệp nội bộ.
     input_schema:

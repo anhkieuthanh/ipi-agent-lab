@@ -68,6 +68,7 @@ services:
       QDRANT_URL: http://qdrant:6333
       SMTP_HOST: mailhog
       SMTP_PORT: "1025"
+      MAILHOG_API_URL: http://mailhog:8025
     depends_on:
       qdrant:
         condition: service_healthy

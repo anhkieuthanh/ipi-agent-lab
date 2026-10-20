@@ -42,6 +42,7 @@ testpaths = ["src", "tests"]
 pythonpath = ["src", "scripts"]
 markers = [
   "qdrant: cần Qdrant đang chạy (`make up`); tự bỏ qua nếu không có",
+  "mailhog: cần MailHog đang chạy (`make up`); tự bỏ qua nếu không có",
 ]
 
 [tool.ruff]
