@@ -135,3 +135,25 @@ def test_validate_bat_refusal_sai_kieu(tmp_path: Path, bad):
     cfg = tmp_path / "experiment.yaml"
     cfg.write_text(src.replace(line, f"  finish_reasons: {bad}"), encoding="utf-8")
     assert any("refusal.finish_reasons" in p for p in validate(load_experiment(cfg)))
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        ("R4_require_confirmation.enabled", "R4_require_confirmaton.enabled"),
+        ('"d3_tool_policy.rules', '"d4_egress_filter.rules'),
+        ("  d3_no_confirm:\n    \"", "  d3_no_confirn:\n    \""),
+    ],
+)
+def test_validate_bat_ghi_de_preset_sai(tmp_path: Path, old, new):
+    exp = load_experiment()
+    src = exp.contract_path("defenses").read_text(encoding="utf-8")
+    assert old in src
+    defenses = tmp_path / "defenses.yaml"
+    defenses.write_text(src.replace(old, new, 1), encoding="utf-8")
+    cfg = tmp_path / "experiment.yaml"
+    text = Path(exp.path).read_text(encoding="utf-8")
+    rel = exp.raw["contracts"]["defenses"]
+    assert text.count(rel) == 1
+    cfg.write_text(text.replace(rel, str(defenses)), encoding="utf-8")
+    assert any("preset_overrides" in p for p in validate(load_experiment(cfg)))
