@@ -29,9 +29,6 @@ bản ghi phía sau. `tests/test_seed_db.py` khóa checksum của bộ dữ li�
 nhận bộ dữ liệu mới rồi cập nhật hằng số trong test kèm lý do trong commit.
 Cùng lý do đó, phiên bản Faker được ghim trong `uv.lock` — nâng Faker là một
 thay đổi có thể làm đổi dữ liệu, phải chạy test trước khi chốt.
-
-Lịch sử: 06/08/2026 gỡ một lời gọi `fake.company_suffix()` chết (ruff F841) ở
-`gen_record`; DB đã được sinh lại và checksum trong test cập nhật theo.
 """
 
 from __future__ import annotations
