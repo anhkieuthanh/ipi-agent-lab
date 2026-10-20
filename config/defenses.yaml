@@ -40,6 +40,9 @@ defenses:
       entropy_threshold_bits_per_char: 4.5
       min_suspicious_block_len: 16
       imperative_patterns_file: "config/d2_imperative_patterns.yaml"   # regex mệnh lệnh vi + en
+      imperative_action: "redact"           # bước 6: "redact" thay câu khớp bằng dấu thay thế; "flag" chỉ ghi hit.
+                                             # Ma trận dự đoán (v-pred-1.0) giả định "redact"; đổi thì các ô D2
+                                             # dựa trên bước 6 thành "không phân xử được".
     false_positive_report: "logs/d2_false_positive.md"   # STT-52 — đo dương tính giả trên tài liệu nhóm U5
 
   d3_tool_policy:
@@ -116,6 +119,10 @@ presets:
   d3_only: ["d3_tool_policy"]
   d4_only: ["d4_egress_filter"]
   all: ["d1_spotlighting", "d2_input_sanitizer", "d3_tool_policy", "d4_egress_filter"]
+  # D3 với R4 tắt — đo riêng R1–R3, vì R4 + automated_resolution "block" chặn mọi lời gọi ghi/ra ngoài
+  # (defense_spec.md §5.2). CHỜ GVHD: chưa đưa vào khối nào của experiment.yaml. Không có dự đoán trong
+  # ma trận v-pred-1.0 ⇒ kết quả báo cáo dạng khám phá, không chấm.
+  d3_no_confirm: ["d3_tool_policy"]
 
   # Thứ tự cắt giảm khi thiếu thời gian:
   # OFF, D3, ALL — giữ nguyên 3 preset này nếu phải giảm từ 6 xuống 3 cấu hình.
@@ -123,6 +130,14 @@ presets:
     "off": []
     d3_only: ["d3_tool_policy"]
     all: ["d1_spotlighting", "d2_input_sanitizer", "d3_tool_policy", "d4_egress_filter"]
+
+# Ghi đè tham số theo preset — ngoại lệ duy nhất của quy tắc "không sửa tham số ở presets".
+# Khóa: preset chạy được. Giá trị: đường dẫn chấm trong khối `defenses` → giá trị thay.
+# pipeline.py (STT-55) áp ghi đè sau khi nạp `defenses`; eval.experiment.validate kiểm đường dẫn tồn tại
+# và cơ chế được ghi đè có bật trong preset đó.
+preset_overrides:
+  d3_no_confirm:
+    "d3_tool_policy.rules.R4_require_confirmation.enabled": false
 
 # ---------------------------------------------------------------------------
 # Thứ tự ghép trong pipeline.py (STT-55) — khớp đặc tả D1–D4 (STT-20)

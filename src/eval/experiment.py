@@ -199,7 +199,8 @@ def validate(exp: Experiment) -> list[str]:
         return problems
 
     targets = set(_yaml(exp.contract_path("models"))["targets"])
-    presets_cfg = _yaml(exp.contract_path("defenses"))["presets"]
+    defenses_cfg = _yaml(exp.contract_path("defenses"))
+    presets_cfg = defenses_cfg["presets"]
     # Preset chạy được là preset dạng danh sách cơ chế; `reduced_3` là nhóm preset, không phải một.
     runnable = {name for name, value in presets_cfg.items() if isinstance(value, list)}
     columns = set(Run.model_fields)
@@ -239,6 +240,8 @@ def validate(exp: Experiment) -> list[str]:
     reduced = raw.get("reduced_presets")
     if reduced is not None and not isinstance(presets_cfg.get(reduced), dict):
         problems.append(f"reduced_presets: '{reduced}' không phải nhóm preset trong defenses.yaml")
+
+    problems += _check_preset_overrides(defenses_cfg, runnable)
 
     seen: list[str] = []
     for bid, b in exp.blocks.items():
@@ -303,3 +306,27 @@ def unresolved(exp: Experiment, block_id: str | None = None) -> list[str]:
     if exp.blocks[block_id].run_kind == "benign":
         paths += _null_paths(raw.get("benign_task_types"), "benign_task_types")
     return paths
+
+
+def _check_preset_overrides(defenses_cfg: dict[str, Any], runnable: set[str]) -> list[str]:
+    """Mỗi ghi đè trỏ tới preset chạy được, cơ chế bật trong preset đó, và khóa có thật.
+
+    Ghi đè trỏ sai khóa sẽ bị pipeline bỏ qua trong im lặng — đúng lớp lỗi "khai mà không ai đọc".
+    """
+    problems: list[str] = []
+    for name, overrides in (defenses_cfg.get("preset_overrides") or {}).items():
+        where = f"defenses.preset_overrides.{name}"
+        if name not in runnable:
+            problems.append(f"{where}: không phải preset chạy được")
+            continue
+        for dotted in overrides or {}:
+            head, *rest = dotted.split(".")
+            if head not in defenses_cfg["presets"][name]:
+                problems.append(f"{where}: '{head}' không bật trong preset này")
+                continue
+            node: Any = defenses_cfg["defenses"].get(head)
+            for key in rest:
+                node = node.get(key) if isinstance(node, dict) else None
+            if node is None or not rest:
+                problems.append(f"{where}: không có khóa '{dotted}' trong defenses")
+    return problems
