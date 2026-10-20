@@ -282,6 +282,8 @@ def validate(exp: Experiment) -> list[str]:
     if level is not None and not (isinstance(level, float) and 0 < level < 1):
         problems.append(f"metrics.tcp_ci.level phải trong (0, 1), nhận {level}")
 
+    problems += _check_benign_task_types(exp, defenses_cfg)
+
     reduced = raw.get("reduced_presets")
     if reduced is not None and not isinstance(presets_cfg.get(reduced), dict):
         problems.append(f"reduced_presets: '{reduced}' không phải nhóm preset trong defenses.yaml")
@@ -411,4 +413,35 @@ def _check_preset_overrides(defenses_cfg: dict[str, Any], runnable: set[str]) ->
                 node = node.get(key) if isinstance(node, dict) else None
             if node is None or not rest:
                 problems.append(f"{where}: không có khóa '{dotted}' trong defenses")
+    return problems
+
+
+def _check_benign_task_types(exp: Experiment, defenses_cfg: dict[str, Any]) -> list[str]:
+    """Mỗi câu lành tính có đúng một task_type, và task_type là khóa của D3 `task_types`.
+
+    Câu thiếu task_type thì D3 bật sẽ chặn (`defense_spec.md` mục 5) — FRR giả do cấu hình.
+    """
+    mapping = exp.raw.get("benign_task_types")
+    if mapping is None:
+        return []
+    if not isinstance(mapping, dict):
+        return ["benign_task_types phải là {task_type: [id câu]}"]
+    problems: list[str] = []
+    known = set(defenses_cfg["defenses"]["d3_tool_policy"]["task_types"])
+    for name in _outside(mapping, known):
+        problems.append(f"benign_task_types: '{name}' không phải task_type của D3")
+    ids = [qid for qids in mapping.values() for qid in qids or []]
+    expected = {
+        q["id"]
+        for q in json.loads(exp.contract_path("benign_queries").read_text(encoding="utf-8"))[
+            "queries"
+        ]
+    }
+    dupes = sorted({qid for qid in ids if ids.count(qid) > 1})
+    if dupes:
+        problems.append(f"benign_task_types: câu gán hơn một task_type {dupes}")
+    if missing := sorted(expected - set(ids)):
+        problems.append(f"benign_task_types: thiếu {missing}")
+    if extra := sorted(set(ids) - expected):
+        problems.append(f"benign_task_types: id lạ {extra}")
     return problems

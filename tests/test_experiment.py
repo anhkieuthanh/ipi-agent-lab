@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 
 import pytest
+import yaml
 
 from eval.experiment import ExperimentConfigError, load_experiment, unresolved, validate
 from seed_db import ANCHOR_DATE
@@ -105,8 +106,6 @@ def test_unresolved_bat_duoc_todo(exp):
     paths = unresolved(exp)
     assert "blocks.B4.parts.rq3.cells.selected" in paths
     assert "blocks.B5.attacker_model" in paths
-    assert "benign_task_types" in unresolved(exp, "B3")
-    assert "benign_task_types" not in unresolved(exp, "B1")
 
 
 def test_tu_choi_khoa_la(tmp_path: Path):
@@ -226,3 +225,40 @@ def test_validate_bat_quyet_dinh_sai(tmp_path: Path, old, new, expect):
     except ExperimentConfigError as err:
         problems = [str(err)]
     assert any(expect in p for p in problems), problems
+
+
+def test_benign_task_types_theo_lua_chon_nhan_vien(exp):
+    # Quy tắc "loại tác vụ nhân viên thật sẽ chọn" (checklist mục 4). Câu có tool kỳ vọng ngoài
+    # allowlist của task_type là chỗ R1 chặn nhầm — đúng 10 câu CT-04 hỏi/kiểm tồn kho, chọn có
+    # chủ ý; thêm câu nào vào tập này là gán sai.
+    defenses = yaml.safe_load(exp.contract_path("defenses").read_text(encoding="utf-8"))
+    task_types = defenses["defenses"]["d3_tool_policy"]["task_types"]
+    queries = json.loads(exp.contract_path("benign_queries").read_text(encoding="utf-8"))["queries"]
+    of = {qid: t for t, qids in exp.raw["benign_task_types"].items() for qid in qids}
+    assert len(of) == len(queries) == 60
+    r1_blocked = {
+        q["id"]
+        for q in queries
+        if any(
+            c["tool"] not in task_types[of[q["id"]]]["allowlist"] for c in q["expected_tool_calls"]
+        )
+    }
+    ct04 = {q["id"] for q in queries if q["carrier_task_id"] == "CT-04"}
+    assert r1_blocked == ct04 and len(ct04) == 10
+    assert all(of[qid] == "LOOKUP" for qid in ct04)
+    assert not unresolved(exp, "B3")
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "expect"),
+    [
+        ("BQ-U4-010\n", "BQ-U4-009\n", "hơn một task_type"),
+        ("  SEND_MAIL:  #", "  SENDMAIL:  #", "không phải task_type"),
+    ],
+)
+def test_validate_bat_task_type_sai(tmp_path: Path, old, new, expect):
+    src = Path(load_experiment().path).read_text(encoding="utf-8")
+    assert src.count(old) == 1
+    cfg = tmp_path / "experiment.yaml"
+    cfg.write_text(src.replace(old, new), encoding="utf-8")
+    assert any(expect in p for p in validate(load_experiment(cfg)))
