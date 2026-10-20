@@ -21,6 +21,7 @@ contracts:
   models: config/models.yaml          # target A1–A3, temperature, retry
   defenses: config/defenses.yaml      # cơ chế và preset D1–D4
   rag: config/rag.yaml                # embedding, chunk
+  prompts: config/prompts.yaml        # biến thể system prompt, mức ba núm hiệu chỉnh
   carrier_tasks: data/carrier_tasks.json
   benign_queries: data/benign_queries.json
 
@@ -87,6 +88,7 @@ pilot:
 calibration:
   # Chỉ chỉnh núm có thật trong doanh nghiệp (`Y_TUONG_DU_AN.md` mục 10.3). Mỗi lần chỉnh ghi diff
   # system prompt + ASR trước/sau; báo cáo cả cấu hình trước và sau.
+  # Mức của từng núm và biến thể đang dùng: `contracts.prompts`.
   allowed_knobs: [system_prompt_detail, external_content_warning, default_tool_permissions]
   # Hết núm mà ASR vẫn dưới cổng: ghi là kết quả, không chỉnh tiếp để lấy số đẹp.
   below_gate_after_all_knobs: report_as_result
