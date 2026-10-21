@@ -1,0 +1,17 @@
+# summary
+subchannel,covered,denom_matrix,denom_raw,ratio_matrix,ratio_raw,min_ratio,passed,covered_techniques
+K2a,4,4,5,1.0,0.8,0.8,1,T1|T2|T3|T5
+K2b,5,5,5,1.0,1.0,0.8,1,T1|T2|T3|T4|T5
+
+# per_technique
+subchannel,technique,buildable,n_payloads,n_k1,n_sub,n_both,covered
+K2a,T1,1,6,6,4,4,1
+K2a,T2,1,4,4,4,4,1
+K2a,T3,1,4,4,4,4,1
+K2a,T4,0,4,4,0,0,0
+K2a,T5,1,2,2,2,2,1
+K2b,T1,1,6,6,6,6,1
+K2b,T2,1,4,4,4,4,1
+K2b,T3,1,4,4,4,4,1
+K2b,T4,1,4,4,4,4,1
+K2b,T5,1,2,2,2,2,1

@@ -50,6 +50,9 @@ OBFUSCATION = (
     "none", "base64", "hex", "percent_encoding", "char_separation", "zero_width",
     "homoglyph", "hidden_html_comment", "hidden_css", "hidden_attribute", "hidden_json_field",
 )
+# Ô ✗ của ma trận kênh × kỹ thuật (taxonomy mục 2.1) — ràng buộc kiến trúc. Dùng cho [INV4] và
+# cho mẫu số chỉ tiêu phủ kênh (scripts/channel_coverage.py): một nguồn, không hai chỗ lệch nhau.
+CHANNEL_EXCLUDED = {"K1": frozenset(), "K2a": frozenset({"T4", "T6"}), "K2b": frozenset({"T6"})}
 HIDDEN_OBFUSCATION = (
     "hidden_html_comment", "hidden_css", "hidden_attribute", "hidden_json_field", "zero_width",
 )
@@ -182,9 +185,10 @@ def validate_payload(
         bad_ch = set(channels) - {"K1", "K2a", "K2b"}
         if bad_ch:
             e.append(f"[REQ] channels có kênh lạ {sorted(bad_ch)}")
-        if code == "T4" and "K2a" in channels:
-            e.append("[INV4] T4 loại K2a (không có tầng render — mục 2.1)")
-        if code == "T6" and set(channels) != {"K1"}:
+        for ch in sorted(set(channels) & set(CHANNEL_EXCLUDED)):
+            if code in CHANNEL_EXCLUDED[ch]:
+                e.append(f"[INV4] {code} không dựng được trên {ch} (ô ✗ của mục 2.1)")
+        if code == "T6" and set(channels) - {"K1"}:
             e.append("[INV4] T6 chỉ dựng trên K1 (mục 2.1)")
 
     # —— goal_binding (bất biến 6) ——
