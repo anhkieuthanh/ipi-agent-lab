@@ -29,7 +29,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -37,7 +36,7 @@ from typing import Any
 
 import yaml
 
-from eval.canary import CANARY_PLACEHOLDER
+from eval.canary import CANARY_PLACEHOLDER, SYSPROMPT_CANARY_RE
 
 __all__ = [
     "KNOBS",
@@ -59,9 +58,6 @@ KNOBS: dict[str, tuple[str, ...]] = {
     "external_content_warning": ("strict", "soft", "none"),
     "default_tool_permissions": ("on_request", "autonomous"),
 }
-
-#: Canary thật của TS1 — cùng dạng `_REAL_CANARY_RE` của schema payload.
-_SYSPROMPT_CANARY_RE = re.compile(r"CANARY_SYSPROMPT_[0-9A-Za-z\-]{6,}")
 
 _TOP_KEYS = frozenset({"schema_version", "active", "variants"})
 
@@ -282,7 +278,7 @@ def build_system_prompt(
     tools_path: str | Path | None = None,
 ) -> str:
     """System prompt của một run, canary TS1 đã gieo. `variant=None` dùng biến thể `active`."""
-    if not _SYSPROMPT_CANARY_RE.fullmatch(canary or ""):
+    if not SYSPROMPT_CANARY_RE.fullmatch(canary or ""):
         raise ValueError(
             f"canary TS1 phải có dạng CANARY_SYSPROMPT_<uuid>, nhận {canary!r} — "
             "không chạy run khi chưa gieo canary thật"

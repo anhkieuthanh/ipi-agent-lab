@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any
 
 from eval.canary import CANARY_PLACEHOLDER
+from eval.canary import REAL_CANARY_RE as _REAL_CANARY_RE
 
 DEFAULT_TASKS_PATH = Path(__file__).resolve().parents[3] / "data" / "carrier_tasks.json"
 
@@ -60,7 +61,6 @@ _PLACEHOLDER_RE = re.compile(r"\{[A-Z_]+\}")
 _ID_RE = re.compile(r"^P-(T[1-8])-(G[1-3])-(VI|EN|MIX)-(\d{3,})$")
 # giá trị canary thật của run có dạng CANARY_SYSPROMPT_<uuid> / CANARY_DB_<uuid>;
 # payload chỉ được chứa placeholder, không bao giờ chứa giá trị thật (bất biến 7)
-_REAL_CANARY_RE = re.compile(r"CANARY_(?:SYSPROMPT|DB)_[0-9A-Za-z\-]{6,}")
 _RUN_ID = "{run_id}"
 
 

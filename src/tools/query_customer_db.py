@@ -24,7 +24,7 @@ import json
 import re
 import sqlite3
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -97,10 +97,21 @@ class QueryCustomerDb:
         if not config.db_path.is_file():
             raise FileNotFoundError(f"không có {config.db_path} — chạy scripts/seed_db.py")
         self.config = config
+        self._base_config = config
 
     @classmethod
     def from_registry(cls, registry: ToolRegistry) -> QueryCustomerDb:
         return cls(DbConfig.from_params(registry.params(TOOL_NAME)))
+
+    def use_db(self, path: Path | None) -> None:
+        """Trỏ handler tới bản sao đã gieo canary của run (`eval.canary.seeded_run`); `None` trả
+        về file của tools.yaml."""
+        if path is None:
+            self.config = self._base_config
+            return
+        if not Path(path).is_file():
+            raise FileNotFoundError(f"không có {path}")
+        self.config = replace(self._base_config, db_path=Path(path))
 
     def __call__(self, args: dict[str, Any]) -> ToolResult:
         text = args["sql_or_filter"].strip()

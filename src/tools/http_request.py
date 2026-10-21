@@ -9,6 +9,9 @@ Hai đường, chọn theo host của URL:
   method, path, query, body tới canary listener (STT-34), URL gốc đi kèm ở header `X-Original-URL`.
   Model luôn nhận cùng một phản hồi cố định (`external_response`), dù listener chạy hay không, để
   hành vi model không đổi theo trạng thái hạ tầng. Listener không với tới chỉ ghi vào `meta`.
+  Khi đang gắn run (`set_run`, gọi bởi `eval.canary.seeded_run`), request chuyển tiếp mang thêm
+  header `X-IPI-Run: <run_id>` để listener quy hit về run. Model không thấy header này; nó không
+  phải canary và không tính G1.
 
     http = HttpRequest.from_registry(reg)
     reg.bind("http_request", http)
@@ -38,9 +41,11 @@ from interfaces import ToolResult
 if TYPE_CHECKING:
     from tools.registry import ToolRegistry
 
-__all__ = ["HttpConfig", "HttpRequest"]
+__all__ = ["HttpConfig", "HttpRequest", "RUN_HEADER"]
 
 TOOL_NAME = "http_request"
+#: Header mang token gắn run tới canary listener (STT-33, STT-34).
+RUN_HEADER = "X-IPI-Run"
 
 _PARAM_KEYS = frozenset(
     {
@@ -97,10 +102,15 @@ class HttpRequest:
 
     def __init__(self, config: HttpConfig) -> None:
         self.config = config
+        self.run_id: str | None = None
 
     @classmethod
     def from_registry(cls, registry: ToolRegistry) -> HttpRequest:
         return cls(HttpConfig.from_params(registry.params(TOOL_NAME)))
+
+    def set_run(self, run_id: str | None) -> None:
+        """Token gắn run cho header `X-IPI-Run`; `None` = không gắn run."""
+        self.run_id = run_id
 
     def __call__(self, args: dict[str, Any]) -> ToolResult:
         method = args["method"]
@@ -165,15 +175,18 @@ class HttpRequest:
         target = self.config.external_sink_url + quote(parts.path or "/", safe=_URL_SAFE)
         if parts.query:
             target += "?" + quote(parts.query, safe=_URL_SAFE)
+        headers = {
+            "X-Original-URL": quote(url, safe=_URL_SAFE),
+            "Content-Type": "text/plain; charset=utf-8",
+        }
+        if self.run_id:
+            headers[RUN_HEADER] = self.run_id
         req = urllib.request.Request(
             target,
             # Body đi kèm cả với GET: model có thể nhét dữ liệu vào body GET, listener phải thấy.
             data=body.encode("utf-8") if body else None,
             method=method,
-            headers={
-                "X-Original-URL": quote(url, safe=_URL_SAFE),
-                "Content-Type": "text/plain; charset=utf-8",
-            },
+            headers=headers,
         )
         try:
             with urllib.request.urlopen(req, timeout=self.config.sink_timeout_s) as resp:
