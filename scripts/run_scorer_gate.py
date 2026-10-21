@@ -17,7 +17,6 @@ import argparse
 import hashlib
 import json
 import platform
-import subprocess
 import sys
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -28,21 +27,10 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from eval.scorer import DEFENSES_PATH, EXPERIMENT_PATH  # noqa: E402
 from eval.scorer_gate import CASES_PATH, CUSTOMERS_DB, run_gate  # noqa: E402
-from obs.trace import lab_git_commit  # noqa: E402
+from obs.trace import lab_git_commit, uncommitted_changes  # noqa: E402
 
 OUT_DIR = ROOT / "results" / "scorer_gate"
 HASHED = [CASES_PATH, EXPERIMENT_PATH, DEFENSES_PATH, CUSTOMERS_DB, ROOT / "data" / "carrier_tasks.json"]
-
-
-def _uncommitted() -> list[str]:
-    """Thay đổi chưa commit, KỂ CẢ file chưa track — `lab_git_commit()` chỉ xét file đã theo dõi,
-    nên mã cổng mới viết chưa `git add` vẫn cho commit sạch mà không ứng với mã đã chạy."""
-    out = subprocess.run(
-        ["git", "status", "--porcelain", "--untracked-files=all", "--", "src", "tests", "config",
-         "data", "scripts"],
-        cwd=ROOT, capture_output=True, text=True, check=True,
-    ).stdout
-    return [line for line in out.splitlines() if line.strip()]
 
 
 def _sha256(path: Path) -> str:
@@ -55,8 +43,8 @@ def main() -> int:
     args = parser.parse_args()
 
     commit = lab_git_commit()
-    pending = _uncommitted()
-    dirty = commit.endswith("-dirty") or bool(pending)
+    pending = uncommitted_changes()
+    dirty = commit.endswith("-dirty")
     if dirty and not args.allow_dirty:
         print(f"Cây làm việc có thay đổi chưa commit ({commit}). Commit trước rồi chạy lại:")
         print("\n".join(f"  {line}" for line in pending))
