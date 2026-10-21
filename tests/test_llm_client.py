@@ -297,7 +297,7 @@ def test_khoi_judge_dung_nhu_target_va_pin_model(monkeypatch):
     monkeypatch.setenv("JUDGE_MODEL", "claude-sonnet-5-5")
     client = LLMClient(llm_mod.JUDGE_ID, config_path=CONFIG_PATH, log_path=None)
     assert client.provider == "anthropic" and client.model == "claude-sonnet-5-5"
-    assert client.default_temperature == 0
+    assert client.default_temperature is None  # SDK không nhận temperature
     monkeypatch.setenv("JUDGE_MODEL", "claude-opus-5")
     with pytest.raises(LLMClientConfigError, match="model_id đã pin"):
         LLMClient(llm_mod.JUDGE_ID, config_path=CONFIG_PATH, log_path=None)

@@ -67,6 +67,9 @@ judge:
   api_key_env: ANTHROPIC_API_KEY
   model_env: JUDGE_MODEL
   model_id: claude-sonnet-5-5
-  temperature: 0
+  # SDK `anthropic` 1.13 không nhận `temperature` ở Messages.create (lần chạy thử STT-37 dừng vì
+  # TypeError) — như A1, judge chạy sampling mặc định. Phán quyết judge vì thế không tất định;
+  # độ lệch đo bằng soát tay 5 câu của STT-37.
+  temperature: null
   # Đơn giá TA cung cấp 2026-10-21 (STT-37).
   pricing_usd_per_mtok: {input: 2.10, output: 6.60}
