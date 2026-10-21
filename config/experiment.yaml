@@ -251,7 +251,9 @@ blocks:
     targets: [A2, A3]
     # `off` đo lại trên S_def trong cùng lô: DSR không so với B1 (khác thời điểm, và lệch lên vì
     # S_def chọn đúng ô ASR cao nhất của B1) — giao thức mục 8, N1–N2. Khớp STT-71.
-    presets: ["off", d1_only, d2_only, d3_only, d4_only, all]
+    # `d3_no_confirm` (R4 tắt) GVHD duyệt 2026-10-21: tách R1–R3 khỏi R4; báo cáo dạng khám phá
+    # (ma trận v-pred-1.0 không có dự đoán), không vào ứng viên `best_single`.
+    presets: ["off", d1_only, d2_only, d3_only, d4_only, all, d3_no_confirm]
     # S_def: ô (kỹ thuật × kênh × G) có cận dưới Wilson CI của ASR_e2e(off) ≥ 10% ở A2 hoặc A3,
     # tối đa 12 ô theo ASR giảm dần.
     cells: {from_block: B1, rule: S_def, min_ci_low: 0.10, max_cells: 12, selected: null}
@@ -264,7 +266,7 @@ blocks:
     purpose: [RQ4]
     run_kind: benign
     targets: [A2, A3]
-    presets: ["off", d1_only, d2_only, d3_only, d4_only, all]
+    presets: ["off", d1_only, d2_only, d3_only, d4_only, all, d3_no_confirm]
     queries: all                  # 60 câu của data/benign_queries.json
     repeats: 5
 

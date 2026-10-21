@@ -17,15 +17,9 @@ from seed_db import ANCHOR_DATE
 # Tập kỹ thuật chung của ba phân kênh — checklist mục 4.
 T_CHUNG = {"T1", "T2", "T3", "T5", "T7", "T8"}
 
-# Số run ước tính, checklist mục 5 (đã ký). B4 "~500" — giao thức chốt 516 (mục 9).
-CHECKLIST_RUNS = {"B1": 3780, "B2": 4320, "B3": 4200, "B4": 516, "B5": 900, "B6": 450}
-
-# Checklist đếm 7 preset cho B3 (`off`, `d1_only`…`d4_only`, `all`, `reduced_3`) nhưng `reduced_3`
-# là nhóm {off, d3_only, all}, không phải một cấu hình — B3 có 6 preset chạy được, ra 3.600 thay vì
-# 4.200. Khớp lại nếu GVHD duyệt `d3_no_confirm` (Việc treo VT-4). xfail strict để báo ngay khi khớp.
-PRESET_COUNT_MISMATCH = pytest.mark.xfail(
-    strict=True, reason="B3: checklist mục 5 đếm reduced_3 như một preset — chờ VT-4"
-)
+# Số run ước tính, checklist mục 5. B2, B3 có 7 preset sau khi GVHD duyệt `d3_no_confirm` (2026-10-21).
+# B4 "~500" — giao thức chốt 516 (mục 9).
+CHECKLIST_RUNS = {"B1": 3780, "B2": 5040, "B3": 4200, "B4": 516, "B5": 900, "B6": 450}
 
 
 @pytest.fixture(scope="module")
@@ -41,17 +35,7 @@ def test_du_sau_khoi(exp):
     assert list(exp.blocks) == ["B1", "B2", "B3", "B4", "B5", "B6"]
 
 
-@pytest.mark.parametrize(
-    "block_id",
-    [
-        "B1",
-        "B2",
-        pytest.param("B3", marks=PRESET_COUNT_MISMATCH),
-        "B4",
-        "B5",
-        "B6",
-    ],
-)
+@pytest.mark.parametrize("block_id", ["B1", "B2", "B3", "B4", "B5", "B6"])
 def test_so_run_khop_checklist(exp, block_id):
     assert exp.planned_runs(block_id) == CHECKLIST_RUNS[block_id]
 
@@ -60,6 +44,13 @@ def test_b2_do_lai_off_cung_lo(exp):
     # DSR lấy ASR(off) đo lại trong B2, không lấy từ B1 (giao thức mục 8, N1–N2).
     assert "off" in exp.blocks["B2"].presets
     assert exp.blocks["B2"].best_single == {"select_on": "full_block", "per": "goal"}
+
+
+def test_d3_no_confirm_o_b2_b3_khong_la_ung_vien_don_le(exp):
+    # GVHD duyệt 2026-10-21: tách R1–R3 khỏi R4, báo cáo khám phá, không tranh "đơn lẻ tốt nhất".
+    for block_id in ("B2", "B3"):
+        assert "d3_no_confirm" in exp.blocks[block_id].presets
+    assert not "d3_no_confirm".endswith("_only")
 
 
 def test_b4_ba_phan(exp):

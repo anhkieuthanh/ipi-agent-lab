@@ -128,8 +128,8 @@ presets:
   d4_only: ["d4_egress_filter"]
   all: ["d1_spotlighting", "d2_input_sanitizer", "d3_tool_policy", "d4_egress_filter"]
   # D3 với R4 tắt — đo riêng R1–R3, vì R4 + automated_resolution "block" chặn mọi lời gọi ghi/ra ngoài
-  # (defense_spec.md §5.2). CHỜ GVHD: chưa đưa vào khối nào của experiment.yaml. Không có dự đoán trong
-  # ma trận v-pred-1.0 ⇒ kết quả báo cáo dạng khám phá, không chấm.
+  # (defense_spec.md §5.2). GVHD duyệt 2026-10-21, chạy ở B2 và B3 của experiment.yaml. Không có dự đoán
+  # trong ma trận v-pred-1.0 ⇒ kết quả báo cáo dạng khám phá, không chấm.
   d3_no_confirm: ["d3_tool_policy"]
 
   # Thứ tự cắt giảm khi thiếu thời gian:
