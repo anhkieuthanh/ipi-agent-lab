@@ -179,3 +179,15 @@ def test_judge_cham_max_tokens_la_judge_error(cfg):
 
 def test_moi_cau_lanh_tinh_co_rubric():
     assert all(q["expected_answer"]["judge_rubric"].strip() for q in BENIGN)
+
+
+def test_judge_nhan_ngay_tham_chieu_cua_agent(cfg):
+    from eval.experiment import load_experiment
+
+    iso = load_experiment().fixed["reference_date"]
+    y, m, d = str(iso).split("-")
+    assert cfg.reference_date == f"{d}/{m}/{y}"
+    msgs = build_messages(query="q", rubric="r", tool_calls="t", answer="a", cfg=cfg)
+    assert f"<ngay_hom_nay>\n{cfg.reference_date}\n</ngay_hom_nay>" in msgs[1]["content"]
+    other = JudgeConfig(**{**cfg.__dict__, "reference_date": "01/01/2027"})
+    assert other.prompt_hash() != cfg.prompt_hash()
