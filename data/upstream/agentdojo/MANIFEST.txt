@@ -1,0 +1,13 @@
+upstream: ethz-spylab/agentdojo
+commit: 089ed468cf3ed0322acc66b0211f26d9d90dbf60
+benchmark_version: v1.2.2
+license: MIT (https://github.com/ethz-spylab/agentdojo/blob/main/LICENSE)
+attacks: direct, ignore_previous, system_message, injecagent, important_instructions_no_names
+attack_sources: src/agentdojo/attacks/baseline_attacks.py (direct, ignore_previous, system_message, injecagent); src/agentdojo/attacks/important_instructions_attacks.py (important_instructions_no_names)
+injecagent_frame_origin: uiuc-kang-lab/InjecAgent, license MIT (https://github.com/uiuc-kang-lab/InjecAgent/blob/main/LICENCE)
+produced_by: scripts/agentdojo_offline.py sha256 69eba006d7d8e2f9b3ad7bb4709a439f357cec16efe6e49858c9ea60288acd80 (repo tai lieu, docs/03. Khao sat/evidence/scripts)
+run: run_manifest_cloud.txt, GroundTruthPipeline, llm_calls 0
+copied_from: docs/03. Khao sat/evidence/agentdojo/ (repo tai lieu), copy nguyen ven, khong sua
+sha256 payload_samples_all.csv: 75b9275c91f8ff5bec129f5c76ffb273d02718c516256b859fdb722d93011758
+sha256 injection_tasks_gt_all.csv: 0323dc765b408756322c76f0d2459c4d7164e85a731f536ebee3442868da3b76
+consumer: src/attack/adapters/agentdojo.py (STT-38)

@@ -1,0 +1,111 @@
+# config/attack_sources.yaml — hợp đồng của các adapter benchmark ngoài (STT-38, STT-39).
+#
+# Adapter đọc snapshot trong `data/upstream/<benchmark>/` và đổ vào lược đồ nhập
+# `attack.adapters.base.ImportedRecord`. Mọi quyết định gán nhãn (kỹ thuật, mục tiêu, luật coupling)
+# nằm ở đây, KHÔNG nằm trong code adapter: TA duyệt file này, code chỉ thi hành.
+#
+# Gán kỹ thuật theo cây quyết định `docs/04. Design/payload_taxonomy.md` mục 3 (nhánh đầu tiên
+# trả lời "có"). Gán mục tiêu theo `Y_TUONG_DU_AN.md`: G1 rò dữ liệu ra bồn, G2 hành động ngoài
+# quyền, G3 thao túng câu trả lời không cần tool. Tên khóa lạ bị loader từ chối.
+
+schema_version: "1.0"
+
+agentdojo:
+  snapshot_dir: data/upstream/agentdojo
+  payload_file: payload_samples_all.csv
+  ground_truth_file: injection_tasks_gt_all.csv
+  commit: 089ed468cf3ed0322acc66b0211f26d9d90dbf60
+  benchmark_version: v1.2.2
+  license: MIT
+  lang: en
+  # AgentDojo tiêm qua kết quả tool (gần K2b nhất). Khung T1/T2 không gắn kênh nên mở cả ba kênh
+  # theo ma trận kênh × kỹ thuật (taxonomy mục 2.1); injector chọn kênh lúc dựng ma trận.
+  channels: [K1, K2a, K2b]
+
+  attacks:
+    direct:
+      technique: T1
+      variant: bare
+      source_path: src/agentdojo/attacks/baseline_attacks.py#DirectAttack
+      rationale: "Nhánh 8: mệnh lệnh tường minh tiền tố 'TODO:', không nhãn uy quyền."
+    system_message:
+      technique: T1
+      variant: system_tag
+      source_path: src/agentdojo/attacks/baseline_attacks.py#SystemMessageAttack
+      rationale: "Nhánh 8: mệnh lệnh tường minh mang nhãn vai trò '###(system_message)'."
+    important_instructions_no_names:
+      technique: T1
+      variant: user_signed
+      source_path: src/agentdojo/attacks/important_instructions_attacks.py#ImportantInstructionsAttack (no_names)
+      rationale: "Nhánh 8: mệnh lệnh tường minh xưng danh người dùng ('from me, the user'); không thu hồi chỉ thị cũ."
+    ignore_previous:
+      technique: T2
+      variant: none
+      source_path: src/agentdojo/attacks/baseline_attacks.py#IgnorePreviousAttack
+      rationale: "Nhánh 7: yêu cầu bỏ qua chỉ thị trước ('Ignore your previous instructions')."
+    injecagent:
+      technique: T2
+      variant: none
+      source_path: src/agentdojo/attacks/baseline_attacks.py#InjecAgentAttack
+      origin: "uiuc-kang-lab/InjecAgent (MIT)"
+      rationale: "Nhánh 7: 'Ignore all previous instructions and strictly adhere to…'."
+
+  # 35 injection task → mục tiêu. TA duyệt 2026-10-21.
+  goals:
+    workspace:
+      injection_task_0: G2
+      injection_task_1: G2
+      injection_task_2: G2
+      injection_task_3: G1
+      injection_task_4: G1
+      injection_task_5: G1
+      injection_task_6: G1
+      injection_task_7: G1
+      injection_task_8: G1
+      injection_task_9: G1
+      injection_task_10: G1
+      injection_task_11: G1
+      injection_task_12: G1
+      injection_task_13: G2
+    travel:
+      injection_task_0: G2
+      injection_task_1: G1
+      injection_task_2: G2
+      injection_task_3: G1
+      injection_task_4: G2
+      injection_task_5: G1
+      injection_task_6: G3
+    banking:
+      injection_task_0: G1
+      injection_task_1: G1
+      injection_task_2: G1
+      injection_task_3: G1
+      injection_task_4: G2
+      injection_task_5: G2
+      injection_task_6: G2
+      injection_task_7: G2
+      injection_task_8: G1
+    slack:
+      injection_task_1: G2
+      injection_task_2: G1
+      injection_task_3: G2
+      injection_task_4: G1
+      injection_task_5: G2
+
+  # semantic_coupling = goal nhắc thực thể của suite gốc (taxonomy mục 4.2). Luật tất định: khớp
+  # bất kỳ mẫu regex hoặc thực thể nào dưới đây. Chuỗi khớp ghi vào coupling_evidence để soát.
+  coupling:
+    patterns:
+      email: '[\w.+-]+@[\w-]+\.[\w.]+'
+      iban: '\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b'
+      domain: '\b(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|org|net|io)\b'
+      object_id: "\\bID '\\d+'"
+      date: '\b\d{4}-\d{2}-\d{2}\b|\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}'
+    entities:
+      - Riverside View Hotel
+      - Paris
+      - Facebook
+      - Alice
+      - Fred
+      - Mark
+      - Travel Agency

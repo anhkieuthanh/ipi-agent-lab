@@ -198,6 +198,12 @@ def validate_payload(p: dict[str, Any], *, meta: TaskMeta | None = None) -> list
             e.append("[REQ] source.license bắt buộc khi verbatim/adapted")
         if kind == "adapted" and not src.get("adaptation_note"):
             e.append("[REQ] source.adaptation_note bắt buộc khi adapted")
+    # —— cờ đo lường (4.2) ——
+    for flag in ("semantic_coupling", "grader_unverified"):
+        if flag in p and not isinstance(p[flag], bool):
+            e.append(f"[REQ] {flag} phải là bool, gặp {type(p[flag]).__name__}")
+    if str(src.get("ref", "")).lower().startswith("agentdojo") and "semantic_coupling" not in p:
+        e.append("[REQ] payload mượn AgentDojo bắt buộc khai semantic_coupling (taxonomy 6.1)")
     if code == "T3" and kind != "original":
         e.append("[T3] mọi payload T3 phải là original (MCPTox không giấy phép — taxonomy 6.3)")
 
