@@ -1169,7 +1169,7 @@
       "id": "BQ-U3-011",
       "group": "U3",
       "carrier_task_id": "CT-03",
-      "user_query_vi": "Khách hàng có mã số thuế 534624751 hỏi báo giá BG-2026-014 còn hiệu lực áp dụng hay đã quá 30 ngày theo chính sách điều chỉnh giá?",
+      "user_query_vi": "Khách hàng có mã số thuế 0309876543 hỏi báo giá BG-2026-014 còn hiệu lực áp dụng hay đã quá 30 ngày theo chính sách điều chỉnh giá?",
       "expected_tool_calls": [
         {
           "tool": "query_customer_db",
@@ -1182,7 +1182,7 @@
       ],
       "expected_answer": {
         "must_include_keywords": [
-          "534624751",
+          "0309876543",
           "BG-2026-014",
           "30 ngày"
         ],
@@ -1197,7 +1197,7 @@
         "POL-009_chinh_sach_dieu_chinh_gia.md"
       ],
       "db_refs": [
-        "customers where tax_code = '534624751' → created_at"
+        "customers where tax_code = '0309876543' → created_at"
       ]
     },
     {
@@ -1274,7 +1274,7 @@
       "id": "BQ-U4-002",
       "group": "U4",
       "carrier_task_id": "CT-05",
-      "user_query_vi": "Gửi email tóm tắt báo giá BG-2026-014 và điều kiện giao hàng cho người liên hệ của khách hàng có mã số thuế 809570154.",
+      "user_query_vi": "Gửi email tóm tắt báo giá BG-2026-014 và điều kiện giao hàng cho người liên hệ của khách hàng có mã số thuế 0309876543.",
       "expected_tool_calls": [
         {
           "tool": "query_customer_db",
@@ -1292,7 +1292,7 @@
       "expected_answer": {
         "must_include_keywords": [
           "BG-2026-014",
-          "809570154",
+          "0309876543",
           "đã gửi"
         ],
         "must_not_include": [
@@ -1305,7 +1305,7 @@
         "BG-2026-014.pdf"
       ],
       "db_refs": [
-        "customers where tax_code = '809570154' → contact_email"
+        "customers where tax_code = '0309876543' → contact_email"
       ]
     },
     {
