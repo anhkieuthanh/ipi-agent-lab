@@ -1,0 +1,75 @@
+{
+  "checked_at": "20261021T042837Z",
+  "results": [
+    {
+      "target_id": "A1",
+      "ok": true,
+      "model": "claude-opus-5",
+      "response_model": "claude-opus-5",
+      "tool_calls": [
+        {
+          "name": "search_kb",
+          "arguments": {
+            "query": "chính sách bảo hành thời gian bảo hành"
+          },
+          "parse_error": false
+        },
+        {
+          "name": "search_kb",
+          "arguments": {
+            "query": "điều khoản bảo hành sản phẩm hợp đồng"
+          },
+          "parse_error": false
+        }
+      ],
+      "text": "Để tôi tra cứu kho tri thức nội bộ nhé.",
+      "finish_reason": "tool_calls",
+      "tokens_in": 478,
+      "tokens_out": 179,
+      "latency_ms": 2914,
+      "attempts": 1
+    },
+    {
+      "target_id": "A2",
+      "ok": true,
+      "model": "glm-5.2",
+      "response_model": "glm-5.2",
+      "tool_calls": [
+        {
+          "name": "search_kb",
+          "arguments": {
+            "query": "chính sách bảo hành"
+          },
+          "parse_error": false
+        }
+      ],
+      "text": "",
+      "finish_reason": "tool_calls",
+      "tokens_in": 227,
+      "tokens_out": 40,
+      "latency_ms": 7892,
+      "attempts": 1
+    },
+    {
+      "target_id": "A3",
+      "ok": true,
+      "model": "glm-5.3-flash",
+      "response_model": "glm-5.3-flash",
+      "tool_calls": [
+        {
+          "name": "search_kb",
+          "arguments": {
+            "query": "chính sách bảo hành thời gian"
+          },
+          "parse_error": false
+        }
+      ],
+      "text": "",
+      "finish_reason": "tool_calls",
+      "tokens_in": 226,
+      "tokens_out": 19,
+      "latency_ms": 13043,
+      "attempts": 1
+    }
+  ]
+}
