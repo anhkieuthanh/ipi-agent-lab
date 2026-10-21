@@ -88,4 +88,6 @@ judge:
   # Cắt kết quả mỗi tool và câu trả lời trước khi đưa judge — giữ request trong ngân sách token.
   max_tool_result_chars: 3000
   max_answer_chars: 6000
-  max_tokens: 512
+  # Gồm cả khối thinking mặc định của claude-sonnet-5-5: 512 làm 2/14 lời gọi của lượt chạy thử STT-37
+  # cụt (`finish_reason = length`). Bằng `fixed.max_tokens` của agent.
+  max_tokens: 4096

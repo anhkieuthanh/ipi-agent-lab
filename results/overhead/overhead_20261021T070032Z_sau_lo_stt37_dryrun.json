@@ -1,0 +1,154 @@
+{
+  "measured_at": "20261021T070032Z",
+  "tag": "sau_lo_stt37_dryrun",
+  "repeats": 3,
+  "results": [
+    {
+      "target_id": "A1",
+      "ok": true,
+      "model": "claude-opus-5",
+      "floor": {
+        "values": [
+          8,
+          8,
+          8
+        ],
+        "min": 8,
+        "max": 8,
+        "median": 8
+      },
+      "scaling": {
+        "1": {
+          "values": [
+            37,
+            37,
+            37
+          ],
+          "min": 37,
+          "max": 37,
+          "median": 37
+        },
+        "20": {
+          "values": [
+            626,
+            626,
+            626
+          ],
+          "min": 626,
+          "max": 626,
+          "median": 626
+        },
+        "100": {
+          "values": [
+            3106,
+            3106,
+            3106
+          ],
+          "min": 3106,
+          "max": 3106,
+          "median": 3106
+        }
+      },
+      "tokens_per_unit": 31.0,
+      "fixed_overhead_estimate": 6.0
+    },
+    {
+      "target_id": "A2",
+      "ok": true,
+      "model": "glm-5.2",
+      "floor": {
+        "values": [
+          14,
+          14,
+          14
+        ],
+        "min": 14,
+        "max": 14,
+        "median": 14
+      },
+      "scaling": {
+        "1": {
+          "values": [
+            32,
+            32,
+            32
+          ],
+          "min": 32,
+          "max": 32,
+          "median": 32
+        },
+        "20": {
+          "values": [
+            371,
+            371,
+            371
+          ],
+          "min": 371,
+          "max": 371,
+          "median": 371
+        },
+        "100": {
+          "values": [
+            1799,
+            1799,
+            1799
+          ],
+          "min": 1799,
+          "max": 1799,
+          "median": 1799
+        }
+      },
+      "tokens_per_unit": 17.848484848484848,
+      "fixed_overhead_estimate": 14.151515151515152
+    },
+    {
+      "target_id": "A3",
+      "ok": true,
+      "model": "glm-5.3-flash",
+      "floor": {
+        "values": [
+          21,
+          21,
+          21
+        ],
+        "min": 21,
+        "max": 21,
+        "median": 21
+      },
+      "scaling": {
+        "1": {
+          "values": [
+            39,
+            39,
+            39
+          ],
+          "min": 39,
+          "max": 39,
+          "median": 39
+        },
+        "20": {
+          "values": [
+            378,
+            378,
+            378
+          ],
+          "min": 378,
+          "max": 378,
+          "median": 378
+        },
+        "100": {
+          "values": [
+            1806,
+            1806,
+            1806
+          ],
+          "min": 1806,
+          "max": 1806,
+          "median": 1806
+        }
+      },
+      "tokens_per_unit": 17.848484848484848,
+      "fixed_overhead_estimate": 21.151515151515152
+    }
+  ]
+}
