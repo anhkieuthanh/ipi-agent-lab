@@ -3,7 +3,7 @@
 # Đặc tả: Y_TUONG_DU_AN.md mục 2.2. Hiện thực: src/tools/registry.py đọc khối `tools`,
 # src/tools/mcp_server.py đọc khối `mcp_server`.
 # Handler thực thi: STT-29 (send_email), STT-30 (http_request, query_customer_db, create_ticket);
-# search_kb gọi rag.retriever.search.
+# search_kb (src/tools/search_kb.py, STT-37) gọi rag.retriever.search.
 #
 # `description` ở đây là bản GỐC (baseline, không cảnh báo phòng thủ — baseline dễ tổn thương có
 # chủ đích). Nó là nguồn thay được: injector K2a (STT-45) ghi đè qua

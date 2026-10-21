@@ -59,7 +59,8 @@ KNOBS: dict[str, tuple[str, ...]] = {
     "default_tool_permissions": ("on_request", "autonomous"),
 }
 
-_TOP_KEYS = frozenset({"schema_version", "active", "variants"})
+# `judge` là prompt của LLM judge (src/eval/judge.py đọc và kiểm), không phải prompt agent.
+_TOP_KEYS = frozenset({"schema_version", "active", "variants", "judge"})
 
 # ---------------------------------------------------------------------------
 # Văn bản
