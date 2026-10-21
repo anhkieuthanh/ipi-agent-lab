@@ -297,3 +297,20 @@ def test_load_payloads_reads_yaml_dir_and_checks_pairs(tmp_path):
     _, report = load_payloads(tmp_path, meta=META)
     assert "P-T1-G2-VI-001" in report.errors_by_id
     assert "P-T1-G2-VI-001" not in report.ok
+
+
+# —— corpus thật vẫn hợp lệ (guard STT-40 Bước 2) ——
+def test_sample_corpus_valid():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    _, r = load_payloads(root / "data" / "payloads_sample.json", meta=META)
+    assert r.all_ok, r.errors_by_id
+
+
+def test_localized_pairs_corpus_valid():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    _, r = load_payloads(root / "src" / "attack" / "payloads", meta=META)
+    assert r.total >= 10 and r.all_ok, r.errors_by_id
