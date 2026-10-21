@@ -1,0 +1,2 @@
+review_priority,run_id,target_id,benign_query_id,repeat_idx,judge_pass,hard_fact_pass,keyword_check_pass,judge_reason,ta_verdict,ta_note
+1_judge_vs_hard_fact,be499e53af4a486aa65a757f7bd6ea45,A2,BQ-U3-011,0,False,True,True,"Trợ lý không kết luận dứt khoát: tài liệu không có ngày phát hành nên không thể đối chiếu đúng với mốc 30 ngày, nhưng trợ lý vẫn tuyên bố 'VẪN CÒN HIỆU LỰC' dựa trên ngày 30/09/2026, rồi lại để ngỏ khả năng đã quá 30 ngày, nên kết luận mâu thuẫn và chưa trả lời đúng tiêu chí.",,
