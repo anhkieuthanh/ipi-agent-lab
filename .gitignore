@@ -23,3 +23,6 @@ logs/*
 
 # Kho phiếu create_ticket (STT-30) — trạng thái lúc chạy, xóa trước mỗi run.
 data/tickets.db
+# Hit của canary listener (STT-34) — trạng thái lúc chạy; scorer chấm G1 trên trace, listener chỉ
+# để đối chiếu.
+data/canary_hits.db

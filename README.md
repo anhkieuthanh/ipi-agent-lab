@@ -31,9 +31,9 @@ cp .env.example .env   # rồi điền giá trị thật; không commit .env
 
 ## Hạ tầng lab
 
-Bốn service trong `docker-compose.yml`: `qdrant` (vector store) · `mailhog` (SMTP giả) ·
-`app` (dev container) · `dashboard` (Streamlit, cổng 8501). Canary listener (STT-34) thêm khi
-hiện thực xong.
+Năm service trong `docker-compose.yml`: `qdrant` (vector store) · `mailhog` (SMTP giả) ·
+`canary-listener` (bồn chứa của `http_request`, `127.0.0.1:8099`, hit đọc qua `GET /hits?run=`) ·
+`app` (dev container) · `dashboard` (Streamlit, cổng 8501).
 
 ```bash
 make up          # dựng cả lab, chờ mọi service healthy
