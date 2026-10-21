@@ -1,6 +1,6 @@
 """schema.py — hợp đồng thi hành của payload T1–T8 (bước code của STT-20).
 
-File này cưỡng chế các bất biến ở `docs/04. Design/payload_taxonomy.md` mục 4.3 (bất biến 1–10)
+File này cưỡng chế các bất biến ở `docs/04. Design/payload_taxonomy.md` mục 4.3 (bất biến 1–11)
 và các ràng buộc trường ở mục 4.1/4.2/5. `payload_taxonomy.md` là nguồn quy định; lệch nhau thì
 sửa code theo file đó.
 
@@ -15,7 +15,9 @@ Dùng:
     errors = validate_payload(one_dict)          # [] nếu hợp lệ
     payloads, report = load_payloads(PATH)        # report.ok / report.errors_by_id
 
-Chỉ dùng thư viện chuẩn (pyproject không có pydantic/jsonschema). Không gọi mạng, không gọi LLM.
+`PATH` là một file `.json`/`.yaml`/`.yml` hoặc một thư mục (gộp mọi file đó, theo tên).
+
+Chỉ dùng thư viện chuẩn và pyyaml (pyproject không có pydantic/jsonschema). Không gọi mạng, không gọi LLM.
 """
 
 from __future__ import annotations
@@ -25,6 +27,8 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 from eval.canary import CANARY_PLACEHOLDER
 from eval.canary import REAL_CANARY_RE as _REAL_CANARY_RE
@@ -59,6 +63,8 @@ _CTX_PLACEHOLDERS = {"{USER}", "{MODEL}", "{TOOL}"}
 _INSTRUCTION = "{INSTRUCTION}"
 _PLACEHOLDER_RE = re.compile(r"\{[A-Z_]+\}")
 _ID_RE = re.compile(r"^P-(T[1-8])-(G[1-3])-(VI|EN|MIX)-(\d{3,})$")
+_PAIR_ID_RE = re.compile(r"^PR-(T[1-8])-(G[1-3])-(\d{3,})$")
+_PAYLOAD_SUFFIXES = (".json", ".yaml", ".yml")
 # giá trị canary thật của run có dạng CANARY_SYSPROMPT_<uuid> / CANARY_DB_<uuid>;
 # payload chỉ được chứa placeholder, không bao giờ chứa giá trị thật (bất biến 7)
 _RUN_ID = "{run_id}"
@@ -128,6 +134,19 @@ def validate_payload(p: dict[str, Any], *, meta: TaskMeta | None = None) -> list
             e.append(f"[REQ] id mang {id_g} nhưng goal = {goal}")
         if lang in LANGS and id_lang != LANG_TOKEN[lang]:
             e.append(f"[INV-b] id mang {id_lang} nhưng lang = {lang} (chờ {LANG_TOKEN.get(lang)})")
+
+    # —— pair_id (4.2, bất biến 11 phần từng payload; phần cả cặp ở validate_pairs) ——
+    pair_id = p.get("pair_id")
+    if pair_id is not None:
+        pm = _PAIR_ID_RE.match(str(pair_id))
+        if not pm:
+            e.append(f"[INV11] pair_id '{pair_id}' sai mẫu PR-<T#>-<G#>-<NNN>")
+        elif pm.group(1) != code or pm.group(2) != goal:
+            e.append(f"[INV11] pair_id mang {pm.group(1)}/{pm.group(2)} nhưng payload là {code}/{goal}")
+        if code == "T8":
+            e.append("[INV11] T8 không dùng pair_id (không có bản en)")
+        if lang not in ("vi", "en"):
+            e.append(f"[INV11] payload có pair_id phải lang vi hoặc en, gặp '{lang}'")
 
     # —— template (bất biến 1, 2) ——
     template = tech.get("template", "")
@@ -319,14 +338,13 @@ class ValidationReport:
 def load_payloads(
     path: Path | str, *, meta: TaskMeta | None = None
 ) -> tuple[list[dict[str, Any]], ValidationReport]:
-    """Nạp file payload (list JSON) và validate từng phần tử.
+    """Nạp payload (file JSON/YAML hoặc thư mục), validate từng phần tử và các cặp pair_id.
 
     Không ném ngoại lệ khi payload sai — gom vào report để soạn sửa dần.
     """
     if meta is None:
         meta = load_task_meta()
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
-    items = data if isinstance(data, list) else data.get("payloads", [])
+    items = _read_items(Path(path))
     report = ValidationReport(total=len(items))
     seen: set[str] = set()
     for i, p in enumerate(items):
@@ -337,6 +355,76 @@ def load_payloads(
         seen.add(pid)
         if errs:
             report.errors_by_id[pid] = errs
-        else:
-            report.ok.append(pid)
+    for pid, errs in validate_pairs(items).items():
+        report.errors_by_id.setdefault(pid, []).extend(errs)
+    ids = [p.get("id", f"<#{i} không có id>") for i, p in enumerate(items)]
+    report.ok = [pid for pid in ids if pid not in report.errors_by_id]
     return items, report
+
+
+def _read_items(path: Path) -> list[dict[str, Any]]:
+    """Đọc một file JSON/YAML, hoặc gộp mọi file như vậy trong thư mục (theo tên file)."""
+    files = (
+        sorted(f for f in path.iterdir() if f.suffix in _PAYLOAD_SUFFIXES)
+        if path.is_dir() else [path]
+    )
+    items: list[dict[str, Any]] = []
+    for f in files:
+        text = f.read_text(encoding="utf-8")
+        data = json.loads(text) if f.suffix == ".json" else yaml.safe_load(text)
+        if data is None:
+            continue
+        items.extend(data if isinstance(data, list) else data.get("payloads", []))
+    return items
+
+
+# Trường phải trùng giữa hai payload của một cặp (bất biến 11). Đường dẫn chấm = khối lồng.
+_PAIR_SAME = (
+    "technique.code", "technique.variant", "goal", "goal_binding", "activation_check",
+    "base_frame", "semantic_coupling", "grader_unverified", "trigger",
+    "source.ref", "source.license",
+)
+_PAIR_SAME_AS_SET = (("channels", []), ("obfuscation", ["none"]))  # (trường, mặc định)
+
+
+def _get(p: dict[str, Any], dotted: str) -> Any:
+    cur: Any = p
+    for k in dotted.split("."):
+        cur = cur.get(k) if isinstance(cur, dict) else None
+    return cur
+
+
+def validate_pairs(items: list[dict[str, Any]]) -> dict[str, list[str]]:
+    """Bất biến 11 trên cả tập: mỗi pair_id đúng hai payload vi/en, chỉ khác ngôn ngữ.
+
+    Trả {id: [lỗi]}; lỗi gắn cho mọi payload của cặp sai.
+    """
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for p in items:
+        if p.get("pair_id") is not None:
+            groups.setdefault(str(p["pair_id"]), []).append(p)
+
+    out: dict[str, list[str]] = {}
+    for pair_id, members in groups.items():
+        e: list[str] = []
+        langs = sorted(str(m.get("lang")) for m in members)
+        if langs != ["en", "vi"]:
+            e.append(f"[INV11] {pair_id} cần đúng một payload vi và một en, gặp {langs}")
+        else:
+            a, b = members
+            for f_ in _PAIR_SAME:
+                if _get(a, f_) != _get(b, f_):
+                    e.append(f"[INV11] {pair_id} lệch '{f_}' giữa hai bản")
+            for f_, default in _PAIR_SAME_AS_SET:
+                if set(a.get(f_) or default) != set(b.get(f_) or default):
+                    e.append(f"[INV11] {pair_id} lệch '{f_}' giữa hai bản")
+            if len(a.get("fragments") or []) != len(b.get("fragments") or []):
+                e.append(f"[INV11] {pair_id} lệch số phần tử fragments")
+            ph_a = set(_PLACEHOLDER_RE.findall(_get(a, "technique.template") or ""))
+            ph_b = set(_PLACEHOLDER_RE.findall(_get(b, "technique.template") or ""))
+            if ph_a != ph_b:
+                e.append(f"[INV11] {pair_id} lệch placeholder template {sorted(ph_a ^ ph_b)}")
+        for m in members:
+            if e:
+                out.setdefault(str(m.get("id")), []).extend(e)
+    return out

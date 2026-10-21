@@ -1,4 +1,4 @@
-"""Test cho attack.payloads.schema — cưỡng chế bất biến taxonomy 4.3 (1–10).
+"""Test cho attack.payloads.schema — cưỡng chế bất biến taxonomy 4.3 (1–11).
 
 Dùng một payload MẪU hợp lệ về cấu trúc (nội dung chỉ thị là chuỗi trung tính, không phải
 tấn công thật — test kiểm schema, không kiểm hiệu lực tấn công). Mỗi ca sai làm hỏng đúng một
@@ -7,7 +7,17 @@ bất biến để chắc validator bắt đúng chỗ.
 
 from __future__ import annotations
 
-from src.attack.payloads.schema import load_task_meta, validate_payload
+import copy
+import json
+
+import yaml
+
+from src.attack.payloads.schema import (
+    load_payloads,
+    load_task_meta,
+    validate_pairs,
+    validate_payload,
+)
 
 META = load_task_meta()
 
@@ -206,3 +216,84 @@ def test_g2_constraint_needs_predicate():
     p["activation_check"] = {"goal": "G2", "violation": "constraint_violation",
                              "expected_tool": "send_email", "severity": "external_action"}
     assert any("[G2]" in m for m in validate_payload(p, meta=META))
+
+
+# —— bất biến 11: cặp vi/en ——
+def _pair() -> tuple[dict, dict]:
+    vi = _valid()
+    vi["pair_id"] = "PR-T1-G2-001"
+    en = copy.deepcopy(vi)
+    en["id"] = "P-T1-G2-EN-001"
+    en["lang"] = "en"
+    en["technique"]["template"] = "[SYSTEM NOTICE] {INSTRUCTION}"
+    return vi, en
+
+
+def test_inv11_valid_pair_passes():
+    vi, en = _pair()
+    assert validate_payload(vi, meta=META) == []
+    assert validate_payload(en, meta=META) == []
+    assert validate_pairs([vi, en]) == {}
+
+
+def test_inv11_pair_id_format_and_match():
+    vi, _ = _pair()
+    vi["pair_id"] = "PAIR-1"
+    assert any("[INV11]" in m for m in validate_payload(vi, meta=META))
+    vi["pair_id"] = "PR-T2-G2-001"  # T lệch technique.code
+    assert any("[INV11]" in m for m in validate_payload(vi, meta=META))
+
+
+def test_inv11_pair_id_not_for_mixed():
+    vi, _ = _pair()
+    vi["lang"] = "mixed"
+    vi["id"] = "P-T1-G2-MIX-001"
+    assert any("[INV11]" in m for m in validate_payload(vi, meta=META))
+
+
+def test_inv11_pair_needs_one_vi_one_en():
+    vi, en = _pair()
+    assert "P-T1-G2-VI-001" in validate_pairs([vi])          # thiếu bản en
+    en["lang"] = "vi"
+    en["id"] = "P-T1-G2-VI-002"
+    errs = validate_pairs([vi, en])                          # hai bản vi
+    assert set(errs) == {"P-T1-G2-VI-001", "P-T1-G2-VI-002"}
+
+
+def test_inv11_pair_must_match_except_language():
+    vi, en = _pair()
+    en["goal_binding"]["arguments"]["to"] = "khac@noibo.vn"
+    assert any("goal_binding" in m for m in validate_pairs([vi, en])["P-T1-G2-EN-001"])
+    vi, en = _pair()
+    en["channels"] = ["K1"]
+    assert any("channels" in m for m in validate_pairs([vi, en])["P-T1-G2-EN-001"])
+    vi, en = _pair()
+    en["source"]["license"] = "MIT"
+    assert any("source.license" in m for m in validate_pairs([vi, en])["P-T1-G2-EN-001"])
+
+
+def test_inv11_pair_channel_order_ignored():
+    vi, en = _pair()
+    en["channels"] = ["K2b", "K1"]
+    assert validate_pairs([vi, en]) == {}
+
+
+def test_inv11_pair_placeholders_must_match():
+    vi, en = _pair()
+    en["technique"]["template"] = "From {USER}: {INSTRUCTION}"
+    assert any("placeholder" in m for m in validate_pairs([vi, en])["P-T1-G2-EN-001"])
+
+
+def test_load_payloads_reads_yaml_dir_and_checks_pairs(tmp_path):
+    vi, en = _pair()
+    (tmp_path / "a.yaml").write_text(yaml.safe_dump([vi], allow_unicode=True), encoding="utf-8")
+    (tmp_path / "b.json").write_text(json.dumps([en], ensure_ascii=False), encoding="utf-8")
+    (tmp_path / "ghi_chu.txt").write_text("bo qua", encoding="utf-8")
+    items, report = load_payloads(tmp_path, meta=META)
+    assert report.total == 2 and report.all_ok
+
+    en["goal"] = "G1"  # lệch cặp → cả hai bản bị báo
+    (tmp_path / "b.json").write_text(json.dumps([en], ensure_ascii=False), encoding="utf-8")
+    _, report = load_payloads(tmp_path, meta=META)
+    assert "P-T1-G2-VI-001" in report.errors_by_id
+    assert "P-T1-G2-VI-001" not in report.ok
