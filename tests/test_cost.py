@@ -20,6 +20,9 @@ CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "models.yaml"
 
 def _config_with_prices(tmp_path, prices):
     cfg = yaml.safe_load(CONFIG_PATH.read_text("utf-8"))
+    # Xóa trắng giá của config thật: test chỉ thấy đúng giá nó đặt.
+    for block in [*cfg["targets"].values(), cfg["judge"]]:
+        block["pricing_usd_per_mtok"] = {"input": None, "output": None}
     for target, (pin, pout) in prices.items():
         cfg["targets"][target]["pricing_usd_per_mtok"] = {"input": pin, "output": pout}
     path = tmp_path / "models.yaml"
