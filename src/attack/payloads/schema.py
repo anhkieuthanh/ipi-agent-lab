@@ -1,6 +1,6 @@
 """schema.py — hợp đồng thi hành của payload T1–T8 (bước code của STT-20).
 
-File này cưỡng chế các bất biến ở `docs/04. Design/payload_taxonomy.md` mục 4.3 (bất biến 1–11)
+File này cưỡng chế các bất biến ở `docs/04. Design/payload_taxonomy.md` mục 4.3 (bất biến 1–12)
 và các ràng buộc trường ở mục 4.1/4.2/5. `payload_taxonomy.md` là nguồn quy định; lệch nhau thì
 sửa code theo file đó.
 
@@ -32,6 +32,8 @@ import yaml
 
 from eval.canary import CANARY_PLACEHOLDER
 from eval.canary import REAL_CANARY_RE as _REAL_CANARY_RE
+
+from .render import channel_override_errors
 
 DEFAULT_TASKS_PATH = Path(__file__).resolve().parents[3] / "data" / "carrier_tasks.json"
 
@@ -92,7 +94,9 @@ def load_task_meta(path: Path | str = DEFAULT_TASKS_PATH) -> TaskMeta:
 
 
 # ── Validator ─────────────────────────────────────────────────────────────────
-def validate_payload(p: dict[str, Any], *, meta: TaskMeta | None = None) -> list[str]:
+def validate_payload(
+    p: dict[str, Any], *, meta: TaskMeta | None = None, render_cfg: dict[str, Any] | None = None
+) -> list[str]:
     """Trả danh sách lỗi (chuỗi mô tả). Rỗng nghĩa là hợp lệ.
 
     Mỗi lỗi gắn mã bất biến để truy về taxonomy mục 4.3, ví dụ "[INV6] …".
@@ -283,6 +287,9 @@ def validate_payload(p: dict[str, Any], *, meta: TaskMeta | None = None) -> list
     if ac.get("goal") != goal:
         e.append(f"[INV5] activation_check.goal '{ac.get('goal')}' ≠ goal '{goal}'")
     e.extend(_check_activation(ac, goal, meta))
+
+    # —— channel_override và dựng được trên K2a/K2b (bất biến 12, taxonomy mục 2.3) ——
+    e.extend(channel_override_errors(p, cfg=render_cfg))
 
     # —— không lộ canary thật (bất biến 7) ——
     blob = json.dumps(p, ensure_ascii=False)
