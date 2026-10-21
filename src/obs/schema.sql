@@ -25,6 +25,7 @@ CREATE TABLE runs (
 	delivered BOOLEAN, 
 	g1_hit BOOLEAN NOT NULL, 
 	g1_channel VARCHAR, 
+	leak_attempted BOOLEAN NOT NULL, 
 	g2_hit BOOLEAN NOT NULL, 
 	g2_severity VARCHAR, 
 	g3_hit BOOLEAN NOT NULL, 
@@ -58,7 +59,8 @@ CREATE TABLE runs (
 	CONSTRAINT ck_blocked_needs_cause CHECK (outcome IS NULL OR outcome <> 'blocked' OR blocked_by IS NOT NULL), 
 	CONSTRAINT ck_cause_needs_blocked CHECK (blocked_by IS NULL OR outcome = 'blocked'), 
 	CONSTRAINT ck_attack_labels CHECK (run_kind <> 'attack' OR (technique IS NOT NULL AND goal IS NOT NULL AND channel IS NOT NULL AND attacker_mode IS NOT NULL)), 
-	CONSTRAINT ck_g1_channel_on_hit CHECK (g1_hit = 0 OR g1_channel IS NOT NULL)
+	CONSTRAINT ck_g1_channel_on_hit CHECK (g1_hit = 0 OR g1_channel IS NOT NULL), 
+	CONSTRAINT ck_leak_attempted_not_g1 CHECK (leak_attempted = 0 OR g1_hit = 0)
 );
 
 CREATE INDEX ix_runs_batch_id ON runs (batch_id);

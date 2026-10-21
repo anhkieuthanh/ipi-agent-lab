@@ -19,11 +19,17 @@ Dùng:
         rec.step(kind="tool", tool_name="send_email", tool_args={...}, tool_result="ok")
         rec.finish(outcome="success", g1_hit=True, g1_channel="email")
     df = export_runs(engine, target_id="A2", technique="T1")
+
+`env_hash` của `RunMeta` dựng bằng `compute_env_hash(template_hash(), "config/tools.yaml",
+lab_git_commit())` — băm ba phần theo giao thức thực nghiệm mục 4 bước 7. Canary của run không
+nằm trong hash: cùng cấu hình cho cùng `env_hash` ở mọi run.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
+import subprocess
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
@@ -44,6 +50,8 @@ __all__ = [
     "open_store",
     "export_runs",
     "ddl",
+    "compute_env_hash",
+    "lab_git_commit",
     "ASR_SQL",
     "TECHNIQUES",
     "BLOCKED_BY",
@@ -108,6 +116,7 @@ class Run(SQLModel, table=True):
             name="ck_attack_labels",
         ),
         CheckConstraint("g1_hit = 0 OR g1_channel IS NOT NULL", name="ck_g1_channel_on_hit"),
+        CheckConstraint("leak_attempted = 0 OR g1_hit = 0", name="ck_leak_attempted_not_g1"),
         Index("ix_runs_cell", "batch_id", "target_id", "technique", "channel", "goal"),
     )
 
@@ -145,6 +154,9 @@ class Run(SQLModel, table=True):
     delivered: bool | None = None  # chỉ biến thiên ở K1; K2a/K2b luôn true
     g1_hit: bool = False
     g1_channel: str | None = None
+    # Canary đã vào context agent nhưng CHƯA rời vành đai — không tính G1 (`canary_handling` của
+    # carrier_tasks.json). Rời vành đai thì là g1_hit, không ghi cả hai.
+    leak_attempted: bool = False
     g2_hit: bool = False
     g2_severity: str | None = None
     g3_hit: bool = False
@@ -196,6 +208,45 @@ def open_store(path: str | Path = ":memory:") -> Engine:
     engine = create_engine(f"sqlite:///{path}")
     SQLModel.metadata.create_all(engine)
     return engine
+
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def compute_env_hash(prompt_template_hash: str, tools_path: str | Path, git_commit: str) -> str:
+    """sha256 của ba phần: hash system prompt còn placeholder, nội dung tools.yaml, git commit.
+
+    Hàm thuần — runner truyền `agent.prompts.template_hash()` và `lab_git_commit()`.
+    """
+    for name, value in (("prompt_template_hash", prompt_template_hash), ("git_commit", git_commit)):
+        if not value or not value.strip():
+            raise ValueError(f"env_hash: '{name}' rỗng")
+    tools = Path(tools_path)
+    if not tools.is_absolute():
+        tools = _REPO_ROOT / tools
+    h = hashlib.sha256()
+    for part in (prompt_template_hash.encode(), tools.read_bytes(), git_commit.encode()):
+        # Tiền tố độ dài để ranh giới giữa các phần không trượt được.
+        h.update(len(part).to_bytes(8, "big"))
+        h.update(part)
+    return h.hexdigest()
+
+
+def lab_git_commit(repo: str | Path = _REPO_ROOT) -> str:
+    """HEAD của repo lab; thêm hậu tố `-dirty` khi file đã theo dõi có thay đổi chưa commit.
+
+    File chưa theo dõi (kết quả chạy, cache) không tính — chúng không đổi hành vi agent.
+    """
+
+    def git(*args: str) -> str:
+        out = subprocess.run(
+            ["git", "-C", str(repo), *args], capture_output=True, text=True, check=True
+        )
+        return out.stdout.strip()
+
+    head = git("rev-parse", "HEAD")
+    dirty = git("status", "--porcelain", "--untracked-files=no")
+    return f"{head}-dirty" if dirty else head
 
 
 def ddl() -> str:
