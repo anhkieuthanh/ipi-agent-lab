@@ -312,5 +312,7 @@ def test_localized_pairs_corpus_valid():
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
-    _, r = load_payloads(root / "src" / "attack" / "payloads", meta=META)
-    assert r.total >= 10 and r.all_ok, r.errors_by_id
+    items, r = load_payloads(root / "src" / "attack" / "payloads", meta=META)
+    assert r.total >= 20 and r.all_ok, r.errors_by_id
+    codes = {p["technique"]["code"] for p in items}
+    assert {"T1", "T2", "T3", "T4", "T5"} <= codes, codes
