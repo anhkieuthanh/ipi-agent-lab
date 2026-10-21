@@ -47,7 +47,14 @@ import anthropic
 import openai
 import yaml
 
-__all__ = ["LLMClient", "LLMResult", "ToolCall", "LLMClientConfigError", "LLMClientError"]
+__all__ = [
+    "JUDGE_ID",
+    "LLMClient",
+    "LLMResult",
+    "ToolCall",
+    "LLMClientConfigError",
+    "LLMClientError",
+]
 
 DEFAULT_CONFIG_PATH = "config/models.yaml"
 DEFAULT_LOG_PATH = "logs/llm_client.jsonl"
@@ -56,6 +63,9 @@ DEFAULT_LOG_PATH = "logs/llm_client.jsonl"
 _RETRYABLE_STATUS = {429, 500, 502, 503, 504, 529}
 
 PROVIDERS = ("openai", "anthropic")
+# `target_id` chọn khối `judge` của models.yaml thay vì một khối `targets` — model chấm `judge_pass`,
+# pin như target, ghi log với `target_id = "judge"` để obs.cost tính chi phí riêng.
+JUDGE_ID = "judge"
 # Khóa riêng trong message assistant giữ block gốc của Messages API; provider openai bỏ khóa này.
 NATIVE_CONTENT_KEY = "_anthropic_content"
 # stop_reason của Messages API → finish_reason kiểu OpenAI mà trace và scorer dùng.
@@ -157,11 +167,16 @@ class LLMClient:
     ) -> None:
         cfg = _load_config(config_path)
         targets = cfg["targets"]
-        if target_id not in targets:
+        if target_id == JUDGE_ID:
+            if not cfg.get(JUDGE_ID):
+                raise LLMClientConfigError(f"{config_path} thiếu khối '{JUDGE_ID}'")
+            spec = cfg[JUDGE_ID]
+        elif target_id not in targets:
             raise LLMClientConfigError(
                 f"target_id không hợp lệ: '{target_id}'. Có sẵn: {sorted(targets)}"
             )
-        spec = targets[target_id]
+        else:
+            spec = targets[target_id]
         defaults = cfg.get("defaults") or {}
 
         def opt(key: str, fallback: Any) -> Any:

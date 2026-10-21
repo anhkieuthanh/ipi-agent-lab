@@ -51,10 +51,13 @@ class Price:
 def load_prices(
     config_path: str | Path = "config/models.yaml", targets: Iterable[str] | None = None
 ) -> dict[str, Price]:
-    """Đọc đơn giá; `targets` = các target lô sẽ dùng (mặc định: tất cả)."""
+    """Đọc đơn giá; `targets` = các target lô sẽ dùng, kể cả `judge` (mặc định: tất cả)."""
     with Path(config_path).open("r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
-    all_targets = cfg.get("targets") or {}
+    # Khối `judge` tính như một target: lô có judge cần đơn giá judge (STT-37).
+    all_targets = dict(cfg.get("targets") or {})
+    if cfg.get("judge"):
+        all_targets["judge"] = cfg["judge"]
     wanted = list(targets) if targets is not None else list(all_targets)
 
     prices: dict[str, Price] = {}

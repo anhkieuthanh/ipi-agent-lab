@@ -44,6 +44,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_PATH = REPO_ROOT / "config" / "experiment.yaml"
 
 RQS = tuple(f"RQ{i}" for i in range(1, 7))
+#: Khóa gốc mang một lượt chạy ngoài sáu khối, cùng trường như một phần của khối (không `purpose`).
+EXTRA_UNITS = ("utility_baseline",)
 
 _TOP_KEYS = frozenset(
     {
@@ -62,6 +64,7 @@ _TOP_KEYS = frozenset(
         "never_cut",
         "reduced_presets",
         "benign_task_types",
+        "utility_baseline",
         "blocks",
     }
 )
@@ -114,6 +117,8 @@ class Experiment:
     path: Path
     raw: dict[str, Any]
     blocks: dict[str, Block]
+    # Lượt chạy ngoài sáu khối, cùng hình dạng một khối (USR nền STT-37). Khóa = tên khóa gốc.
+    extra_units: dict[str, Block] = field(default_factory=dict)
 
     @property
     def fixed(self) -> dict[str, Any]:
@@ -122,13 +127,21 @@ class Experiment:
     def contract_path(self, name: str) -> Path:
         return REPO_ROOT / self.raw["contracts"][name]
 
+    def unit(self, unit_id: str) -> Block:
+        """Một khối B1–B6 hoặc một lượt ngoài khối (`utility_baseline`)."""
+        if unit_id in self.blocks:
+            return self.blocks[unit_id]
+        if unit_id in self.extra_units:
+            return self.extra_units[unit_id]
+        raise KeyError(unit_id)
+
     def planned_runs(self, block_id: str) -> int | None:
         """Số run theo công thức của khối; `None` khi còn thừa số chưa chốt.
 
         Khối chọn ô theo quy tắc (B2, B5) cho cận trên — `cells.max_cells` ô. B6 tính cả nhánh có
-        điều kiện, cũng là cận trên.
+        điều kiện, cũng là cận trên. Nhận cả lượt ngoài khối (`utility_baseline`).
         """
-        return self._planned(self.blocks[block_id])
+        return self._planned(self.unit(block_id))
 
     def _planned(self, b: Block) -> int | None:
         if b.parts:
@@ -199,7 +212,10 @@ def load_experiment(path: str | Path = DEFAULT_PATH) -> Experiment:
     if missing:
         raise ExperimentConfigError(f"{path.name}: thiếu {missing}")
     blocks = {bid: _as_block(bid, b or {}) for bid, b in raw["blocks"].items()}
-    return Experiment(path=path, raw=raw, blocks=blocks)
+    extra = {
+        key: _as_block(key, raw[key] or {}, part=True) for key in EXTRA_UNITS if key in raw
+    }
+    return Experiment(path=path, raw=raw, blocks=blocks, extra_units=extra)
 
 
 def _yaml(path: Path) -> dict[str, Any]:
@@ -306,6 +322,10 @@ def validate(exp: Experiment) -> list[str]:
         for unit_where, unit, unit_raw in units:
             problems += _check_unit(unit_where, unit, unit_raw, exp.blocks, seen, targets, runnable)
         seen.append(bid)
+    for key, unit in exp.extra_units.items():
+        problems += _check_unit(key, unit, raw[key], exp.blocks, seen, targets, runnable)
+        if unit.run_kind != "benign" or unit.queries != "all" or not unit.repeats:
+            problems.append(f"{key}: phải là lượt lành tính trên mọi câu, có repeats")
     return problems
 
 
@@ -376,21 +396,23 @@ def _null_paths(node: Any, prefix: str) -> list[str]:
 def unresolved(exp: Experiment, block_id: str | None = None) -> list[str]:
     """Đường dẫn các trường còn `null`.
 
-    Không truyền `block_id`: mọi trường null của file. Truyền `block_id`: chỉ những trường chặn
-    khối đó — null của chính khối, `run_order.seed`, `refusal` và `g3_warning` (scorer cần ở mọi
+    Không truyền `block_id`: mọi trường null của file. Truyền `block_id` (khối hoặc lượt ngoài khối
+    như `utility_baseline`): chỉ những trường chặn nó — null của chính khối, `run_order.seed`, `refusal` và `g3_warning` (scorer cần ở mọi
     khối), và `benign_task_types` nếu khối lành tính.
     Runner từ chối mở khối khi danh sách này khác rỗng.
     """
     raw = exp.raw
     if block_id is None:
         return [p for key, value in raw.items() for p in _null_paths(value, key)]
-    if block_id not in exp.blocks:
-        raise KeyError(block_id)
-    paths = _null_paths(raw["blocks"][block_id], f"blocks.{block_id}")
+    unit = exp.unit(block_id)
+    if block_id in exp.extra_units:
+        paths = _null_paths(raw[block_id], block_id)
+    else:
+        paths = _null_paths(raw["blocks"][block_id], f"blocks.{block_id}")
     paths += _null_paths((raw.get("run_order") or {}).get("seed"), "run_order.seed")
     paths += _null_paths(raw.get("refusal"), "refusal")
     paths += _null_paths(raw.get("g3_warning"), "g3_warning")
-    if exp.blocks[block_id].run_kind == "benign":
+    if unit.run_kind == "benign":
         paths += _null_paths(raw.get("benign_task_types"), "benign_task_types")
     return paths
 

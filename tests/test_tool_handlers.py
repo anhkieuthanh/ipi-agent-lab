@@ -403,9 +403,8 @@ def test_ba_tool_qua_loi_agent_ghi_du_tham_so_vao_trace(reg, tickets, sink):
     assert all(st.tool_result for st in steps)
 
 
-def test_build_tool_layer_gan_ba_tool():
+def test_build_tool_layer_gan_du_nam_tool():
     import tools.registry as registry
 
     built = registry.build_tool_layer()
-    for name in ("query_customer_db", "http_request", "create_ticket"):
-        assert name in built._handlers
+    assert set(built._handlers) == set(built.names)

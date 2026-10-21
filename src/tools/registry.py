@@ -263,15 +263,18 @@ class ToolRegistry:
 def build_tool_layer() -> ToolRegistry:
     """ToolLayer mặc định cho MCP server (`mcp_server.backend` trong tools.yaml, STT-28).
 
-    Đã gắn: `send_email` (STT-29), `query_customer_db`, `http_request`, `create_ticket` (STT-30).
-    `search_kb` chưa gắn; gọi nó ném `LookupError` (lỗi harness), còn `list_tools()` đã dùng được.
+    Đủ năm tool: `send_email` (STT-29), `query_customer_db`, `http_request`, `create_ticket`
+    (STT-30), `search_kb` (STT-37). `search_kb` mở Qdrant lười ở lần gọi đầu, nên dựng registry
+    không cần Qdrant chạy.
     """
     from tools.create_ticket import CreateTicket
     from tools.http_request import HttpRequest
     from tools.query_customer_db import QueryCustomerDb
+    from tools.search_kb import SearchKb
     from tools.send_email import SendEmail
 
     reg = ToolRegistry()
+    reg.bind("search_kb", SearchKb.from_experiment())
     reg.bind("send_email", SendEmail.from_registry(reg))
     reg.bind("query_customer_db", QueryCustomerDb.from_registry(reg))
     reg.bind("http_request", HttpRequest.from_registry(reg))

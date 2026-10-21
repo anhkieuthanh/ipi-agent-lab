@@ -229,6 +229,19 @@ benign_task_types:
       BQ-U4-001, BQ-U4-002, BQ-U4-003, BQ-U4-004, BQ-U4-005
     ]
 
+# USR nền (STT-37, giao thức mục 3 bước 2): 60 câu × A1–A3 × 3 lần, phòng thủ tắt. Số TRƯỚC hiệu
+# chỉnh độ khó (giao thức mục 8, N6) — không là mốc so của B3, B3 tự có `off`. Không phải khối B1–B6:
+# không trả lời RQ nào, là mốc mô tả hữu dụng của từng model. Cùng trường như một khối lành tính;
+# runner `scripts/run_utility_baseline.py` đọc qua `Experiment.unit("utility_baseline")`.
+utility_baseline:
+  run_kind: benign
+  targets: [A1, A2, A3]
+  presets: ["off"]
+  queries: all                    # 60 câu của data/benign_queries.json
+  repeats: 3
+  # A2/A3 chạy temperature 0 nên ba lần lặp gần như trùng nhau: tổng hợp báo cả mức run (n = 180,
+  # cờ n_units < N) và mức câu (n = 60, câu đạt khi đa số lần lặp đạt) — src/eval/metrics.py.
+
 # Sáu khối (checklist mục 5). N = 30 mỗi ô là giả định lập kế hoạch; N thật chốt sau pilot ở M4.
 blocks:
   B1:

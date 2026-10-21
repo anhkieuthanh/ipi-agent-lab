@@ -116,3 +116,13 @@ def test_budget_from_env(monkeypatch):
     monkeypatch.setenv("COST_BUDGET_USD_ALERT_PCT", "75")
     guard = budget_from_env(10.0)
     assert (guard.total_budget_usd, guard.alert_pct) == (100.0, 75.0)
+
+
+def test_load_prices_tinh_khoi_judge_nhu_target(tmp_path):
+    path = _config_with_prices(tmp_path, {"A2": (0.5, 2.0)})
+    with pytest.raises(CostConfigError, match="judge"):
+        load_prices(path, targets=["A2", "judge"])
+    cfg = yaml.safe_load(path.read_text("utf-8"))
+    cfg["judge"]["pricing_usd_per_mtok"] = {"input": 3.0, "output": 15.0}
+    path.write_text(yaml.safe_dump(cfg, allow_unicode=True), "utf-8")
+    assert load_prices(path, targets=["A2", "judge"])["judge"] == Price(3.0, 15.0)

@@ -253,3 +253,31 @@ def test_validate_bat_task_type_sai(tmp_path: Path, old, new, expect):
     cfg = tmp_path / "experiment.yaml"
     cfg.write_text(src.replace(old, new), encoding="utf-8")
     assert any(expect in p for p in validate(load_experiment(cfg)))
+
+
+def test_utility_baseline_ngoai_sau_khoi_va_khong_chan(exp):
+    assert "utility_baseline" not in exp.blocks
+    assert exp.planned_runs("utility_baseline") == 540
+    assert unresolved(exp, "utility_baseline") == []
+    with pytest.raises(KeyError):
+        exp.unit("B9")
+
+
+@pytest.mark.parametrize(
+    "old, new, expect",
+    [
+        ("  repeats: 3\n", "  repeats: 0\n", "repeats"),
+        ("  targets: [A1, A2, A3]\n", "  targets: [A1, A4]\n", "A4"),
+        (
+            "  queries: all                    # 60",
+            "  queries: some                   # 60",
+            "mọi câu",
+        ),
+    ],
+)
+def test_validate_bat_utility_baseline_sai(tmp_path: Path, old, new, expect):
+    src = Path(load_experiment().path).read_text(encoding="utf-8")
+    assert old in src
+    bad = tmp_path / "experiment.yaml"
+    bad.write_text(src.replace(old, new, 1), encoding="utf-8")
+    assert any(expect in p for p in validate(load_experiment(bad)))
