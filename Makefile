@@ -1,6 +1,6 @@
 .PHONY: up down reset ps logs dashboard kb-build kb-rebuild kb-bench kb-stats test lint
 
-# --wait: chỉ trả về khi cả 4 service đã HEALTHY (xem healthcheck trong
+# --wait: chỉ trả về khi cả 5 service đã HEALTHY (xem healthcheck trong
 # docker-compose.yml), thay vì trả về ngay lúc container vừa được tạo.
 up:
 	docker compose up -d --build --wait

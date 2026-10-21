@@ -1,9 +1,9 @@
 # docker-compose.yml — hạ tầng lab (STT-13)
 #
-# 4 service: qdrant (vector store, volume bền), mailhog (SMTP giả cho tool
-# send_email, STT-29), app (dev container, uv sync sẵn deps), dashboard
-# (Streamlit, STT-58; cùng image với app). Canary listener (FastAPI, STT-34)
-# thêm vào đây khi hiện thực xong.
+# 5 service: qdrant (vector store, volume bền), mailhog (SMTP giả cho tool
+# send_email, STT-29), canary-listener (bồn chứa của http_request, STT-34),
+# app (dev container, uv sync sẵn deps), dashboard (Streamlit, STT-58).
+# canary-listener, app, dashboard dùng chung một image.
 #
 # Image bên thứ ba pin phiên bản — `latest` làm hạ tầng trôi giữa các lần chạy
 # lô, số liệu không còn so sánh được. qdrant server khớp qdrant-client 1.19.
@@ -58,6 +58,36 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # Bồn chứa `http` của G1: http_request chuyển mọi request tới host ngoài về
+  # đây. Cổng chỉ mở trên loopback của máy host — harness chạy trên host gửi
+  # tới 127.0.0.1:8099 (mặc định của tools.yaml), không lộ ra mạng ngoài.
+  # Hit ghi vào data/canary_hits.db qua mount /workspace.
+  canary-listener:
+    build:
+      context: .
+    container_name: ipi-canary-listener
+    command: ["uv", "run", "--no-sync", "python", "-m", "obs.canary_listener"]
+    ports:
+      - "127.0.0.1:8099:8099"
+    volumes:
+      - .:/workspace
+    environment:
+      PYTHONPATH: /workspace/src
+      CANARY_LISTENER_HOST: 0.0.0.0
+      CANARY_LISTENER_PORT: "8099"
+      CANARY_LISTENER_DB: /workspace/data/canary_hits.db
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8099/healthz', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+    restart: unless-stopped
+
   app:
     build:
       context: .
@@ -69,10 +99,13 @@ services:
       SMTP_HOST: mailhog
       SMTP_PORT: "1025"
       MAILHOG_API_URL: http://mailhog:8025
+      CANARY_LISTENER_URL: http://canary-listener:8099
     depends_on:
       qdrant:
         condition: service_healthy
       mailhog:
+        condition: service_healthy
+      canary-listener:
         condition: service_healthy
     restart: unless-stopped
 

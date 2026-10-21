@@ -47,8 +47,16 @@ def test_dependency_nen_da_cai(mod):
 
 
 def test_compose_du_service():
-    # Canary listener (STT-34) thêm vào đây khi hiện thực xong.
-    assert set(SERVICES) == {"qdrant", "mailhog", "app", "dashboard"}
+    assert set(SERVICES) == {"qdrant", "mailhog", "canary-listener", "app", "dashboard"}
+
+
+def test_compose_listener_chi_mo_loopback_va_app_tro_toi_no():
+    listener = SERVICES["canary-listener"]
+    assert listener["ports"] == ["127.0.0.1:8099:8099"]
+    assert "healthcheck" in listener
+    app = SERVICES["app"]
+    assert app["environment"]["CANARY_LISTENER_URL"] == "http://canary-listener:8099"
+    assert app["depends_on"]["canary-listener"] == {"condition": "service_healthy"}
 
 
 def test_compose_image_ben_thu_ba_da_pin():
