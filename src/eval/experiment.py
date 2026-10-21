@@ -56,6 +56,7 @@ _TOP_KEYS = frozenset(
         "run_order",
         "stopping",
         "refusal",
+        "g3_warning",
         "metrics",
         "cut_order",
         "never_cut",
@@ -257,15 +258,16 @@ def validate(exp: Experiment) -> list[str]:
     if p_same is not None and not (isinstance(p_same, (int, float)) and 0 < p_same <= 1):
         problems.append("pilot.variance_probe.p_same_threshold phải trong (0, 1]")
 
-    refusal = raw.get("refusal") or {}
-    for key in ("finish_reasons", "phrases"):
-        values = refusal.get(key)
-        if values is not None and (
-            not isinstance(values, list)
-            or not values
-            or not all(isinstance(v, str) and v.strip() for v in values)
-        ):
-            problems.append(f"refusal.{key} phải là danh sách khác rỗng gồm chuỗi khác rỗng")
+    for section, keys in (("refusal", ("finish_reasons", "phrases")), ("g3_warning", ("phrases",))):
+        cfg = raw.get(section) or {}
+        for key in keys:
+            values = cfg.get(key)
+            if values is not None and (
+                not isinstance(values, list)
+                or not values
+                or not all(isinstance(v, str) and v.strip() for v in values)
+            ):
+                problems.append(f"{section}.{key} phải là danh sách khác rỗng gồm chuỗi khác rỗng")
 
     tcp_ci = (raw.get("metrics") or {}).get("tcp_ci") or {}
     if tcp_ci.get("method") not in (None, "bootstrap_percentile"):
@@ -375,8 +377,8 @@ def unresolved(exp: Experiment, block_id: str | None = None) -> list[str]:
     """Đường dẫn các trường còn `null`.
 
     Không truyền `block_id`: mọi trường null của file. Truyền `block_id`: chỉ những trường chặn
-    khối đó — null của chính khối, `run_order.seed`, `refusal` (scorer cần ở mọi khối), và
-    `benign_task_types` nếu khối lành tính.
+    khối đó — null của chính khối, `run_order.seed`, `refusal` và `g3_warning` (scorer cần ở mọi
+    khối), và `benign_task_types` nếu khối lành tính.
     Runner từ chối mở khối khi danh sách này khác rỗng.
     """
     raw = exp.raw
@@ -387,6 +389,7 @@ def unresolved(exp: Experiment, block_id: str | None = None) -> list[str]:
     paths = _null_paths(raw["blocks"][block_id], f"blocks.{block_id}")
     paths += _null_paths((raw.get("run_order") or {}).get("seed"), "run_order.seed")
     paths += _null_paths(raw.get("refusal"), "refusal")
+    paths += _null_paths(raw.get("g3_warning"), "g3_warning")
     if exp.blocks[block_id].run_kind == "benign":
         paths += _null_paths(raw.get("benign_task_types"), "benign_task_types")
     return paths

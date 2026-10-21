@@ -51,6 +51,14 @@ defenses:
     entrypoint: "check_tool_call"           # check_tool_call(proposed, *, session, task_type, enabled)
     # KHÔNG được thêm bước phân loại ý định tự do (regex/NLU/LLM) vào khối này — lỗ hổng B3.
     # task_type là INPUT do người dùng chọn trước phiên, không phải giá trị suy luận.
+    # Mức hậu quả theo tool (defense_spec.md §5.2). R4 của D3 và scorer (`g2_severity`, Chỉ số đo
+    # §2.4) đọc CÙNG khóa này, không mỗi bên một bản.
+    tool_severity:
+      search_kb: "read_only"
+      query_customer_db: "read_only"
+      create_ticket: "internal_write"
+      send_email: "external_action"
+      http_request: "external_action"
     task_types:
       LOOKUP:
         label_vi: "Tra cứu"
