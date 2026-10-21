@@ -20,7 +20,8 @@ Ba quy ước:
   thành `parse_error` loại (c) của mục 12.4 và rời `N_clean`.
 - **Judge thấy những gì agent đã làm**: tool-call đã thực thi kèm kết quả thô (bước `tool`), tool-call
   bị chặn (bước `defense`), câu trả lời cuối. Tiêu chí kiểu "đúng thông tin của đúng khách hàng" chỉ
-  chấm được khi judge đối chiếu với kết quả công cụ.
+  chấm được khi judge đối chiếu với kết quả công cụ. Judge cũng nhận ngày tham chiếu agent thấy trong
+  system prompt (`fixed.reference_date`) — thiếu nó, câu tính hạn bị đánh trượt oan.
 
 Văn bản prompt và giới hạn cắt nằm ở `config/prompts.yaml` khối `judge`; model ở `config/models.yaml`
 khối `judge`. `JudgeConfig.prompt_hash()` băm khối prompt để bản CSV tách lượt chấm trước/sau khi sửa.
@@ -32,6 +33,7 @@ import hashlib
 import json
 import re
 from dataclasses import asdict, dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -54,7 +56,7 @@ DEFAULT_PATH = REPO_ROOT / "config" / "prompts.yaml"
 _KEYS = frozenset(
     {"system", "user_template", "max_tool_result_chars", "max_answer_chars", "max_tokens"}
 )
-_PLACEHOLDERS = {"query", "rubric", "tool_calls", "answer"}
+_PLACEHOLDERS = {"reference_date", "query", "rubric", "tool_calls", "answer"}
 _FENCE = re.compile(r"^```(?:json)?\s*(?P<body>.*?)\s*```$", re.DOTALL)
 TRUNCATED = "…[đã cắt]"
 NO_TOOL_CALLS = "(không gọi công cụ nào)"
@@ -75,9 +77,13 @@ class JudgeConfig:
     max_tool_result_chars: int
     max_answer_chars: int
     max_tokens: int
+    #: "Hôm nay" của agent (dd/mm/yyyy), từ `fixed.reference_date` của experiment.yaml.
+    reference_date: str
 
     @classmethod
-    def load(cls, path: str | Path = DEFAULT_PATH) -> JudgeConfig:
+    def load(
+        cls, path: str | Path = DEFAULT_PATH, experiment_path: str | Path | None = None
+    ) -> JudgeConfig:
         raw = (yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}).get("judge")
         if not isinstance(raw, dict):
             raise JudgeConfigError(f"{path}: thiếu khối 'judge'")
@@ -100,7 +106,14 @@ class JudgeConfig:
                 )
         if problems:
             raise JudgeConfigError(f"{path}: " + "; ".join(problems))
-        return cls(**{k: raw[k] for k in _KEYS})
+        from eval.experiment import DEFAULT_PATH as EXPERIMENT_PATH
+        from eval.experiment import load_experiment
+
+        ref = load_experiment(experiment_path or EXPERIMENT_PATH).fixed.get("reference_date")
+        if ref is None:
+            raise JudgeConfigError("experiment.yaml: fixed.reference_date chưa chốt")
+        today = date.fromisoformat(str(ref)).strftime("%d/%m/%Y")
+        return cls(**{k: raw[k] for k in _KEYS}, reference_date=today)
 
     def prompt_hash(self) -> str:
         """sha256 của khối judge — đổi prompt hay giới hạn cắt thì hash đổi."""
@@ -147,6 +160,7 @@ def build_messages(
 ) -> list[dict[str, str]]:
     """Messages dạng OpenAI cho judge. Hàm thuần."""
     user = cfg.user_template.format(
+        reference_date=cfg.reference_date,
         query=query,
         rubric=rubric,
         tool_calls=tool_calls,
