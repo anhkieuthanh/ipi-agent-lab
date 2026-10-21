@@ -8,7 +8,16 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from obs.trace import ASR_SQL, RunMeta, TraceRecorder, ddl, export_runs, open_store
+from obs.trace import (
+    ASR_SQL,
+    RunMeta,
+    TraceRecorder,
+    compute_env_hash,
+    ddl,
+    export_runs,
+    lab_git_commit,
+    open_store,
+)
 
 
 def _meta(**over):
@@ -73,6 +82,8 @@ def test_all_eight_techniques_accepted(engine):
         ({"technique": None}, {"outcome": "failed"}),  # run tấn công thiếu nhãn
         ({}, {"outcome": "failed", "blocked_by": "model_refusal"}),  # có nguyên nhân, không chặn
         ({}, {"outcome": "success", "blocked_by": "model_refusal"}),
+        # leak_attempted là "chưa rời vành đai" — không đi cùng g1_hit.
+        ({}, {"outcome": "success", "g1_hit": True, "g1_channel": "email", "leak_attempted": True}),
     ],
 )
 def test_check_constraints_reject_invalid(engine, meta_over, result):
@@ -135,7 +146,9 @@ def test_steps_and_totals(engine):
     assert (row["n_steps"], row["tokens_in"], row["tokens_out"]) == (3, 150, 25)
     assert row["response_model"] == "glm-5.2"
     with engine.connect() as conn:
-        hits = conn.execute(text("SELECT defense_hits FROM steps WHERE kind='defense'")).scalar_one()
+        hits = conn.execute(
+            text("SELECT defense_hits FROM steps WHERE kind='defense'")
+        ).scalar_one()
     assert '"d4_egress_filter"' in hits and '"d3_tool_policy"' in hits
 
 
@@ -257,3 +270,73 @@ def test_finish_reason_stored_per_llm_step(engine):
     with engine.connect() as conn:
         value = conn.execute(text("SELECT finish_reason FROM steps")).scalar_one()
     assert value == "refusal"
+
+
+def test_leak_attempted_recorded_without_g1(engine):
+    _record(engine, _meta(), outcome="failed", leak_attempted=True)
+    (row,) = export_runs(engine).to_dict("records")
+    assert row["leak_attempted"] and not row["g1_hit"]
+
+
+# --- env_hash (giao thức thực nghiệm mục 4 bước 7, N6). ---
+
+
+@pytest.fixture
+def tools_yaml(tmp_path):
+    path = tmp_path / "tools.yaml"
+    path.write_text("tools: [search_kb]\n", "utf-8")
+    return path
+
+
+def test_env_hash_deterministic(tools_yaml):
+    a = compute_env_hash("p" * 64, tools_yaml, "abc123")
+    assert a == compute_env_hash("p" * 64, tools_yaml, "abc123")
+    assert len(a) == 64
+
+
+def test_env_hash_changes_with_each_part(tools_yaml, tmp_path):
+    base = compute_env_hash("p" * 64, tools_yaml, "abc123")
+    assert compute_env_hash("q" * 64, tools_yaml, "abc123") != base
+    assert compute_env_hash("p" * 64, tools_yaml, "abc124") != base
+    other = tmp_path / "tools2.yaml"
+    other.write_text("tools: [search_kb, send_email]\n", "utf-8")
+    assert compute_env_hash("p" * 64, other, "abc123") != base
+
+
+def test_env_hash_boundaries_do_not_slide(tools_yaml):
+    # Dời ký tự từ phần này sang phần kia không được cho cùng hash.
+    assert compute_env_hash("ab", tools_yaml, "c") != compute_env_hash("a", tools_yaml, "bc")
+
+
+@pytest.mark.parametrize("prompt_hash, commit", [("", "abc"), ("p", ""), ("p", "  ")])
+def test_env_hash_rejects_empty_parts(tools_yaml, prompt_hash, commit):
+    with pytest.raises(ValueError):
+        compute_env_hash(prompt_hash, tools_yaml, commit)
+
+
+def test_env_hash_of_real_config_stable_across_runs():
+    from agent.prompts import template_hash
+
+    a = compute_env_hash(template_hash(), "config/tools.yaml", "abc123")
+    b = compute_env_hash(template_hash(), "config/tools.yaml", "abc123")
+    assert a == b
+
+
+def test_lab_git_commit_marks_dirty(tmp_path):
+    import subprocess
+
+    def git(*args):
+        subprocess.run(["git", "-C", str(tmp_path), *args], check=True, capture_output=True)
+
+    git("init", "-q")
+    git("config", "user.email", "t@example.test")
+    git("config", "user.name", "t")
+    (tmp_path / "f.txt").write_text("1", "utf-8")
+    git("add", "f.txt")
+    git("commit", "-q", "-m", "init")
+    clean = lab_git_commit(tmp_path)
+    assert len(clean) == 40 and not clean.endswith("-dirty")
+    (tmp_path / "untracked.txt").write_text("x", "utf-8")
+    assert lab_git_commit(tmp_path) == clean  # file chưa theo dõi không tính
+    (tmp_path / "f.txt").write_text("2", "utf-8")
+    assert lab_git_commit(tmp_path) == f"{clean}-dirty"
