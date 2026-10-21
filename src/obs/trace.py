@@ -52,6 +52,7 @@ __all__ = [
     "ddl",
     "compute_env_hash",
     "lab_git_commit",
+    "uncommitted_changes",
     "ASR_SQL",
     "TECHNIQUES",
     "BLOCKED_BY",
@@ -232,21 +233,43 @@ def compute_env_hash(prompt_template_hash: str, tools_path: str | Path, git_comm
     return h.hexdigest()
 
 
-def lab_git_commit(repo: str | Path = _REPO_ROOT) -> str:
-    """HEAD của repo lab; thêm hậu tố `-dirty` khi file đã theo dõi có thay đổi chưa commit.
+#: Thư mục mà file chưa theo dõi trong đó đổi được hành vi agent hay phép chấm. File chưa theo dõi
+#: ngoài các thư mục này (kết quả chạy, log) và file `.gitignore` loại trừ không tính.
+CODE_PATHS = ("src", "tests", "config", "data", "scripts")
 
-    File chưa theo dõi (kết quả chạy, cache) không tính — chúng không đổi hành vi agent.
-    """
 
-    def git(*args: str) -> str:
+def uncommitted_changes(repo: str | Path = _REPO_ROOT) -> list[str]:
+    """Dòng `git status --porcelain` của thay đổi chưa commit: mọi file đã theo dõi, cộng file chưa
+    theo dõi trong `CODE_PATHS`. Rỗng = HEAD ứng đúng với mã đang chạy."""
+
+    def status(*args: str) -> list[str]:
         out = subprocess.run(
-            ["git", "-C", str(repo), *args], capture_output=True, text=True, check=True
+            ["git", "-C", str(repo), "status", "--porcelain", *args],
+            capture_output=True,
+            text=True,
+            check=True,
         )
-        return out.stdout.strip()
+        return [line for line in out.stdout.splitlines() if line.strip()]
 
-    head = git("rev-parse", "HEAD")
-    dirty = git("status", "--porcelain", "--untracked-files=no")
-    return f"{head}-dirty" if dirty else head
+    tracked = status("--untracked-files=no")
+    untracked = [
+        line
+        for line in status("--untracked-files=all", "--", *CODE_PATHS)
+        if line.startswith("??")
+    ]
+    return tracked + untracked
+
+
+def lab_git_commit(repo: str | Path = _REPO_ROOT) -> str:
+    """HEAD của repo lab; thêm hậu tố `-dirty` khi `uncommitted_changes()` khác rỗng.
+
+    Tính cả file chưa theo dõi trong `CODE_PATHS`: module mới viết chưa `git add` vẫn chạy được,
+    nên bỏ qua nó thì commit ghi trong trace không ứng với mã đã chạy.
+    """
+    head = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+    ).stdout.strip()
+    return f"{head}-dirty" if uncommitted_changes(repo) else head
 
 
 def ddl() -> str:

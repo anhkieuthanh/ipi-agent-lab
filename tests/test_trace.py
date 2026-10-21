@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 
 from obs.trace import (
     ASR_SQL,
+    CODE_PATHS,
     RunMeta,
     TraceRecorder,
     compute_env_hash,
@@ -17,6 +18,7 @@ from obs.trace import (
     export_runs,
     lab_git_commit,
     open_store,
+    uncommitted_changes,
 )
 
 
@@ -322,7 +324,7 @@ def test_env_hash_of_real_config_stable_across_runs():
     assert a == b
 
 
-def test_lab_git_commit_marks_dirty(tmp_path):
+def _git_repo(tmp_path):
     import subprocess
 
     def git(*args):
@@ -331,12 +333,41 @@ def test_lab_git_commit_marks_dirty(tmp_path):
     git("init", "-q")
     git("config", "user.email", "t@example.test")
     git("config", "user.name", "t")
+    (tmp_path / ".gitignore").write_text("data/tickets.db\n", "utf-8")
     (tmp_path / "f.txt").write_text("1", "utf-8")
-    git("add", "f.txt")
+    git("add", "f.txt", ".gitignore")
     git("commit", "-q", "-m", "init")
+    return git
+
+
+def test_lab_git_commit_marks_dirty(tmp_path):
+    _git_repo(tmp_path)
     clean = lab_git_commit(tmp_path)
     assert len(clean) == 40 and not clean.endswith("-dirty")
-    (tmp_path / "untracked.txt").write_text("x", "utf-8")
-    assert lab_git_commit(tmp_path) == clean  # file chưa theo dõi không tính
+    assert uncommitted_changes(tmp_path) == []
     (tmp_path / "f.txt").write_text("2", "utf-8")
     assert lab_git_commit(tmp_path) == f"{clean}-dirty"
+    assert uncommitted_changes(tmp_path) == [" M f.txt"]
+
+
+@pytest.mark.parametrize("folder", CODE_PATHS)
+def test_lab_git_commit_file_chua_track_trong_thu_muc_ma(tmp_path, folder):
+    # Module mới viết chưa `git add` vẫn chạy được — commit sạch sẽ không ứng với mã đã chạy.
+    _git_repo(tmp_path)
+    clean = lab_git_commit(tmp_path)
+    (tmp_path / folder / "sub").mkdir(parents=True)
+    (tmp_path / folder / "sub" / "moi.py").write_text("x = 1", "utf-8")
+    assert lab_git_commit(tmp_path) == f"{clean}-dirty"
+    assert uncommitted_changes(tmp_path) == [f"?? {folder}/sub/moi.py"]
+
+
+def test_lab_git_commit_bo_qua_file_ngoai_thu_muc_ma_va_file_ignore(tmp_path):
+    _git_repo(tmp_path)
+    clean = lab_git_commit(tmp_path)
+    (tmp_path / "results" / "trace").mkdir(parents=True)
+    (tmp_path / "results" / "trace" / "B1.db").write_text("x", "utf-8")
+    (tmp_path / "ghi_chu.txt").write_text("x", "utf-8")
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "tickets.db").write_text("x", "utf-8")
+    assert lab_git_commit(tmp_path) == clean
+    assert uncommitted_changes(tmp_path) == []
