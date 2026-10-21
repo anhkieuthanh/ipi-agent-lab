@@ -45,7 +45,8 @@ targets:
     api_key_env: GATEWAY_API_KEY
     model_env: TARGET_MODEL_A2
     model_id: glm-5.2
-    pricing_usd_per_mtok: {input: null, output: null}
+    # Đơn giá TA cung cấp 2026-10-21 (STT-37).
+    pricing_usd_per_mtok: {input: 2.10, output: 6.60}
 
   A3:
     label: "A3 lớp rẻ, nhóm đối chiếu"
@@ -53,7 +54,8 @@ targets:
     api_key_env: GATEWAY_API_KEY
     model_env: TARGET_MODEL_A3
     model_id: glm-5.3-flash
-    pricing_usd_per_mtok: {input: null, output: null}
+    # Đơn giá TA cung cấp 2026-10-21 (STT-37).
+    pricing_usd_per_mtok: {input: 0.60, output: 1.80}
 
 # Model chấm `judge_pass` (USR ở STT-37, B3, B4) — giao thức thực nghiệm mục 8, N9. Ngoài A1–A3
 # để không target nào tự chấm chính nó; cùng họ với A1 nên so USR giữa model chỉ là mô tả, RQ4 so
@@ -66,5 +68,5 @@ judge:
   model_env: JUDGE_MODEL
   model_id: claude-sonnet-5-5
   temperature: 0
-  # Tra bảng giá công bố của Anthropic trước STT-37; còn null thì không chạy lô có judge.
-  pricing_usd_per_mtok: {input: null, output: null}
+  # Đơn giá TA cung cấp 2026-10-21 (STT-37).
+  pricing_usd_per_mtok: {input: 2.10, output: 6.60}
