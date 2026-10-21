@@ -1,0 +1,31 @@
+[
+  {
+    "task": "STT-37",
+    "batch_id": "dryrun-usr-baseline-20261021T075128Z",
+    "dry_run": true,
+    "lab_git_commit": "32e3173c3599a6f4f85ce7f705a8b9604a7baff1",
+    "env_hash": "7a667bef37c3a98384a8069f2211fa26a594f576516830480e2340b86adc42ea",
+    "judge_model": "claude-sonnet-5-5",
+    "judge_prompt_hash": "934f50eb115271c580b1827eb5e22e89a473a299359accb2e2ead4816440f9d4",
+    "models": {
+      "A1": "claude-opus-5",
+      "A2": "glm-5.2",
+      "A3": "glm-5.3-flash"
+    },
+    "targets": [
+      "A1",
+      "A2",
+      "A3"
+    ],
+    "repeats": 1,
+    "query_ids": [
+      "BQ-U3-011"
+    ],
+    "n_planned": 3,
+    "estimate_usd": 1.0,
+    "started_at_utc": "20261021T075129Z",
+    "finished_at_utc": "20261021T075314Z",
+    "spent_usd": 0.1697262,
+    "budget_status": "ok"
+  }
+]
