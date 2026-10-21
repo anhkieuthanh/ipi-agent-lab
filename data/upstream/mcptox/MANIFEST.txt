@@ -1,0 +1,7 @@
+Snapshot MCPTox — CHỈ cột cấu trúc (hướng A, TA chốt 2026-10-21)
+repo: zhiqiangwang4/MCPTox-Benchmark
+commit: f85189f9ad12504c197c7f920ab818a40657b1fa
+license: KHÔNG CÓ (license_file_present=false) → không chép nội dung payload (tool_content)
+sinh_tu: pure_tool.json, lọc còn [id, server_name, tool_name, paradigm, security_risk]
+sinh_ngay_utc: 2026-10-21T06:34:07Z
+llm_calls: 0 (offline, quy tắc cứng #7)
