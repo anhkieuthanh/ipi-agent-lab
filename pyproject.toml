@@ -39,7 +39,7 @@ dashboard = [
 
 [tool.pytest.ini_options]
 testpaths = ["src", "tests"]
-pythonpath = ["src", "scripts"]
+pythonpath = ["src", "scripts", "dashboard"]
 markers = [
   "qdrant: cần Qdrant đang chạy (`make up`); tự bỏ qua nếu không có",
   "mailhog: cần MailHog đang chạy (`make up`); tự bỏ qua nếu không có",
@@ -59,7 +59,7 @@ ignore = ["E501"]
 # package name — ruff không tự suy ra được, phải khai báo.
 known-first-party = [
     "agent", "obs", "rag", "attack", "defense", "eval", "interfaces", "gen_corpus_pdfs",
-    "seed_db", "tools", "mcp_fake_backend",
+    "seed_db", "tools", "mcp_fake_backend", "tracedata", "ui",
 ]
 
 [build-system]
