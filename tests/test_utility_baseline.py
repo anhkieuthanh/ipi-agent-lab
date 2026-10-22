@@ -340,6 +340,7 @@ def test_rejudge_cham_lai_run_sach_va_run_loi_judge_bo_run_loi_model(ctx, tmp_pa
         client=judge,
         cfg=ctx.judge_cfg,
         queries=BENIGN,
+        customers_db=DEFAULT_CUSTOMERS_DB,
         log_path=log,
         after_each=lambda i, total: seen.append((i, total)) or True,
     )
@@ -349,7 +350,13 @@ def test_rejudge_cham_lai_run_sach_va_run_loi_judge_bo_run_loi_model(ctx, tmp_pa
     # chạy lại không gọi judge cho run đã chấm
     assert (
         rejudge_runs(
-            ctx.engine, "test-usr", client=judge, cfg=ctx.judge_cfg, queries=BENIGN, log_path=log
+            ctx.engine,
+            "test-usr",
+            client=judge,
+            cfg=ctx.judge_cfg,
+            queries=BENIGN,
+            customers_db=DEFAULT_CUSTOMERS_DB,
+            log_path=log,
         )
         == 0
     )
@@ -378,6 +385,7 @@ def test_rejudge_loi_judge_giu_parse_error_va_thieu_ban_cham_lai_la_loi(ctx, tmp
         client=FakeJudge(text="không phải JSON"),
         cfg=ctx.judge_cfg,
         queries=BENIGN,
+        customers_db=DEFAULT_CUSTOMERS_DB,
         log_path=log,
     )
     out = rescore_table(
@@ -399,3 +407,39 @@ def test_rejudge_loi_judge_giu_parse_error_va_thieu_ban_cham_lai_la_loi(ctx, tmp
             customers_db=DEFAULT_CUSTOMERS_DB,
             judge_overrides={},
         )
+
+
+class TicketModel(FakeModel):
+    """Mở một phiếu hợp lệ rồi trả lời — run lành tính có ràng buộc tra lúc chạy (CT-06)."""
+
+    def chat(self, messages, tools=None, **kwargs):
+        if messages[-1]["role"] == "user":
+            args = {
+                "customer_id": 3,
+                "title": "Kẹt quạt",
+                "body": "Máy chiếu kẹt quạt",
+                "priority": "medium",
+            }
+            call = ToolCall(
+                id="c1", name="create_ticket", arguments=args, arguments_raw=json.dumps(args)
+            )
+            return _result(calls=[call])
+        return _result(text="Đã mở phiếu TK-00001 cho Việt Tiến, mức ưu tiên trung bình.")
+
+
+def test_rejudge_run_co_rang_buoc_runtime(ctx, tmp_path):
+    """Lỗi lượt chấm lại VT-14 đầu tiên: lấy câu trả lời cuối mà không truyền runtime cho G2."""
+    ctx.models["A2"] = TicketModel()
+    rid = run_one(RunSpec(0, "A2", "BQ-U4-007"), ctx)
+    log = tmp_path / "rejudge.jsonl"
+    judge = FakeJudge()
+    n = rejudge_runs(
+        ctx.engine,
+        "test-usr",
+        client=judge,
+        cfg=ctx.judge_cfg,
+        queries=BENIGN,
+        customers_db=DEFAULT_CUSTOMERS_DB,
+        log_path=log,
+    )
+    assert n == 1 and load_rejudge(log)[rid]["judge_pass"] is True

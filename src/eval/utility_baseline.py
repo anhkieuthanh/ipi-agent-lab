@@ -481,6 +481,7 @@ def rejudge_runs(
     client: Any,
     cfg: JudgeConfig,
     queries: Mapping[str, dict[str, Any]],
+    customers_db: Path,
     log_path: Path,
     after_each: Callable[[int, int], bool] | None = None,
 ) -> int:
@@ -502,10 +503,12 @@ def rejudge_runs(
         for i, run in enumerate(todo, start=1):
             steps = s.exec(select(Step).where(Step.run_id == run.run_id)).all()
             # Câu trả lời cuối lấy qua scorer — run JudgeError không có `final_answer` trong store.
-            answer = score_trace(run, steps, ScoreContext(judge_pass=False)).final_answer
+            query = queries[run.benign_query_id]
+            ctx = ScoreContext(runtime=benign_runtime(query, customers_db), judge_pass=False)
+            answer = score_trace(run, steps, ctx).final_answer
             rec: dict[str, Any] = {"run_id": run.run_id, "judge_prompt_hash": cfg.prompt_hash()}
             try:
-                v = judge_run(client, queries[run.benign_query_id], answer, steps, cfg=cfg)
+                v = judge_run(client, query, answer, steps, cfg=cfg)
                 rec |= {
                     "judge_called": v.called,
                     "judge_pass": v.judge_pass,
