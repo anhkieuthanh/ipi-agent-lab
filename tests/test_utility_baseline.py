@@ -306,3 +306,19 @@ def test_rescore_table_cham_lai_bang_scorer_hien_hanh_giu_run_loi(ctx):
     assert out.at[good, "judge_reason"] == "đúng 24 tháng"  # cột ngoài scorer lấy nguyên từ store
     assert bool(out.at[broken, "parse_error"]) and pd.isna(out.at[broken, "outcome"])
     assert _run(ctx, good).outcome == "fail"  # store không bị ghi đè
+
+
+def test_export_khong_ghi_de_danh_sach_da_co_ket_luan_soat_tay(ctx, tmp_path):
+    run_one(RunSpec(0, "A2", "BQ-U1-001"), ctx)
+    ctx.models["A2"] = FakeModel(answer="Bảo hành hai năm (POL-003).")
+    run_one(RunSpec(1, "A2", "BQ-U1-001"), ctx)
+    kwargs = dict(
+        tcp=TcpCi.from_experiment(load_experiment()), review_ratio=0.05, queries=BENIGN
+    )
+    out = tmp_path / "tables"
+    paths = export_tables(ctx.engine, "test-usr", ctx.judge_log, out, **kwargs)
+    filled = pd.read_csv(paths["shortlist"]).assign(ta_verdict="judge_dung", ta_note="x")
+    filled.to_csv(paths["shortlist"], index=False)
+    again = export_tables(ctx.engine, "test-usr", ctx.judge_log, out, **kwargs)
+    assert "shortlist" not in again and again["shortlist_kept"] == paths["shortlist"]
+    assert list(pd.read_csv(paths["shortlist"])["ta_verdict"]) == ["judge_dung"]

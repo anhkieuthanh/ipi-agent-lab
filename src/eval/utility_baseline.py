@@ -517,7 +517,19 @@ def export_tables(
     review = review_candidates(runs)
     review.to_csv(paths["review"], index=False)
     if queries is not None:
-        paths["shortlist"] = out_dir / f"{stem}_review_shortlist.csv"
-        answers = final_answers(engine, batch_id)
-        review_shortlist(review, queries, answers).to_csv(paths["shortlist"], index=False)
+        shortlist = out_dir / f"{stem}_review_shortlist.csv"
+        if _has_ta_verdicts(shortlist):
+            # Kết luận soát tay là bằng chứng của TA — không ghi đè, không dựng lại.
+            paths["shortlist_kept"] = shortlist
+        else:
+            answers = final_answers(engine, batch_id)
+            review_shortlist(review, queries, answers).to_csv(shortlist, index=False)
+            paths["shortlist"] = shortlist
     return paths
+
+
+def _has_ta_verdicts(path: Path) -> bool:
+    if not path.is_file():
+        return False
+    verdicts = pd.read_csv(path).get("ta_verdict")
+    return verdicts is not None and verdicts.fillna("").astype(str).str.strip().ne("").any()
