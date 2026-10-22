@@ -150,7 +150,13 @@ def main() -> int:
         return 0
     if args.export_only:
         paths = export_tables(
-            engine, batch_id, judge_log, tables_dir, tcp=tcp, review_ratio=review_ratio
+            engine,
+            batch_id,
+            judge_log,
+            tables_dir,
+            tcp=tcp,
+            review_ratio=review_ratio,
+            queries={q["id"]: q for q in benign},
         )
         print("\n".join(f"  {k}: {v.relative_to(ROOT)}" for k, v in paths.items()))
         return 0
@@ -233,7 +239,13 @@ def main() -> int:
         )
 
     paths = export_tables(
-        engine, batch_id, judge_log, tables_dir, tcp=tcp, review_ratio=review_ratio
+        engine,
+        batch_id,
+        judge_log,
+        tables_dir,
+        tcp=tcp,
+        review_ratio=review_ratio,
+        queries={q["id"]: q for q in benign},
     )
     print("\n".join(f"  {k}: {v.relative_to(ROOT)}" for k, v in paths.items()))
     return 3 if status == "stop" else 0
