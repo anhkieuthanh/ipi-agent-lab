@@ -51,6 +51,7 @@ from .payloads.schema import (
 )
 
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "mutator.yaml"
+DEFAULT_PROMPTS_PATH = Path(__file__).resolve().parents[2] / "config" / "prompts.yaml"
 
 # Placeholder giữ nguyên khi biến đổi văn bản (trùng với render/schema). Không chèn ký tự vào
 # giữa, không mã hóa — giá trị thật chỉ có lúc chạy.
@@ -210,20 +211,104 @@ def rule_mutate(
     return out
 
 
-def model_mutate(
-    payload: dict[str, Any], *, cfg: dict[str, Any], **kwargs: Any
-) -> list[tuple[dict[str, Any], str]]:
-    """Điểm cắm biến đổi bằng model (paraphrase LLM). CHƯA nối model.
+# Trường chỉ thị theo ngôn ngữ payload (trùng render._LANG_INSTRUCTION).
+_LANG_FIELD = {"vi": "instruction_vi", "en": "instruction_en", "mixed": "instruction_vi"}
 
-    `attacker_model` chưa chốt với GVHD (checklist mục 8 việc 6; config/experiment.yaml
-    B5.attacker_model: null). Theo quy tắc cứng #8, không tự quyết. Bật `model.enabled` trong
-    config/mutator.yaml và hiện thực hàm này khi GVHD chốt model.
+
+class Paraphraser:
+    """Giao diện tối thiểu model_mutate cần: `paraphrase(text) -> str`.
+
+    Tách khỏi LLMClient để test tiêm bản giả, không nạp SDK/`.env`/mạng.
     """
-    if not (cfg.get("model") or {}).get("enabled"):
+
+    def paraphrase(self, text: str) -> str:  # pragma: no cover - giao diện
+        raise NotImplementedError
+
+
+def load_attacker_prompt(path: Path | str = DEFAULT_PROMPTS_PATH) -> dict[str, Any]:
+    block = (yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}).get("attacker")
+    if not block or not block.get("system") or not block.get("user_prefix"):
+        raise MutatorError(f"{path}: thiếu khối 'attacker' hợp lệ (system + user_prefix)")
+    return block
+
+
+class LLMParaphraser(Paraphraser):
+    """Paraphraser thật: gọi khối `attacker` của models.yaml qua LLMClient (claude-opus-5).
+
+    Chỉ dựng khi chạy sinh payload thật — KHÔNG trong test (test tiêm Paraphraser giả).
+    """
+
+    def __init__(self, *, prompt: dict[str, Any] | None = None, client: Any = None) -> None:
+        self.prompt = prompt or load_attacker_prompt()
+        if client is None:
+            from agent.llm_client import ATTACKER_ID, LLMClient
+
+            client = LLMClient(ATTACKER_ID)
+        self.client = client
+
+    def paraphrase(self, text: str) -> str:
+        res = self.client.chat(
+            messages=[
+                {"role": "system", "content": self.prompt["system"]},
+                {"role": "user", "content": f"{self.prompt['user_prefix']}\n\n{text}"},
+            ],
+            max_tokens=self.prompt.get("max_tokens", 512),
+        )
+        return (getattr(res, "text", None) or "").strip()
+
+
+def model_mutate(
+    payload: dict[str, Any],
+    *,
+    cfg: dict[str, Any],
+    paraphraser: Paraphraser | None = None,
+    id_counter: dict[tuple[str, str, str], int] | None = None,
+) -> list[tuple[dict[str, Any], str]]:
+    """Biến thể paraphrase bằng model (GVHD duyệt opus-5, 2026-10-22). Trả list (biến thể, "model").
+
+    Chạy CHỈ khi `model.enabled` trong config/mutator.yaml VÀ có `paraphraser` — bộ sinh thật tiêm
+    `LLMParaphraser`, test tiêm bản giả. Mỗi biến thể: viết lại phần chỉ thị theo ngôn ngữ payload,
+    giữ NGUYÊN nghĩa/`activation_check`/`goal_binding.tool`; `obfuscation` vẫn [none] (paraphrase
+    không phải obfuscation); bỏ `pair_id`; ghi xuất xứ vào `mutation`.
+
+    Loại biến thể nếu: model trả rỗng, trùng y bản gốc, hoặc LÀM MẤT/ĐỔI placeholder ngoặc nhọn của
+    chỉ thị ({run_id}…) — placeholder vỡ thì marker/giá trị run hỏng lúc chạy.
+    """
+    mcfg = cfg.get("model") or {}
+    if not mcfg.get("enabled") or paraphraser is None:
         return []
-    raise NotImplementedError(
-        "model_mutate chưa nối: attacker_model chưa chốt với GVHD (quy tắc cứng #8)"
-    )
+    if set(payload.get("obfuscation") or ["none"]) != {"none"}:
+        return []
+    m = _ID_RE.match(str(payload.get("id", "")))
+    if not m:
+        return []
+    key = (m.group(2), m.group(3), m.group(4))
+    if id_counter is None:
+        id_counter = {}
+    field_ = _LANG_FIELD.get(payload.get("lang"), "instruction_vi")
+    gb = payload.get("goal_binding") or {}
+    orig = gb.get(field_)
+    if not orig:
+        return []
+    needed = set(_PLACEHOLDER_RE.findall(orig))
+    model_id = getattr(getattr(paraphraser, "client", None), "model", "unknown")
+    n = int(mcfg.get("variants_per_payload", 2))
+
+    out: list[tuple[dict[str, Any], str]] = []
+    for _ in range(n):
+        new_text = paraphraser.paraphrase(orig)
+        if not new_text or new_text == orig:
+            continue
+        if set(_PLACEHOLDER_RE.findall(new_text)) != needed:
+            continue  # placeholder vỡ → loại
+        v = copy.deepcopy(payload)
+        v.pop("pair_id", None)
+        id_counter[key] = id_counter.get(key, 0) + 1
+        v["id"] = f"P-{key[0]}-{key[1]}-{key[2]}-{id_counter[key]:03d}"
+        v["goal_binding"][field_] = new_text
+        v["mutation"] = {"by": "model", "model": model_id}
+        out.append((v, "model"))
+    return out
 
 
 # ── Lọc trùng theo embedding ────────────────────────────────────────────────────
@@ -296,11 +381,13 @@ def mutate(
     cfg: dict[str, Any] | None = None,
     meta: TaskMeta | None = None,
     embed_fn: Callable[[str], Sequence[float]] | None = None,
+    paraphraser: Paraphraser | None = None,
 ) -> tuple[list[dict[str, Any]], MutationReport]:
-    """Sinh biến thể từ `seeds`, qua cổng schema, rồi lọc trùng. Trả (biến thể_giữ, report).
+    """Sinh biến thể từ `seeds` (luật + model), qua cổng schema, rồi lọc trùng.
 
-    Không gồm `seeds` trong đầu ra — chỉ trả các biến thể MỚI. `embed_fn` None thì nạp Embedder
-    mặc định (chỉ khi cần dedup và có biến thể qua cổng).
+    Trả (biến thể_giữ, report); không gồm `seeds`. `embed_fn` None thì nạp Embedder mặc định (chỉ
+    khi cần dedup). `paraphraser` None thì bỏ nhánh model (dù `model.enabled`); bộ sinh thật tiêm
+    `LLMParaphraser()`, test tiêm bản giả.
     """
     cfg = cfg or load_mutator_config()
     meta = meta or load_task_meta()
@@ -310,7 +397,11 @@ def mutate(
     candidates: list[dict[str, Any]] = []
     for p in seeds:
         candidates.extend(v for v, _name in rule_mutate(p, cfg=cfg, id_counter=id_counter))
-        candidates.extend(v for v, _name in model_mutate(p, cfg=cfg))  # điểm cắm, hiện trả []
+        candidates.extend(
+            v for v, _name in model_mutate(
+                p, cfg=cfg, paraphraser=paraphraser, id_counter=id_counter
+            )
+        )
     report.n_generated = len(candidates)
 
     passed: list[dict[str, Any]] = []

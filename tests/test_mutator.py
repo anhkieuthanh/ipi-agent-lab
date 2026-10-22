@@ -7,13 +7,19 @@ chỉ thị trung tính — test kiểm cơ chế biến đổi/cổng/lọc tr�
 from __future__ import annotations
 
 import base64
+import copy
+from types import SimpleNamespace
 
 import pytest
 
 from src.attack.mutator import (
+    LLMParaphraser,
     MutatorError,
+    Paraphraser,
     dedup_by_embedding,
+    load_attacker_prompt,
     load_mutator_config,
+    model_mutate,
     mutate,
     rule_mutate,
 )
@@ -182,6 +188,91 @@ def test_dedup_khong_gom_khac_technique_du_vector_trung():
     b = _mini("T2", "G2", "ABC")  # cung vector nhung khac technique -> khong gom
     kept, dropped = dedup_by_embedding([a, b], cfg=CFG, embed_fn=lambda t: [1.0, 0.0])
     assert len(kept) == 2 and dropped == []
+
+
+# ── Biến đổi bằng model (client giả, không mạng) ─────────────────────────────────
+class _FakeParaphraser(Paraphraser):
+    """Viết lại = thêm tiền tố có số đếm (hai lần gọi khác nhau), GIỮ placeholder."""
+
+    def __init__(self):
+        self.n = 0
+
+    def paraphrase(self, text: str) -> str:
+        self.n += 1
+        return f"Vui long: ({self.n}) {text}"
+
+
+class _DropPlaceholder(Paraphraser):
+    """Mô phỏng model làm MẤT placeholder — biến thể phải bị loại."""
+
+    def paraphrase(self, text: str) -> str:
+        return text.replace("{run_id}", "ABC123")
+
+
+def _model_cfg(enabled=True, n=2):
+    cfg = copy.deepcopy(CFG)
+    cfg["model"] = {"enabled": enabled, "attacker_model": "attacker", "variants_per_payload": n}
+    return cfg
+
+
+def test_model_mutate_sinh_bien_the_giu_placeholder_va_ngu_nghia():
+    seed = _seed_t5_g3()
+    variants = model_mutate(seed, cfg=_model_cfg(), paraphraser=_FakeParaphraser(), id_counter={})
+    assert len(variants) == 2
+    for v, name in variants:
+        assert name == "model"
+        assert "pair_id" not in v
+        assert v["obfuscation"] == ["none"]          # paraphrase khong phai obfuscation
+        assert v["mutation"]["by"] == "model"
+        assert "{run_id}" in v["goal_binding"]["instruction_vi"]   # giu placeholder
+        assert v["goal_binding"]["instruction_vi"] != seed["goal_binding"]["instruction_vi"]
+        assert v["activation_check"] == seed["activation_check"]   # ngu nghia giu nguyen
+        assert validate_payload(v, meta=META) == []
+
+
+def test_model_mutate_loai_khi_placeholder_vo():
+    seed = _seed_t5_g3()
+    variants = model_mutate(seed, cfg=_model_cfg(), paraphraser=_DropPlaceholder(), id_counter={})
+    assert variants == []   # moi ban lam mat {run_id} -> loai het
+
+
+def test_model_mutate_bo_qua_khi_tat_hoac_khong_paraphraser():
+    seed = _seed_t5_g3()
+    assert model_mutate(seed, cfg=_model_cfg(enabled=False), paraphraser=_FakeParaphraser()) == []
+    assert model_mutate(seed, cfg=_model_cfg(), paraphraser=None) == []
+
+
+def test_mutate_gom_ca_nhanh_model():
+    seeds = [_seed_t1_g2()]
+    kept, r = mutate(
+        seeds, cfg=_model_cfg(), meta=META,
+        embed_fn=lambda t: _vec_distinct(t) or [1.0], paraphraser=_FakeParaphraser(),
+    )
+    assert any(v.get("mutation", {}).get("by") == "model" for v in kept)
+    for v in kept:
+        assert validate_payload(v, meta=META) == []
+
+
+def test_llm_paraphraser_goi_client_dung_dang():
+    seen = {}
+
+    def chat(messages, **kw):
+        seen["messages"] = messages
+        seen["kw"] = kw
+        return SimpleNamespace(text="  ban viet lai  ")
+
+    pr = LLMParaphraser(prompt={"system": "SYS", "user_prefix": "PRE", "max_tokens": 77},
+                        client=SimpleNamespace(chat=chat, model="claude-opus-5"))
+    out = pr.paraphrase("goc")
+    assert out == "ban viet lai"                       # da strip
+    assert seen["messages"][0] == {"role": "system", "content": "SYS"}
+    assert seen["messages"][1]["content"] == "PRE\n\ngoc"
+    assert seen["kw"]["max_tokens"] == 77
+
+
+def test_load_attacker_prompt_co_khoi():
+    block = load_attacker_prompt()
+    assert block["system"] and block["user_prefix"]
 
 
 # ── Config ──────────────────────────────────────────────────────────────────────

@@ -35,13 +35,16 @@ rule:
     - hex
     - percent_encoding
 
-# ── Điểm cắm biến đổi bằng model ────────────────────────────────────────────────
-# "Biến đổi bằng model" (paraphrase bằng LLM) vướng attacker_model — CHƯA chốt với GVHD
-# (checklist mục 8 việc 6; config/experiment.yaml B5.attacker_model: null). Theo quy tắc cứng #8,
-# không tự quyết. model_mutate() để điểm cắm nhưng chưa nối model: bật phần này khi GVHD chốt.
+# ── Biến đổi bằng model (paraphrase) ─────────────────────────────────────────────
+# GVHD duyệt opus-5 làm attacker_model 2026-10-22 (checklist mục 8 việc 6). model_mutate sinh biến
+# thể từ vựng bằng khối `attacker` của config/models.yaml (claude-opus-5) và `attacker` của
+# config/prompts.yaml. Chạy ở bước soạn payload (offline), cần Paraphraser tiêm vào (bộ sinh thật
+# dùng LLMParaphraser; test dùng bản giả) — `enabled: false` hoặc không có paraphraser thì bỏ nhánh.
+# Lưu ý: khác trục `attacker_mode: adaptive` của vòng B5 (runner) — đây chỉ là nguồn sinh payload.
 model:
-  enabled: false
-  attacker_model: null          # trùng B5.attacker_model; ghi tên preset models.yaml khi chốt
+  enabled: true
+  attacker_model: attacker      # khối trong config/models.yaml (pin claude-opus-5, v-models-1.0)
+  variants_per_payload: 2       # số lần gọi model mỗi payload; bản trùng/placeholder-vỡ bị loại
 
 # ── Lọc trùng theo embedding ────────────────────────────────────────────────────
 dedup:
