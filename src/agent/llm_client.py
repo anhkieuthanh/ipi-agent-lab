@@ -48,6 +48,7 @@ import openai
 import yaml
 
 __all__ = [
+    "ATTACKER_ID",
     "JUDGE_ID",
     "LLMClient",
     "LLMResult",
@@ -66,6 +67,12 @@ PROVIDERS = ("openai", "anthropic")
 # `target_id` chọn khối `judge` của models.yaml thay vì một khối `targets` — model chấm `judge_pass`,
 # pin như target, ghi log với `target_id = "judge"` để obs.cost tính chi phí riêng.
 JUDGE_ID = "judge"
+# `target_id` chọn khối `attacker` của models.yaml — model sinh biến thể payload (paraphrase, STT-43),
+# pin như judge, ghi log với `target_id = "attacker"` để obs.cost tính chi phí riêng. Không phải
+# target: runner không chạy tác vụ trên khối này.
+ATTACKER_ID = "attacker"
+# Khối cấp cao của models.yaml không nằm trong `targets` (pin như target, nhưng runner không chạy).
+_NON_TARGET_BLOCKS = (JUDGE_ID, ATTACKER_ID)
 # Khóa riêng trong message assistant giữ block gốc của Messages API; provider openai bỏ khóa này.
 NATIVE_CONTENT_KEY = "_anthropic_content"
 # stop_reason của Messages API → finish_reason kiểu OpenAI mà trace và scorer dùng.
@@ -167,10 +174,10 @@ class LLMClient:
     ) -> None:
         cfg = _load_config(config_path)
         targets = cfg["targets"]
-        if target_id == JUDGE_ID:
-            if not cfg.get(JUDGE_ID):
-                raise LLMClientConfigError(f"{config_path} thiếu khối '{JUDGE_ID}'")
-            spec = cfg[JUDGE_ID]
+        if target_id in _NON_TARGET_BLOCKS:
+            if not cfg.get(target_id):
+                raise LLMClientConfigError(f"{config_path} thiếu khối '{target_id}'")
+            spec = cfg[target_id]
         elif target_id not in targets:
             raise LLMClientConfigError(
                 f"target_id không hợp lệ: '{target_id}'. Có sẵn: {sorted(targets)}"
