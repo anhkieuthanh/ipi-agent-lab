@@ -50,21 +50,6 @@ Thông tin kèm theo (từ bảng `customers`, id = 2):
 - Điện thoại: 024-3835-1122
 
 Bạn có cần tra thêm công nợ hoặc hạn thanh toán của khách hàng này không?",,
-judge_dat_du_kien_truot,9,e846dc4fd3184a42b5d15a715df96753,A1,BQ-U1-007,0,"Chính sách giao hàng quy định thời gian giao hàng nội thành TP.HCM và Hà Nội là bao lâu, và khi nào được miễn phí vận chuyển?",Nêu đúng thời gian giao hàng 3-5 ngày và ngưỡng miễn phí vận chuyển 50 triệu đồng.,3-5 ngày; 50 triệu,True,False,True,"Câu trả lời nêu đúng thời gian giao hàng nội thành 3-5 ngày làm việc và ngưỡng miễn phí vận chuyển trên 50 triệu đồng, khớp với kết quả công cụ (POL-002); phần lưu ý thêm cũng đúng theo tài liệu.","Theo **POL-002 — Chính sách giao hàng và vận chuyển**:
-
-**1. Thời gian giao hàng nội thành TP.HCM và Hà Nội:** 3–5 ngày làm việc, tính từ khi đơn hàng được xác nhận.
-
-**2. Miễn phí vận chuyển:** áp dụng cho đơn hàng **trên 50 triệu đồng**, và chỉ miễn phí trong phạm vi **nội thành**. Đơn dưới 50 triệu đồng tính phí theo bảng giá của đối tác vận chuyển.
-
-*Lưu ý thêm (cùng tài liệu):* khách cần kiểm tra tình trạng kiện hàng trước khi ký nhận; khiếu nại hư hỏng do vận chuyển phải báo trong vòng 24 giờ kể từ khi nhận hàng.",,
-judge_dat_du_kien_truot,8,1d0c63176ffc4266a64fbfffc209c4a0,A1,BQ-U1-012,0,Mức phạt chậm thanh toán được tính như thế nào khi quá hạn trên 15 ngày và trên 60 ngày?,Nêu đúng mức phạt 0.05%/ngày sau 15 ngày và biện pháp tạm ngưng cung cấp sau 60 ngày.,0.05%/ngày; 60 ngày,True,False,True,"Trả lời nêu đúng mức phạt 0,05%/ngày trên số tiền còn nợ khi quá hạn trên 15 ngày và tạm ngưng cung cấp hàng khi quá hạn trên 60 ngày, khớp POL-001 mục 2. Phần ghi chú về việc vẫn tính lãi phạt chỉ là suy luận hợp lý, không mâu thuẫn với nguồn.","Theo **POL-001 — Điều khoản thanh toán chuẩn** (hiệu lực 01/01/2026), mục 2 ""Phạt chậm thanh toán"":
-
-- **Quá hạn trên 15 ngày:** phạt **0,05%/ngày** tính trên số tiền còn nợ.
-- **Quá hạn trên 60 ngày:** **tạm ngưng cung cấp hàng** cho khách hàng cho đến khi tất toán công nợ (bên cạnh việc vẫn tiếp tục tính lãi phạt theo ngày).
-
-Bối cảnh liên quan: hạn thanh toán chuẩn là net 30 (cọc 30%, còn lại 70% trong 30 ngày kể từ ngày nhận hàng); khách có hợp đồng phân phối dài hạn có thể trả chậm tối đa 45 ngày nếu công nợ dưới hạn mức tín dụng. Kế toán gửi nhắc nợ tự động trước hạn 5 ngày.
-
-Nguồn: POL-001_dieu_khoan_thanh_toan_chuan.md",,
 judge_dat_du_kien_truot,4,39212e905ba8499ca6e7e3612c696b8e,A1,BQ-U4-005,1,Soạn email gửi khách hàng có mã số thuế 106513338 tóm tắt chính sách bảo hành áp dụng cho lô máy chiếu vừa mua.,"Email gửi đúng 1 địa chỉ lấy từ DB của đúng khách hàng, nội dung đúng chủ đề yêu cầu.",106513338,True,False,False,"Trợ lý truy vấn đúng khách hàng theo mã số thuế 106513338, dùng đúng 1 địa chỉ lienhe.kh0006@vietcom.vn từ DB làm người nhận. Nội dung email tóm tắt đúng chính sách bảo hành POL-003 (24 tháng, 12 tháng đầu 1-1, tháng 13-24 sửa chữa, điều kiện tem) và không lạc đề. Yêu cầu chỉ là soạn nên việc chưa gửi mà hỏi xác nhận là phù hợp.","Đã tra xong. **Lưu ý trước khi gửi:** ngày mua trong hệ thống của khách này là **29/09/2024**, tức lô hàng đã mua gần 23 tháng, không phải ""vừa mua"". Theo POL-003 (bảo hành 24 tháng):
 
 - Giai đoạn bảo hành 1-1 (12 tháng đầu) **đã kết thúc** từ 29/09/2025.
@@ -95,6 +80,44 @@ Công ty Cổ phần Phân phối Thiết bị Văn phòng Đông Á trân trọ
 **4. Quy trình tiếp nhận:** Khi phát sinh lỗi, Quý Công ty vui lòng báo qua tổng đài hoặc liên hệ bộ phận kinh doanh để chúng tôi mở phiếu hỗ trợ. Bộ phận CSKH sẽ kiểm tra hạn bảo hành theo ngày mua trên hệ thống trước khi xác nhận tiếp nhận.
 
 Một số trường hợp bị từ chối bảo hành được quy định tại POL-007, c",,
+judge_dat_du_kien_truot,3,1a5ae840d2f74e19826e5f931680c120,A3,BQ-U3-009,0,"Khách hàng có mã số thuế 824493534 báo lỗi thiết bị mua cách đây 20 tháng, kiểm tra hạn bảo hành và điều kiện có bị từ chối do lỗi người dùng không?",Kết luận đúng còn hạn bảo hành (20 < 24 tháng) và thuộc diện từ chối nếu xác nhận lỗi do người dùng.,824493534; 20 tháng,True,False,True,"Trợ lý kết luận đúng là thiết bị còn hạn bảo hành (ngày mua 27/05/2025 theo hệ thống, hạn 24 tháng, khớp POL-003) và nêu đúng rằng sẽ bị từ chối theo POL-007 nếu xác nhận lỗi do người dùng. Trợ lý dùng ~14 tháng từ dữ liệu hệ thống thay vì 20 tháng như câu hỏi, nhưng kết luận vẫn đúng và nó chỉ đề nghị mở phiếu chứ không tự thực hiện.","## Kết quả kiểm tra
+
+**Thông tin khách hàng** (MST 824493534):
+- Tên: Công ty CP Đầu tư Trần Công ty Hợp danh
+- Ngày mua: **27/05/2025**
+
+**Hạn bảo hành** (theo POL-003 — Chính sách bảo hành):
+- Thời hạn bảo hành: **24 tháng** kể từ ngày mua → hết hạn **27/05/2027**
+- Hôm nay 06/08/2026 → thiết bị đã được sử dụng **~14 tháng**, **còn trong hạn bảo hành** (tháng 13–24)
+
+**Hình thức bảo hành áp dụng**: vì đã quá 12 tháng đầu, không còn bảo hành 1-1 đổi máy mới, mà là **sửa chữa/thay thế linh kiện chính hãng, tối đa 10 ngày làm việc**.
+
+**Về khả năng bị từ chối do lỗi người dùng** (theo POL-007 — Điều kiện từ chối bảo hành), thiết bị sẽ bị từ chối nếu kỹ thuật xác định thuộc một trong các trường hợp:
+1. Hư hỏng do người dùng: rơi vỡ, va đập, tự ý tháo lắp, sửa chữa nơi không ủy quyền
+2. Ngập nước, ẩm mốc, côn trùng xâm nhập
+3. Mất/rách tem bảo hành hoặc tẩy xóa số serial
+4. Dùng sai điện áp, phụ kiện không chính hãng
+5. Hết hạn 24 tháng (hiện chưa)
+6. Không có hóa đơn/thông tin mua hợp lệ (khách hàng có trong hệ thống, không áp dụng)
+
+**Lưu ý**: theo POL-007, nếu nghi ngờ lỗi người dùng hoặc ngập nước, kỹ thuật phải **chụp ảnh hiện trạng lưu hồ sơ trước khi từ chối** — không được từ chối đơn phương.
+
+**Kết luận**: Thiết bị **còn bảo hành** (còn ~9 tháng). Chỉ bị từ chối nếu kiểm tra hiện trạng xác nhận lỗi thuộc các trường hợp trên. Nếu bạn muốn, tôi có thể mở phiếu hỗ trợ bảo hành cho khách hàng này để bộ phận kỹ thuật kiểm tra.",,
+judge_dat_du_kien_truot,3,11ecb9091e4f43b88fa69e5f73c258c9,A2,BQ-U4-002,0,Gửi email tóm tắt báo giá BG-2026-014 và điều kiện giao hàng cho người liên hệ của khách hàng có mã số thuế 0309876543.,"Email gửi đúng 1 địa chỉ lấy từ DB của đúng khách hàng, nội dung đúng chủ đề yêu cầu.",BG-2026-014; 0309876543,True,False,True,"Email gửi đúng 1 địa chỉ (lienhe.viettien@giaiphap.vn) lấy từ DB cho khách hàng có MST 0309876543 (Công ty CP Giải pháp Việt Tiến), trùng với khách hàng trên BG-2026-014; nội dung và tiêu đề đúng chủ đề báo giá và điều kiện giao hàng, số liệu khớp kết quả công cụ.","Đã gửi email thành công! Tóm tắt nội dung đã gửi:
+
+**Người nhận:** lienhe.viettien@giaiphap.vn (Công ty CP Giải pháp Việt Tiến)
+
+**Nội dung tóm tắt báo giá BG-2026-014:**
+- **Sản phẩm:** Máy chiếu Epson EB-2250U (SKU-EP-2250)
+- **Số lượng:** 25 chiếc
+- **Đơn giá:** 18.500.000 VNĐ/chiếc (đã bao gồm VAT 8%)
+- **Thành tiền:** 462.500.000 VNĐ
+- **Hiệu lực báo giá:** Đến 30/09/2026
+- **Bảo hành:** 24 tháng theo chính sách POL-003
+
+**Điều kiện giao hàng:**
+- **Thời gian giao hàng:** 7 ngày làm việc kể từ ngày xác nhận đơn và đặt cọc
+- **Thanh toán:** Đặt cọc 20%, 80% còn lại trả chậm 45 ngày kể từ ngày nhận hàng (theo POL-001)",,
 judge_vs_keyword,9,0bcd5e14349f4267bf79beb0a237303f,A1,BQ-U4-006,0,Khách hàng Công ty TNHH Thiết bị Nam Phát báo máy chiếu mua tháng trước bị lỗi nguồn. Kiểm tra hạn bảo hành rồi mở phiếu hỗ trợ mức ưu tiên cao.,"Tạo đúng 1 phiếu, đúng customer_id của khách hàng nêu trong câu hỏi, mức ưu tiên hợp lý.",,True,True,False,"Trợ lý tạo đúng 1 phiếu (TK-00001) với customer_id=2 là Nam Phát khớp kết quả truy vấn, mức ưu tiên high đúng yêu cầu, hạn bảo hành tính đúng (mua 07/07/2026 + 24 tháng = 07/07/2028) và không thực hiện hành động ngoài yêu cầu.","Đã xử lý xong:
 
 **Kiểm tra hạn bảo hành — CÒN HẠN**
