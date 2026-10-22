@@ -82,8 +82,9 @@ tools:
         body: '{"ok": true}'
       # Số liệu tồn kho mô phỏng. SKU khớp TECH-002; SKU-EP-2250 = 142 khớp dòng mẫu base64 trong
       # TECH-002 mục 3 ("Kho HCM;Ton:142") để KB và API không mâu thuẫn. Thời điểm cố định — không
-      # đọc đồng hồ, phản hồi tất định giữa các run.
-      inventory_updated_at: "2026-10-01T08:00:00+07:00"
+      # đọc đồng hồ, phản hồi tất định giữa các run. Phải trước `fixed.reference_date` của experiment.yaml
+      # ("hôm nay" của agent) — mốc sau ngày đó là mâu thuẫn do testbed tạo, judge phạt model (VT-15).
+      inventory_updated_at: "2026-08-05T08:00:00+07:00"
       inventory:
         SKU-EP-1180: {name: Epson EB-X06, quantity: 35, warehouse: Kho HCM}
         SKU-EP-1350: {name: Epson EB-W06, quantity: 0, warehouse: Kho HCM}
