@@ -25,7 +25,9 @@ from eval.utility_baseline import (
     build_harness_tools,
     done_specs,
     export_tables,
+    load_rejudge,
     plan_runs,
+    rejudge_runs,
     rescore_table,
     review_candidates,
     run_one,
@@ -312,9 +314,7 @@ def test_export_khong_ghi_de_danh_sach_da_co_ket_luan_soat_tay(ctx, tmp_path):
     run_one(RunSpec(0, "A2", "BQ-U1-001"), ctx)
     ctx.models["A2"] = FakeModel(answer="Bảo hành hai năm (POL-003).")
     run_one(RunSpec(1, "A2", "BQ-U1-001"), ctx)
-    kwargs = dict(
-        tcp=TcpCi.from_experiment(load_experiment()), review_ratio=0.05, queries=BENIGN
-    )
+    kwargs = dict(tcp=TcpCi.from_experiment(load_experiment()), review_ratio=0.05, queries=BENIGN)
     out = tmp_path / "tables"
     paths = export_tables(ctx.engine, "test-usr", ctx.judge_log, out, **kwargs)
     filled = pd.read_csv(paths["shortlist"]).assign(ta_verdict="judge_dung", ta_note="x")
@@ -322,3 +322,80 @@ def test_export_khong_ghi_de_danh_sach_da_co_ket_luan_soat_tay(ctx, tmp_path):
     again = export_tables(ctx.engine, "test-usr", ctx.judge_log, out, **kwargs)
     assert "shortlist" not in again and again["shortlist_kept"] == paths["shortlist"]
     assert list(pd.read_csv(paths["shortlist"])["ta_verdict"]) == ["judge_dung"]
+
+
+def test_rejudge_cham_lai_run_sach_va_run_loi_judge_bo_run_loi_model(ctx, tmp_path):
+    good = run_one(RunSpec(0, "A2", "BQ-U1-001"), ctx)
+    ctx.judge_client = FakeJudge(text="Đạt yêu cầu.")
+    judge_err = run_one(RunSpec(1, "A2", "BQ-U1-001"), ctx)
+    ctx.models["A2"] = FakeModel(fail_with=LLMClientError("HTTP 503 sau 6 lần thử"))
+    model_err = run_one(RunSpec(2, "A2", "BQ-U1-001"), ctx)
+
+    log = tmp_path / "rejudge.jsonl"
+    judge = FakeJudge(text='{"pass": false, "reason": "thiếu dẫn nguồn"}')
+    seen = []
+    n = rejudge_runs(
+        ctx.engine,
+        "test-usr",
+        client=judge,
+        cfg=ctx.judge_cfg,
+        queries=BENIGN,
+        log_path=log,
+        after_each=lambda i, total: seen.append((i, total)) or True,
+    )
+    assert n == 2 and judge.n_calls == 2 and seen[-1] == (2, 2)
+    overrides = load_rejudge(log)
+    assert set(overrides) == {good, judge_err} and model_err not in overrides
+    # chạy lại không gọi judge cho run đã chấm
+    assert (
+        rejudge_runs(
+            ctx.engine, "test-usr", client=judge, cfg=ctx.judge_cfg, queries=BENIGN, log_path=log
+        )
+        == 0
+    )
+
+    out = rescore_table(
+        ctx.engine,
+        "test-usr",
+        ctx.judge_log,
+        queries=BENIGN,
+        customers_db=DEFAULT_CUSTOMERS_DB,
+        judge_overrides=overrides,
+    ).set_index("run_id")
+    assert (out.at[good, "judge_pass"], out.at[good, "outcome"]) == (False, "fail")
+    assert out.at[good, "judge_reason"] == "thiếu dẫn nguồn"
+    assert not out.at[judge_err, "parse_error"] and out.at[judge_err, "outcome"] == "fail"
+    assert bool(out.at[model_err, "parse_error"])
+    assert _run(ctx, good).judge_pass is True  # store không bị ghi đè
+
+
+def test_rejudge_loi_judge_giu_parse_error_va_thieu_ban_cham_lai_la_loi(ctx, tmp_path):
+    good = run_one(RunSpec(0, "A2", "BQ-U1-001"), ctx)
+    log = tmp_path / "rejudge.jsonl"
+    rejudge_runs(
+        ctx.engine,
+        "test-usr",
+        client=FakeJudge(text="không phải JSON"),
+        cfg=ctx.judge_cfg,
+        queries=BENIGN,
+        log_path=log,
+    )
+    out = rescore_table(
+        ctx.engine,
+        "test-usr",
+        ctx.judge_log,
+        queries=BENIGN,
+        customers_db=DEFAULT_CUSTOMERS_DB,
+        judge_overrides=load_rejudge(log),
+    ).set_index("run_id")
+    assert bool(out.at[good, "parse_error"]) and pd.isna(out.at[good, "outcome"])
+    assert out.at[good, "parse_error_reason"].startswith("JudgeError")
+    with pytest.raises(KeyError):
+        rescore_table(
+            ctx.engine,
+            "test-usr",
+            ctx.judge_log,
+            queries=BENIGN,
+            customers_db=DEFAULT_CUSTOMERS_DB,
+            judge_overrides={},
+        )

@@ -408,3 +408,15 @@ def test_build_tool_layer_gan_du_nam_tool():
 
     built = registry.build_tool_layer()
     assert set(built._handlers) == set(built.names)
+
+
+def test_ngay_cap_nhat_ton_kho_truoc_ngay_tham_chieu():
+    """VT-15: mốc tồn kho sau "hôm nay" của agent là mâu thuẫn do testbed tạo."""
+    from datetime import date, datetime
+
+    from eval.experiment import load_experiment
+    from tools.registry import load_tool_defs
+
+    updated = datetime.fromisoformat(load_tool_defs()["http_request"].params["inventory_updated_at"])
+    today = date.fromisoformat(str(load_experiment().fixed["reference_date"]))
+    assert updated.date() < today

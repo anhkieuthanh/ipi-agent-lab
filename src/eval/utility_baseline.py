@@ -63,10 +63,13 @@ __all__ = [
     "done_specs",
     "export_tables",
     "plan_runs",
+    "load_rejudge",
+    "rejudge_runs",
     "rescore_table",
     "review_candidates",
     "review_shortlist",
     "run_one",
+    "usr_by_target",
 ]
 
 UNIT_ID = "utility_baseline"
@@ -441,41 +444,6 @@ def final_answers(engine: Engine, batch_id: str) -> dict[str, str | None]:
     return dict(rows)
 
 
-def rescore_table(
-    engine: Engine,
-    batch_id: str,
-    judge_log: Path,
-    *,
-    queries: Mapping[str, dict[str, Any]],
-    customers_db: Path,
-) -> pd.DataFrame:
-    """Chấm lại mọi run của lô bằng scorer HIỆN HÀNH, từ trace đã lưu — không gọi model hay judge.
-
-    `judge_pass`, `judge_model` lấy từ store. Run `parse_error` giữ nguyên: lỗi của chúng (judge trả
-    sai định dạng, mất kết nối) nằm ngoài trace nên scorer không tái tạo được. Dùng khi scorer đổi sau
-    lô (VT-12); bảng gốc của lô giữ nguyên làm bằng chứng.
-    """
-    runs = run_table(engine, batch_id, judge_log).set_index("run_id")
-    with Session(engine) as s:
-        for run in s.exec(select(Run).where(Run.batch_id == batch_id)):
-            if run.parse_error:
-                continue
-            steps = s.exec(select(Step).where(Step.run_id == run.run_id)).all()
-            ctx = ScoreContext(
-                runtime=benign_runtime(queries[run.benign_query_id], customers_db),
-                judge_pass=run.judge_pass,
-                judge_model=run.judge_model,
-            )
-            fields = score_trace(run, steps, ctx).fields()
-            if fields["parse_error"]:
-                raise AssertionError(
-                    f"run {run.run_id} sạch lúc chạy mà scorer mới báo parse_error"
-                )
-            for key in RESCORED_FIELDS:
-                runs.at[run.run_id, key] = fields[key]
-    return runs.reset_index()[RUN_COLUMNS]
-
-
 #: Trường scorer gán lại khi chấm lại; các cột khác (judge, token, nhãn) lấy nguyên từ store.
 RESCORED_FIELDS = (
     "outcome",
@@ -488,6 +456,148 @@ RESCORED_FIELDS = (
     "g2_severity",
     "loop_flag",
 )
+#: Run `parse_error` mà chấm lại judge sửa được: agent chạy trọn, chỉ judge trả sai định dạng.
+REJUDGEABLE_PREFIX = "JudgeError"
+#: Cột judge lấy từ bản chấm lại judge (`load_rejudge`) thay cho store.
+JUDGE_COLUMNS = ("judge_pass", "judge_model", "judge_reason", "judge_called", "judge_prompt_hash")
+
+
+def rejudgeable(run: Run) -> bool:
+    return not run.parse_error or (run.parse_error_reason or "").startswith(REJUDGEABLE_PREFIX)
+
+
+def load_rejudge(path: Path) -> dict[str, dict[str, Any]]:
+    """Kết quả chấm lại judge theo `run_id` (dòng cuối thắng)."""
+    if not path.is_file():
+        return {}
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+    return {r["run_id"]: r for r in rows}
+
+
+def rejudge_runs(
+    engine: Engine,
+    batch_id: str,
+    *,
+    client: Any,
+    cfg: JudgeConfig,
+    queries: Mapping[str, dict[str, Any]],
+    log_path: Path,
+    after_each: Callable[[int, int], bool] | None = None,
+) -> int:
+    """Gọi lại judge cho mọi run chấm được của lô, từ trace đã lưu — không gọi model đích (VT-14).
+
+    Ghi mỗi run một dòng vào `log_path`; run đã có dòng thì bỏ qua (chạy tiếp được). `JudgeError` ghi
+    vào `judge_error` và chạy tiếp; lỗi gọi API (`LLMClientError`) lan ra để dừng. `after_each(i, n)`
+    trả False thì dừng (ngân sách). Trả số run đã chấm trong lần gọi này.
+    """
+    done = set(load_rejudge(log_path))
+    with Session(engine) as s:
+        todo = [
+            r
+            for r in s.exec(select(Run).where(Run.batch_id == batch_id))
+            if rejudgeable(r) and r.run_id not in done
+        ]
+        todo.sort(key=lambda r: r.run_id)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        for i, run in enumerate(todo, start=1):
+            steps = s.exec(select(Step).where(Step.run_id == run.run_id)).all()
+            # Câu trả lời cuối lấy qua scorer — run JudgeError không có `final_answer` trong store.
+            answer = score_trace(run, steps, ScoreContext(judge_pass=False)).final_answer
+            rec: dict[str, Any] = {"run_id": run.run_id, "judge_prompt_hash": cfg.prompt_hash()}
+            try:
+                v = judge_run(client, queries[run.benign_query_id], answer, steps, cfg=cfg)
+                rec |= {
+                    "judge_called": v.called,
+                    "judge_pass": v.judge_pass,
+                    "judge_model": v.judge_model,
+                    "judge_reason": v.reason,
+                    "judge_error": None,
+                }
+            except JudgeError as e:
+                rec |= {"judge_called": True, "judge_error": f"JudgeError: {e}"[:500]}
+            with log_path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+            if after_each is not None and not after_each(i, len(todo)):
+                return i
+    return len(todo)
+
+
+def rescore_table(
+    engine: Engine,
+    batch_id: str,
+    judge_log: Path,
+    *,
+    queries: Mapping[str, dict[str, Any]],
+    customers_db: Path,
+    judge_overrides: Mapping[str, Mapping[str, Any]] | None = None,
+) -> pd.DataFrame:
+    """Chấm lại mọi run của lô bằng scorer HIỆN HÀNH, từ trace đã lưu — không gọi model hay judge.
+
+    Không có `judge_overrides`: `judge_pass`, `judge_model` lấy từ store, run `parse_error` giữ nguyên
+    (VT-12, VT-13). Có `judge_overrides` (`load_rejudge`, VT-14): cột judge lấy từ đó, và run
+    `parse_error` vì judge trả sai định dạng được chấm lại; thiếu bản chấm lại của một run chấm được
+    là lỗi. Bảng gốc của lô giữ nguyên làm bằng chứng.
+    """
+    runs = run_table(engine, batch_id, judge_log).set_index("run_id")
+    # Cột sẽ ghi lại có thể nhận None (run chấm lại vẫn lỗi judge) — bỏ kiểu bool cứng của pandas.
+    rewritten = [*RESCORED_FIELDS, *JUDGE_COLUMNS, "parse_error_reason"]
+    runs[rewritten] = runs[rewritten].astype(object)
+    with Session(engine) as s:
+        for run in s.exec(select(Run).where(Run.batch_id == batch_id)):
+            override = None
+            if judge_overrides is not None and rejudgeable(run):
+                override = judge_overrides.get(run.run_id)
+                if override is None:
+                    raise KeyError(f"run {run.run_id} chưa được chấm lại judge")
+            if run.parse_error and override is None:
+                continue
+            if override is not None:
+                for key in JUDGE_COLUMNS:
+                    runs.at[run.run_id, key] = override.get(key)
+                if override.get("judge_error"):
+                    for key in RESCORED_FIELDS:
+                        runs.at[run.run_id, key] = None
+                    runs.at[run.run_id, "parse_error"] = True
+                    runs.at[run.run_id, "parse_error_reason"] = override["judge_error"]
+                    continue
+            steps = s.exec(select(Step).where(Step.run_id == run.run_id)).all()
+            source = override if override is not None else {}
+            ctx = ScoreContext(
+                runtime=benign_runtime(queries[run.benign_query_id], customers_db),
+                judge_pass=source.get("judge_pass", run.judge_pass),
+                judge_model=source.get("judge_model", run.judge_model),
+            )
+            fields = score_trace(run, steps, ctx).fields()
+            if fields["parse_error"]:
+                raise AssertionError(f"run {run.run_id}: trace đủ mà scorer mới báo parse_error")
+            for key in RESCORED_FIELDS:
+                runs.at[run.run_id, key] = fields[key]
+            runs.at[run.run_id, "parse_error"] = False
+            runs.at[run.run_id, "parse_error_reason"] = None
+    return runs.reset_index()[RUN_COLUMNS]
+
+
+def usr_by_target(runs: pd.DataFrame, label: str) -> list[dict[str, Any]]:
+    """USR mức run và mức câu theo target, Wilson 95% — cột mang tiền tố `label`."""
+    clean = runs[~runs["parse_error"].astype(bool)]
+    rows = []
+    for target, cell in clean.groupby("target_id", sort=True):
+        by_run = rate(int((cell["outcome"] == "pass").sum()), len(cell))
+        q = query_level(cell.assign(run_kind="benign"))
+        by_query = rate(int(q["query_pass"].sum()), len(q))
+        for level, r in (("run", by_run), ("query", by_query)):
+            rows.append(
+                {
+                    "target_id": target,
+                    "level": level,
+                    f"{label}_p": r.x,
+                    f"{label}_n": r.n,
+                    f"{label}_usr": r.p,
+                    f"{label}_usr_lo": r.lo,
+                    f"{label}_usr_hi": r.hi,
+                }
+            )
+    return rows
 
 
 def export_tables(

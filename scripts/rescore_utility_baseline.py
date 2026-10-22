@@ -22,34 +22,17 @@ import pandas as pd  # noqa: E402
 
 from eval.canary import DEFAULT_CUSTOMERS_DB  # noqa: E402
 from eval.experiment import load_experiment  # noqa: E402
-from eval.metrics import TcpCi, query_level, rate  # noqa: E402
-from eval.utility_baseline import export_tables, rescore_table, run_table  # noqa: E402
+from eval.metrics import TcpCi  # noqa: E402
+from eval.utility_baseline import (  # noqa: E402
+    export_tables,
+    rescore_table,
+    run_table,
+    usr_by_target,
+)
 from obs.trace import lab_git_commit, open_store, uncommitted_changes  # noqa: E402
 
 BATCH_ROOT = ROOT / "results" / "usr_baseline"
 TABLES = ROOT / "results" / "tables"
-
-
-def _usr_rows(runs: pd.DataFrame, label: str) -> list[dict]:
-    clean = runs[~runs["parse_error"].astype(bool)]
-    rows = []
-    for target, cell in clean.groupby("target_id", sort=True):
-        by_run = rate(int((cell["outcome"] == "pass").sum()), len(cell))
-        q = query_level(cell.assign(run_kind="benign"))
-        by_query = rate(int(q["query_pass"].sum()), len(q))
-        for level, r in (("run", by_run), ("query", by_query)):
-            rows.append(
-                {
-                    "target_id": target,
-                    "level": level,
-                    f"{label}_p": r.x,
-                    f"{label}_n": r.n,
-                    f"{label}_usr": r.p,
-                    f"{label}_usr_lo": r.lo,
-                    f"{label}_usr_hi": r.hi,
-                }
-            )
-    return rows
 
 
 def main() -> int:
@@ -92,8 +75,8 @@ def main() -> int:
 
     merged = before.merge(after, on="run_id", suffixes=("_goc", "_moi"))
     changed = merged[merged["outcome_goc"].fillna("") != merged["outcome_moi"].fillna("")]
-    compare = pd.DataFrame(_usr_rows(before, "goc")).merge(
-        pd.DataFrame(_usr_rows(after, "moi")), on=["target_id", "level"]
+    compare = pd.DataFrame(usr_by_target(before, "goc")).merge(
+        pd.DataFrame(usr_by_target(after, "moi")), on=["target_id", "level"]
     )
     compare["n_run_doi_outcome"] = (
         compare["target_id"].map(changed.groupby("target_id_goc").size()).fillna(0).astype(int)
