@@ -43,9 +43,9 @@ from agent.prompts import build_system_prompt
 from eval.canary import seeded_run
 from eval.judge import JudgeConfig, JudgeError, judge_run
 from eval.metrics import TcpCi, group_of, query_level, rate, utility_summary
-from eval.scorer import ScoreContext, score
+from eval.scorer import ScoreContext, score, score_trace
 from interfaces import NoDefense, SessionState
-from obs.trace import Run, RunMeta, TraceRecorder, export_runs
+from obs.trace import Run, RunMeta, Step, TraceRecorder, export_runs
 from tools.create_ticket import CreateTicket
 from tools.http_request import HttpRequest
 from tools.query_customer_db import QueryCustomerDb
@@ -63,6 +63,7 @@ __all__ = [
     "done_specs",
     "export_tables",
     "plan_runs",
+    "rescore_table",
     "review_candidates",
     "run_one",
 ]
@@ -379,6 +380,53 @@ def review_candidates(runs: pd.DataFrame) -> pd.DataFrame:
     return out.assign(ta_verdict="", ta_note="")
 
 
+def rescore_table(
+    engine: Engine,
+    batch_id: str,
+    judge_log: Path,
+    *,
+    queries: Mapping[str, dict[str, Any]],
+    customers_db: Path,
+) -> pd.DataFrame:
+    """Chấm lại mọi run của lô bằng scorer HIỆN HÀNH, từ trace đã lưu — không gọi model hay judge.
+
+    `judge_pass`, `judge_model` lấy từ store. Run `parse_error` giữ nguyên: lỗi của chúng (judge trả
+    sai định dạng, mất kết nối) nằm ngoài trace nên scorer không tái tạo được. Dùng khi scorer đổi sau
+    lô (VT-12); bảng gốc của lô giữ nguyên làm bằng chứng.
+    """
+    runs = run_table(engine, batch_id, judge_log).set_index("run_id")
+    with Session(engine) as s:
+        for run in s.exec(select(Run).where(Run.batch_id == batch_id)):
+            if run.parse_error:
+                continue
+            steps = s.exec(select(Step).where(Step.run_id == run.run_id)).all()
+            ctx = ScoreContext(
+                runtime=benign_runtime(queries[run.benign_query_id], customers_db),
+                judge_pass=run.judge_pass,
+                judge_model=run.judge_model,
+            )
+            fields = score_trace(run, steps, ctx).fields()
+            if fields["parse_error"]:
+                raise AssertionError(f"run {run.run_id} sạch lúc chạy mà scorer mới báo parse_error")
+            for key in RESCORED_FIELDS:
+                runs.at[run.run_id, key] = fields[key]
+    return runs.reset_index()[RUN_COLUMNS]
+
+
+#: Trường scorer gán lại khi chấm lại; các cột khác (judge, token, nhãn) lấy nguyên từ store.
+RESCORED_FIELDS = (
+    "outcome",
+    "blocked_by",
+    "hard_fact_pass",
+    "keyword_check_pass",
+    "tcp",
+    "g1_hit",
+    "g2_hit",
+    "g2_severity",
+    "loop_flag",
+)
+
+
 def export_tables(
     engine: Engine,
     batch_id: str,
@@ -387,14 +435,17 @@ def export_tables(
     *,
     tcp: TcpCi,
     review_ratio: float,
+    runs: pd.DataFrame | None = None,
+    stem: str = "utility_baseline",
 ) -> dict[str, Path]:
-    """Ghi ba CSV vào `out_dir`; trả đường dẫn theo tên."""
+    """Ghi ba CSV `<stem>*.csv` vào `out_dir`; trả đường dẫn theo tên. `runs` mặc định đọc từ store."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    runs = run_table(engine, batch_id, judge_log)
+    if runs is None:
+        runs = run_table(engine, batch_id, judge_log)
     paths = {
-        "runs": out_dir / "utility_baseline.csv",
-        "summary": out_dir / "utility_baseline_summary.csv",
-        "review": out_dir / "utility_baseline_review_candidates.csv",
+        "runs": out_dir / f"{stem}.csv",
+        "summary": out_dir / f"{stem}_summary.csv",
+        "review": out_dir / f"{stem}_review_candidates.csv",
     }
     runs.to_csv(paths["runs"], index=False)
     summary_table(runs, tcp=tcp, review_ratio=review_ratio).to_csv(paths["summary"], index=False)

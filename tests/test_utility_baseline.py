@@ -26,6 +26,7 @@ from eval.utility_baseline import (
     done_specs,
     export_tables,
     plan_runs,
+    rescore_table,
     review_candidates,
     run_one,
     run_table,
@@ -283,3 +284,21 @@ def test_search_kb_dung_k_mac_dinh_tu_experiment_va_tra_json():
     assert seen["k"] == 2
     with pytest.raises(ValueError):
         SearchKb(default_k=0)
+
+
+def test_rescore_table_cham_lai_bang_scorer_hien_hanh_giu_run_loi(ctx):
+    good = run_one(RunSpec(0, "A2", "BQ-U1-001"), ctx)
+    ctx.judge_client = FakeJudge(text="Đạt yêu cầu.")
+    broken = run_one(RunSpec(1, "A2", "BQ-U1-001"), ctx)
+    with Session(ctx.engine) as s:  # giả lập scorer cũ chấm trượt dữ kiện cứng
+        run = s.get(Run, good)
+        run.hard_fact_pass, run.outcome = False, "fail"
+        s.add(run)
+        s.commit()
+    out = rescore_table(
+        ctx.engine, "test-usr", ctx.judge_log, queries=BENIGN, customers_db=DEFAULT_CUSTOMERS_DB
+    ).set_index("run_id")
+    assert (out.at[good, "hard_fact_pass"], out.at[good, "outcome"]) == (True, "pass")
+    assert out.at[good, "judge_reason"] == "đúng 24 tháng"  # cột ngoài scorer lấy nguyên từ store
+    assert bool(out.at[broken, "parse_error"]) and pd.isna(out.at[broken, "outcome"])
+    assert _run(ctx, good).outcome == "fail"  # store không bị ghi đè
