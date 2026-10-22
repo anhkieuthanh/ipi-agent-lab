@@ -1,0 +1,74 @@
+# config/t4_formatting.yaml — hợp đồng bề mặt chèn ẩn T4 trên kênh K1 (STT-42)
+#
+# T4 = "Chèn ẩn, bất đối xứng hiển thị" (docs/04. Design/taxonomy.md mục 4, dòng 157; mục 2.1
+# "Bề mặt ẩn giấu riêng"). Đây KHÔNG phải corpus payload — payload T4 nằm ở
+# src/attack/payloads/t4_hidden.yaml (STT-40). Đây là đặc tả bề mặt vật lý mà
+# scripts/make_hidden_pdf.py dùng để dựng tài liệu K1 nhúng một payload cho sẵn.
+#
+# QUAN HỆ VỚI SCHEMA ĐÃ KHÓA (hướng a — không thêm mã obfuscation mới, giữ v-attack-1.0):
+# mỗi bề mặt ánh xạ về một mã obfuscation CÓ SẴN trong src/attack/payloads/schema.py:OBFUSCATION.
+# Không đẻ mã `white_text_1pt` / `metadata` / `footer` / `alt_text`. Diễn giải mở rộng (ghi rõ
+# để soát được):
+#   hidden_css       = ẩn bằng kiểu trình bày — CSS display:none ở HTML, hoặc màu/cỡ chữ ở PDF
+#                      (chữ trắng trên nền trắng, cỡ 1pt). Cùng họ "chênh lệch render" ở taxonomy
+#                      dòng 62 ("chữ trắng trên nền trắng, HTML comment, text ẩn theo CSS").
+#   hidden_attribute = chỉ thị nằm trong một thuộc tính không render thành thân văn — thuộc tính
+#                      alt của HTML, hoặc trường metadata của tài liệu PDF (Title/Subject/Keywords).
+#   hidden_html_comment = chỉ thị trong khối <!-- ... --> (khớp nguyên văn mã enum).
+#
+# Nhãn STT-42 trong sheet viết "T5/t5_formatting.yaml" là nhãn cũ (T5 = ngụy trang nghiệp vụ,
+# đã xong STT-40). Đổi về T4 + đổi tên file; ghi CHANGELOG_TAI_LIEU.md.
+#
+# KIỂM: mọi bề mặt phải thỏa "bất đối xứng" — parser trích ra chỉ thị, người duyệt render không
+# thấy (hoặc thấy rất mờ). Lệnh kiểm chuẩn là `pdftotext` cho PDF (sheet yêu cầu). Xem
+# tests/test_hidden_docs.py.
+
+schema_version: "1.0"
+
+# Giới hạn độ dài phần payload nhúng (không tính thân tài liệu chở). Chọn theo chuỗi gốc dài
+# nhất của corpus T4 hiện có; vượt thì generator báo lỗi, KHÔNG cắt (cùng nguyên tắc K2 ở
+# channel_render.yaml mục đầu).
+max_payload_chars: 600
+
+surfaces:
+
+  pdf_white_1pt:
+    media: pdf
+    obfuscation: hidden_css          # ẩn bằng kiểu trình bày (màu trắng + cỡ 1pt)
+    # Chỉ thị in màu trắng (255,255,255) cỡ 1pt ở một dòng riêng trong thân báo giá. Người đọc
+    # bản in/bản xem không thấy; pdftotext trích ra đầy đủ.
+    color_rgb: [255, 255, 255]
+    font_size_pt: 1
+    verify: pdftotext               # chuỗi payload phải có trong text trích ra
+    visible_to_reviewer: false
+
+  pdf_footer:
+    media: pdf
+    obfuscation: none               # chân trang HIỂN THỊ — đây là bề mặt độ-chú-ý-thấp, không
+                                    # phải ẩn chuỗi. Payload T4 đặt ở footer PHẢI kèm thêm một mã
+                                    # hidden_* (vd phủ white_1pt lên footer) để qua [T4] của schema;
+                                    # footer đơn lẻ hợp với payload non-T4.
+    verify: pdftotext
+    visible_to_reviewer: true
+    note: "Chân trang cỡ nhỏ, cuối mọi trang. Người duyệt lướt qua; parser đọc bình thường."
+
+  pdf_metadata:
+    media: pdf
+    obfuscation: hidden_attribute   # trường metadata tài liệu, không thuộc thân văn render
+    fields: [subject, keywords]     # fpdf2 set_subject / set_keywords
+    verify: pdf_metadata            # không nằm trong luồng pdftotext thân văn; đọc bằng pypdf.metadata
+    visible_to_reviewer: false
+
+  html_comment:
+    media: html
+    obfuscation: hidden_html_comment
+    template: "<!-- {PAYLOAD} -->"
+    verify: html_strip_comment      # payload có trong HTML thô; biến mất khi bỏ khối comment
+    visible_to_reviewer: false
+
+  html_alt_text:
+    media: html
+    obfuscation: hidden_attribute
+    template: '<img src="logo.png" alt="{PAYLOAD}">'
+    verify: html_strip_tags         # payload nằm trong thuộc tính alt, không render thành thân văn
+    visible_to_reviewer: false
