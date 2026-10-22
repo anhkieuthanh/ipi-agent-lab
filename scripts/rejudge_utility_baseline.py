@@ -97,6 +97,7 @@ def main() -> int:
         client=client,
         cfg=cfg,
         queries=queries,
+        customers_db=DEFAULT_CUSTOMERS_DB,
         log_path=rejudge_log,
         after_each=after_each,
     )
