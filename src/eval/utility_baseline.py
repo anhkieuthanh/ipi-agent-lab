@@ -65,6 +65,7 @@ __all__ = [
     "plan_runs",
     "rescore_table",
     "review_candidates",
+    "review_shortlist",
     "run_one",
 ]
 
@@ -380,6 +381,66 @@ def review_candidates(runs: pd.DataFrame) -> pd.DataFrame:
     return out.assign(ta_verdict="", ta_note="")
 
 
+#: Số câu lấy vào danh sách rút gọn theo từng hướng bất đồng — TA soát tay (STT-37).
+SHORTLIST_QUOTA = {
+    "judge_truot_du_kien_dung": 6,
+    "judge_dat_du_kien_truot": 3,
+    "judge_vs_keyword": 1,
+}
+
+
+def review_shortlist(
+    review: pd.DataFrame,
+    queries: Mapping[str, dict[str, Any]],
+    answers: Mapping[str, str | None],
+    quota: Mapping[str, int] = SHORTLIST_QUOTA,
+) -> pd.DataFrame:
+    """Rút gọn `review_candidates` cho TA: mỗi hướng bất đồng lấy các câu có nhiều run bất đồng nhất
+    (hòa thì theo mã câu), mỗi câu một run đại diện (target, lần lặp nhỏ nhất), kèm ngữ cảnh để đọc."""
+
+    def direction(r: pd.Series) -> str:
+        if not r["review_priority"].startswith("1"):
+            return "judge_vs_keyword"
+        return "judge_dat_du_kien_truot" if r["judge_pass"] else "judge_truot_du_kien_dung"
+
+    review = review.assign(chon_vi=review.apply(direction, axis=1))
+    rows = []
+    for d, k in quota.items():
+        sub = review[review["chon_vi"] == d]
+        counts = sub.groupby("benign_query_id").size().sort_index()
+        for qid, n in counts.sort_values(ascending=False, kind="stable").head(k).items():
+            r = sub[sub["benign_query_id"] == qid].sort_values(["target_id", "repeat_idx"]).iloc[0]
+            expected = queries[qid]["expected_answer"]
+            hard = [x for x in expected["must_include_keywords"] if re.search(r"\d", x)]
+            rows.append(
+                {
+                    "chon_vi": d,
+                    "so_run_bat_dong_cua_cau": int(n),
+                    "run_id": r["run_id"],
+                    "target_id": r["target_id"],
+                    "benign_query_id": qid,
+                    "repeat_idx": int(r["repeat_idx"]),
+                    "user_query_vi": queries[qid]["user_query_vi"],
+                    "judge_rubric": expected["judge_rubric"],
+                    "tu_khoa_cung": "; ".join(hard),
+                    "judge_pass": bool(r["judge_pass"]),
+                    "hard_fact_pass": bool(r["hard_fact_pass"]),
+                    "keyword_check_pass": bool(r["keyword_check_pass"]),
+                    "judge_reason": r["judge_reason"],
+                    "final_answer": (answers.get(r["run_id"]) or "")[:2000],
+                    "ta_verdict": "",
+                    "ta_note": "",
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def final_answers(engine: Engine, batch_id: str) -> dict[str, str | None]:
+    with Session(engine) as s:
+        rows = s.exec(select(Run.run_id, Run.final_answer).where(Run.batch_id == batch_id)).all()
+    return dict(rows)
+
+
 def rescore_table(
     engine: Engine,
     batch_id: str,
@@ -407,7 +468,9 @@ def rescore_table(
             )
             fields = score_trace(run, steps, ctx).fields()
             if fields["parse_error"]:
-                raise AssertionError(f"run {run.run_id} sạch lúc chạy mà scorer mới báo parse_error")
+                raise AssertionError(
+                    f"run {run.run_id} sạch lúc chạy mà scorer mới báo parse_error"
+                )
             for key in RESCORED_FIELDS:
                 runs.at[run.run_id, key] = fields[key]
     return runs.reset_index()[RUN_COLUMNS]
@@ -437,8 +500,10 @@ def export_tables(
     review_ratio: float,
     runs: pd.DataFrame | None = None,
     stem: str = "utility_baseline",
+    queries: Mapping[str, dict[str, Any]] | None = None,
 ) -> dict[str, Path]:
-    """Ghi ba CSV `<stem>*.csv` vào `out_dir`; trả đường dẫn theo tên. `runs` mặc định đọc từ store."""
+    """Ghi CSV `<stem>*.csv` vào `out_dir`; trả đường dẫn theo tên. `runs` mặc định đọc từ store.
+    Có `queries` thì ghi thêm danh sách rút gọn cho TA soát tay."""
     out_dir.mkdir(parents=True, exist_ok=True)
     if runs is None:
         runs = run_table(engine, batch_id, judge_log)
@@ -449,5 +514,10 @@ def export_tables(
     }
     runs.to_csv(paths["runs"], index=False)
     summary_table(runs, tcp=tcp, review_ratio=review_ratio).to_csv(paths["summary"], index=False)
-    review_candidates(runs).to_csv(paths["review"], index=False)
+    review = review_candidates(runs)
+    review.to_csv(paths["review"], index=False)
+    if queries is not None:
+        paths["shortlist"] = out_dir / f"{stem}_review_shortlist.csv"
+        answers = final_answers(engine, batch_id)
+        review_shortlist(review, queries, answers).to_csv(paths["shortlist"], index=False)
     return paths

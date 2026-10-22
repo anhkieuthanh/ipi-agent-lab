@@ -239,6 +239,7 @@ def test_export_ba_csv_va_ung_vien_soat_tay(ctx, tmp_path):
         tmp_path / "tables",
         tcp=TcpCi.from_experiment(load_experiment()),
         review_ratio=0.05,
+        queries=BENIGN,
     )
     runs = pd.read_csv(paths["runs"])
     assert len(runs) == 2 and set(runs["group"]) == {"U1"}
@@ -252,6 +253,9 @@ def test_export_ba_csv_va_ung_vien_soat_tay(ctx, tmp_path):
     review = pd.read_csv(paths["review"])
     assert list(review["review_priority"]) == ["1_judge_vs_hard_fact"]
     assert {"ta_verdict", "ta_note"} <= set(review)
+    shortlist = pd.read_csv(paths["shortlist"])
+    assert list(shortlist["chon_vi"]) == ["judge_dat_du_kien_truot"]
+    assert shortlist.iloc[0]["final_answer"] and shortlist.iloc[0]["user_query_vi"]
 
 
 def test_review_candidates_bo_run_loi_va_run_khong_goi_judge(ctx):

@@ -87,6 +87,7 @@ def main() -> int:
         review_ratio=exp.raw["stopping"]["parse_error_review_ratio"],
         runs=after,
         stem="utility_baseline_rescored",
+        queries=queries,
     )
 
     merged = before.merge(after, on="run_id", suffixes=("_goc", "_moi"))
@@ -94,9 +95,9 @@ def main() -> int:
     compare = pd.DataFrame(_usr_rows(before, "goc")).merge(
         pd.DataFrame(_usr_rows(after, "moi")), on=["target_id", "level"]
     )
-    compare["n_run_doi_outcome"] = compare["target_id"].map(
-        changed.groupby("target_id_goc").size()
-    ).fillna(0).astype(int)
+    compare["n_run_doi_outcome"] = (
+        compare["target_id"].map(changed.groupby("target_id_goc").size()).fillna(0).astype(int)
+    )
     compare.loc[compare["level"] == "query", "n_run_doi_outcome"] = pd.NA
     compare.insert(0, "batch_id", args.batch_id)
     compare["scorer_lab_commit"] = commit
