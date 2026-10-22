@@ -1,0 +1,17 @@
+[
+  {
+    "task": "STT-37",
+    "vt": "VT-14",
+    "batch_id": "usr-baseline-20261021T080837Z",
+    "tag": "vt14",
+    "lab_git_commit": "c485ef4ccbc67f8fb99feb0292f077ff8658f5e1",
+    "judge_model": "claude-sonnet-5-5",
+    "judge_prompt_hash": "96a1742b2f6202a2c78c8e7bf71f4875378cc3af680a545be97b4542ce73651a",
+    "max_tool_result_chars": 12000,
+    "n_judged_this_session": 532,
+    "started_at_utc": "20261022T015620Z",
+    "finished_at_utc": "20261022T022231Z",
+    "spent_usd": 5.378064000000008,
+    "budget_status": "ok"
+  }
+]
