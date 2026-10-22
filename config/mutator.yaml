@@ -1,0 +1,55 @@
+# config/mutator.yaml — tham số bộ biến đổi payload (STT-43)
+#
+# Đặc tả: docs/04. Design/payload_taxonomy.md mục 4.2 (trường obfuscation), 4.3 (bất biến),
+# mục 5 (activation_check). Hiện thực: src/attack/mutator.py.
+#
+# Nguyên tắc (CLAUDE.md §6): MỌI tham số hành vi của mutator nằm ở đây, KHÔNG hard-code trong
+# src/attack/mutator.py. Mutator sinh biến thể từ payload đã hợp lệ, chạy lại schema.validate_payload
+# làm cổng, rồi lọc trùng theo embedding. Mutator KHÔNG là nguồn sự thật thứ hai: danh sách
+# obfuscation hợp lệ, bất biến và activation_check vẫn đọc từ schema.py.
+
+schema_version: "1.0"
+
+# ── Biến đổi theo luật ─────────────────────────────────────────────────────────
+# Mỗi phép đặt một giá trị `obfuscation` (phải thuộc OBFUSCATION của schema.py) và biến đổi
+# phần chỉ thị tương ứng. Tắt một phép = bỏ khỏi `enabled`.
+rule:
+  enabled:
+    - zero_width         # chèn ký tự rộng-0 giữa các chữ cái; giữ nguyên placeholder
+    - char_separation    # chèn dấu phân tách nhìn thấy được giữa các chữ cái
+    - homoglyph          # thay chữ Latin bằng đồng hình Unicode
+    - base64             # mã hóa toàn phần chỉ thị
+    - hex                # mã hóa toàn phần chỉ thị
+    - percent_encoding   # mã hóa toàn phần chỉ thị
+
+  # Ký tự rộng-0 chèn vào giữa các chữ (U+200B ZERO WIDTH SPACE).
+  zero_width_char: "​"
+  # Dấu phân tách nhìn thấy cho char_separation.
+  char_separation_sep: "·"   # MIDDLE DOT
+
+  # Các phép mã-hóa-toàn-phần (base64/hex/percent) làm chỉ thị thành chuỗi mờ, KHÔNG giữ được
+  # placeholder ngữ cảnh/run. Vì vậy chỉ áp khi chỉ thị không chứa placeholder nào — nếu không
+  # {run_id}, {USER}… sẽ bị mã hóa và mất tác dụng lúc chạy.
+  full_encode:
+    - base64
+    - hex
+    - percent_encoding
+
+# ── Điểm cắm biến đổi bằng model ────────────────────────────────────────────────
+# "Biến đổi bằng model" (paraphrase bằng LLM) vướng attacker_model — CHƯA chốt với GVHD
+# (checklist mục 8 việc 6; config/experiment.yaml B5.attacker_model: null). Theo quy tắc cứng #8,
+# không tự quyết. model_mutate() để điểm cắm nhưng chưa nối model: bật phần này khi GVHD chốt.
+model:
+  enabled: false
+  attacker_model: null          # trùng B5.attacker_model; ghi tên preset models.yaml khi chốt
+
+# ── Lọc trùng theo embedding ────────────────────────────────────────────────────
+dedup:
+  # Nhúng base_text(payload) bằng Embedder (config/rag.yaml, intfloat/multilingual-e5-large,
+  # cosine). Hai biến thể có cosine ≥ ngưỡng coi là trùng; giữ bản xuất hiện trước.
+  cosine_threshold: 0.97
+  # Chỉ so trùng trong cùng (technique, goal): biến thể khác kỹ thuật/mục tiêu không bao giờ gộp,
+  # dù chuỗi gần nhau.
+  scope:
+    - technique
+    - goal
