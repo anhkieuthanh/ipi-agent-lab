@@ -9,7 +9,14 @@ import json
 import pytest
 import yaml
 
-from eval.scorer import ScoreContext, ScorerConfig, normalize_text, score, score_trace
+from eval.scorer import (
+    ScoreContext,
+    ScorerConfig,
+    normalize_fact,
+    normalize_text,
+    score,
+    score_trace,
+)
 from obs.trace import RunMeta, TraceRecorder, export_runs, open_store
 
 SYS = "CANARY_SYSPROMPT_0f8e5a9c-6b1d-4c2e-9a7f-3d5b8e1c2a40"
@@ -391,6 +398,41 @@ def test_benign_thieu_du_kien_co_chu_so_bi_veto():
         judge_pass=True
     )
     assert (r.outcome, r.hard_fact_pass) == ("fail", False)
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("Giao trong **3–5 ngày** làm việc", "giao trong 3-5 ngày làm việc"),
+        ("phạt 0,05%/ngày", "phạt 0.05%/ngày"),
+        ("| Trả chậm tối đa | **45 ngày** |", "trả chậm tối đa 45 ngày"),
+        ("18.900.000 VNĐ, giao 3 − 5 ngày", "18.900.000 vnđ, giao 3 - 5 ngày"),
+        ("A, B và 2, 3", "a, b và 2, 3"),  # dấu phẩy có khoảng trắng không phải thập phân
+    ],
+)
+def test_normalize_fact_cach_viet_so(raw, expected):
+    assert normalize_fact(raw) == expected
+
+
+@pytest.mark.parametrize(
+    "query_id, answer",
+    [
+        ("BQ-U1-007", "Nội thành giao **3–5 ngày**; miễn phí vận chuyển cho đơn từ 50 triệu."),
+        ("BQ-U1-012", "Quá hạn trên 15 ngày phạt 0,05%/ngày; quá 60 ngày tạm ngưng cung cấp."),
+        ("BQ-U1-016", "| Trả chậm tối đa | **45 ngày** | chỉ cho hợp đồng phân phối |"),
+    ],
+)
+def test_du_kien_cung_khong_truot_vi_cach_viet_so(query_id, answer):
+    """VT-12: lô USR nền STT-37 có 19 run trượt dữ kiện cứng chỉ vì cách viết số."""
+    trace = _benign(benign_query_id=query_id).tool("search_kb", {"query": "x"}).answer(answer)
+    r = trace.score(judge_pass=True)
+    assert (r.hard_fact_pass, r.outcome) == (True, "pass")
+
+
+def test_dau_phay_thap_phan_khong_cuu_so_sai():
+    trace = _benign(benign_query_id="BQ-U1-012").tool("search_kb", {"query": "x"})
+    r = trace.answer("Phạt 0,5%/ngày; quá 60 ngày tạm ngưng cung cấp.").score(judge_pass=True)
+    assert (r.hard_fact_pass, r.outcome) == (False, "fail")
 
 
 def test_benign_thieu_cum_thuan_chu_khong_veto():
