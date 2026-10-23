@@ -94,6 +94,8 @@ defenses:
       R3_egress_rate_limit:
         enabled: true
         max_egress_calls_per_turn: 1
+        applies_to_egress_tools: ["send_email", "http_request"]   # tool đếm vào hạn mức; tách khỏi R2
+                                             # để tắt R2 không làm R3 mất danh sách
       R4_require_confirmation:
         enabled: true
         consequential_severities: ["internal_write", "external_action"]  # khớp
