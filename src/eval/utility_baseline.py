@@ -131,6 +131,7 @@ class HarnessTools:
     db: QueryCustomerDb
     http: HttpRequest
     tickets: CreateTicket
+    mail: SendEmail
 
 
 def build_harness_tools(search_fn: Any = None) -> HarnessTools:
@@ -139,12 +140,13 @@ def build_harness_tools(search_fn: Any = None) -> HarnessTools:
     db = QueryCustomerDb.from_registry(reg)
     http = HttpRequest.from_registry(reg)
     tickets = CreateTicket.from_registry(reg)
+    mail = SendEmail.from_registry(reg)
     reg.bind("search_kb", SearchKb.from_experiment(search_fn))
     reg.bind("query_customer_db", db)
     reg.bind("http_request", http)
-    reg.bind("send_email", SendEmail.from_registry(reg))
+    reg.bind("send_email", mail)
     reg.bind("create_ticket", tickets)
-    return HarnessTools(registry=reg, db=db, http=http, tickets=tickets)
+    return HarnessTools(registry=reg, db=db, http=http, tickets=tickets, mail=mail)
 
 
 def benign_runtime(query: Mapping[str, Any], db_path: Path) -> dict[str, Any]:

@@ -1,0 +1,292 @@
+"""Kiểm bộ chạy ma trận tấn công (STT-46) — offline, không Qdrant/model/MailHog.
+
+Phần thuần (kế hoạch, ghép ô, danh tính resume) chạy trực tiếp. Một run end-to-end dùng model giả,
+tool giả và `seeded_run` giả (monkeypatch) để kiểm trình tự tiêm → chạy → chấm → ghi trace và cổng
+RESUME (ngắt giữa chừng rồi chạy tiếp không chạy lại phần đã xong).
+"""
+
+from __future__ import annotations
+
+import contextlib
+from dataclasses import dataclass
+
+import pytest
+
+from agent.llm_client import LLMResult
+from attack import runner as R
+from eval.experiment import load_experiment
+from obs.trace import export_runs, open_store
+
+# ---------------------------------------------------------------------------
+# build_defense (seam preset)
+# ---------------------------------------------------------------------------
+
+
+def test_build_defense_off_la_nodefense():
+    from interfaces import NoDefense
+
+    assert isinstance(R.build_defense("off"), NoDefense)
+
+
+@pytest.mark.parametrize("preset", ["d1_only", "all", "d3_no_confirm"])
+def test_build_defense_preset_chua_co_bao_loi(preset):
+    with pytest.raises(R.AttackRunnerError, match="chưa dựng được"):
+        R.build_defense(preset)
+
+
+# ---------------------------------------------------------------------------
+# cell_units: khác nhau trước, lặp sau
+# ---------------------------------------------------------------------------
+
+
+def test_cell_units_distinct_truoc_lap_sau():
+    pairs = [("p1", "c1"), ("p2", "c2"), ("p3", "c3")]
+    units = R.cell_units(pairs, 5, seed="s")
+    # 3 cặp phân biệt (repeat_idx 0) rồi 2 lần lặp (repeat_idx 1).
+    reps = sorted(u[2] for u in units)
+    assert reps == [0, 0, 0, 1, 1]
+    first_three = {(p, c) for p, c, _ in units[:3]}
+    assert len(first_three) == 3  # ba cặp đầu không trùng
+
+
+def test_cell_units_tat_dinh():
+    pairs = [("p1", "c1"), ("p2", "c2")]
+    assert R.cell_units(pairs, 4, seed="x") == R.cell_units(pairs, 4, seed="x")
+
+
+def test_cell_units_rong_bao_loi():
+    with pytest.raises(R.AttackRunnerError):
+        R.cell_units([], 3, seed="s")
+
+
+# ---------------------------------------------------------------------------
+# plan_block
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def exp():
+    return load_experiment()
+
+
+@pytest.fixture(scope="module")
+def corpus():
+    return R.load_corpus()
+
+
+@pytest.fixture(scope="module")
+def carriers():
+    return R.load_carriers()
+
+
+def _covered_cells(corpus, carriers):
+    exp = load_experiment()
+    b = exp.unit("B1")
+    out = []
+    for ch, techs in b.techniques_by_channel.items():
+        for t in techs:
+            for g in b.goals:
+                ps = R.select_payloads(corpus, ch, t, g)
+                if R._cell_pairs(ps, ch, carriers, tasks_path=R.DEFAULT_TASKS_PATH):
+                    out.append((ch, t, g))
+    return out
+
+
+def test_plan_block_so_run_khop_cong_thuc(exp, corpus, carriers):
+    # Một ô đã phủ chắc chắn: K1·T1·G2. Giới hạn vào nó, 1 target, n=4 ⇒ đúng 4 run.
+    specs = R.plan_block(
+        exp, "B1", corpus=corpus, carriers=carriers, seed=1,
+        channels=["K1"], techniques=["T1"], goals=["G2"], targets=["A3"], n_per_cell=4,
+    )
+    assert len(specs) == 4
+    assert {s.channel for s in specs} == {"K1"}
+    assert {s.technique for s in specs} == {"T1"}
+    assert {s.goal for s in specs} == {"G2"}
+    assert len(set(specs)) == len(specs)  # không trùng danh tính
+
+
+def test_plan_block_tat_dinh(exp, corpus, carriers):
+    # K1·T3·G1 và K1·T3·G2 đều đã phủ.
+    kw = dict(channels=["K1"], techniques=["T3"], goals=["G1", "G2"], targets=["A3"], n_per_cell=3)
+    a = R.plan_block(exp, "B1", corpus=corpus, carriers=carriers, seed=7, **kw)
+    b = R.plan_block(exp, "B1", corpus=corpus, carriers=carriers, seed=7, **kw)
+    assert a == b
+
+
+def test_plan_block_o_trong_bao_loi_liet_ke(exp, corpus, carriers):
+    # B1 đầy đủ: corpus thiếu T6–T8 ⇒ nhiều ô trống, báo lỗi liệt kê.
+    with pytest.raises(R.AttackRunnerError, match="ô không có payload|Ô trống"):
+        R.plan_block(exp, "B1", corpus=corpus, carriers=carriers, seed=1)
+
+
+def test_plan_block_tu_choi_khoi_chon_o(exp, corpus, carriers):
+    with pytest.raises(R.AttackRunnerError, match="chọn ô theo quy tắc"):
+        R.plan_block(exp, "B2", corpus=corpus, carriers=carriers, seed=1)
+
+
+# ---------------------------------------------------------------------------
+# Hạ tầng giả cho run end-to-end
+# ---------------------------------------------------------------------------
+
+
+def _result(text: str) -> LLMResult:
+    return LLMResult(
+        text=text, tool_calls=[], tokens_in=10, tokens_out=5, latency_ms=1,
+        target_id="A3", model="fake-model-1.0", response_model="fake-snap",
+        attempts=1, finish_reason="stop",
+    )
+
+
+class FakeModel:
+    model = "fake-model-1.0"
+
+    def chat(self, messages, tools=None, **kw):
+        return _result("Thời hạn bảo hành là 24 tháng.")
+
+
+class FakeRegistry:
+    """ToolLayer tối thiểu: không tool, không gọi — run blind không tool-call."""
+
+    def list_tools(self):
+        return []
+
+    def reset_descriptions(self):
+        pass
+
+    def call_tool(self, call):  # pragma: no cover - run blind không gọi
+        raise AssertionError("không nên gọi tool trong test này")
+
+
+@dataclass
+class _Stub:
+    calls: list = None
+
+    def __post_init__(self):
+        self.calls = []
+
+
+class FakeTools:
+    def __init__(self):
+        self.registry = FakeRegistry()
+        self.db = _Stub()
+        self.db.use_db = lambda p: self.db.calls.append(("use_db", p))
+        self.http = _Stub()
+        self.http.set_run = lambda r: self.http.calls.append(("set_run", r))
+        self.tickets = _Stub()
+        self.tickets.clear_tickets = lambda: self.tickets.calls.append("clear")
+        self.mail = _Stub()
+        self.mail.clear_mailbox = lambda: self.mail.calls.append("clear")
+
+
+class _Canaries:
+    def __init__(self):
+        import uuid
+
+        self.run_id = uuid.uuid4().hex
+        self.sysprompt = f"CANARY_SYSPROMPT_{uuid.uuid4().hex}"
+        self.db = f"CANARY_DB_{uuid.uuid4().hex}"
+
+    def as_list(self):
+        return [self.sysprompt, self.db]
+
+
+@dataclass
+class _Seeded:
+    run_id: str
+    canaries: _Canaries
+    db_path: str = "/tmp/fake.db"
+
+    @property
+    def run_canaries(self):
+        return self.canaries.as_list()
+
+
+@contextlib.contextmanager
+def _fake_seeded_run(run_id=None, **kw):
+    c = _Canaries()
+    yield _Seeded(run_id=c.run_id, canaries=c)
+
+
+@dataclass
+class _FakeK2Result:
+    delivered: bool = True
+
+
+class _FakeK2Layer:
+    def __init__(self):
+        self.result = _FakeK2Result()
+
+    def list_tools(self):
+        return []
+
+    def call_tool(self, call):  # pragma: no cover
+        raise AssertionError
+
+
+def _ctx(engine, corpus, carriers, monkeypatch, *, channel):
+    monkeypatch.setattr(R, "seeded_run", _fake_seeded_run)
+    return R.RunContext(
+        engine=engine,
+        batch_id="attack-B1-test",
+        env_hash="env-hash",
+        harness_version="core-a@test",
+        models={"A3": FakeModel()},
+        tools=FakeTools(),
+        corpus_by_id={p["id"]: p for p in corpus},
+        carriers_by_id={c["id"]: c for c in carriers},
+        core_params={"max_steps": 4, "max_tokens": 256},
+        kb_top_k=5,
+        inject_k1=lambda *a, **k: type("R", (), {"delivered": True})(),
+        build_k2_layer=lambda *a, **k: _FakeK2Layer(),
+        cleanup_k1=lambda *a, **k: None,
+    )
+
+
+def _spec(corpus, carriers, channel):
+    # Lấy một cặp (payload, carrier) phủ được cho kênh.
+    for (ch, t, g) in _covered_cells(corpus, carriers):
+        if ch == channel:
+            ps = R.select_payloads(corpus, ch, t, g)
+            pairs = R._cell_pairs(ps, ch, carriers, tasks_path=R.DEFAULT_TASKS_PATH)
+            pid, cid = pairs[0]
+            return R.AttackRunSpec(
+                repeat_idx=0, target_id="A3", channel=ch, technique=t, goal=g,
+                attacker_mode="blind",
+                defense_config=R.build_defense("off").config_snapshot().__repr__(),
+                carrier_task_id=cid, payload_id=pid,
+            )
+    raise AssertionError(f"không có ô phủ cho kênh {channel}")
+
+
+@pytest.mark.parametrize("channel", ["K1", "K2a"])
+def test_run_one_attack_ghi_trace_va_nhan(tmp_path, exp, corpus, carriers, monkeypatch, channel):
+    engine = open_store(tmp_path / "t.sqlite")
+    ctx = _ctx(engine, corpus, carriers, monkeypatch, channel=channel)
+    spec = _spec(corpus, carriers, channel)
+    rid = R.run_one_attack(spec, ctx)
+    df = export_runs(engine, batch_id=ctx.batch_id)
+    assert len(df) == 1
+    row = df.iloc[0]
+    assert row["run_kind"] == "attack"
+    assert row["channel"] == channel
+    assert row["technique"] == spec.technique
+    assert row["goal"] == spec.goal
+    assert row["attacker_mode"] == "blind"
+    assert row["payload_id"] == spec.payload_id
+    assert bool(row["delivered"]) is True
+    assert row["run_id"] == rid
+
+
+def test_resume_bo_qua_run_da_co(tmp_path, exp, corpus, carriers, monkeypatch):
+    engine = open_store(tmp_path / "t.sqlite")
+    ctx = _ctx(engine, corpus, carriers, monkeypatch, channel="K1")
+    spec = _spec(corpus, carriers, "K1")
+    R.run_one_attack(spec, ctx)
+    done = R.done_specs(engine, ctx.batch_id)
+    assert len(done) == 1
+    # Danh tính dựng lại từ store khớp spec đã chạy (trừ defense_config: so chuẩn hóa).
+    got = next(iter(done))
+    assert (got.target_id, got.channel, got.technique, got.goal, got.carrier_task_id,
+            got.payload_id, got.repeat_idx) == (
+        spec.target_id, spec.channel, spec.technique, spec.goal, spec.carrier_task_id,
+        spec.payload_id, spec.repeat_idx)
