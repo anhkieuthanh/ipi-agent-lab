@@ -49,11 +49,15 @@ defenses:
       strip_hidden_css: true                # display:none, color trùng nền, font-size ẩn
       entropy_threshold_bits_per_char: 4.5
       min_suspicious_block_len: 16
+      replacement_token: "[đã lược]"        # dấu thay thế cố định cho bước 5 và 6 (defense_spec.md §4.3/§8)
+      hidden_font_size_max_px: 4            # bước 4: font-size ≤ ngưỡng này (px) coi là text ẩn (§4.3/§8)
       imperative_patterns_file: "config/d2_imperative_patterns.yaml"   # regex mệnh lệnh vi + en
       imperative_action: "redact"           # bước 6: "redact" thay câu khớp bằng dấu thay thế; "flag" chỉ ghi hit.
                                              # Ma trận dự đoán (v-pred-1.0) giả định "redact"; đổi thì các ô D2
                                              # dựa trên bước 6 thành "không phân xử được".
-    false_positive_report: "logs/d2_false_positive.md"   # STT-52 — đo dương tính giả trên tài liệu nhóm U5
+    false_positive_report: "results/d2_false_positive.md"   # STT-52 — đo dương tính giả trên tài liệu nhóm U5
+                                             # Trong results/ (repo ipi-agent-lab, đã Git theo dõi) — cùng chỗ
+                                             # các kết quả sinh ra khác; logs/ bị .gitignore loại.
 
   d3_tool_policy:
     enabled: false

@@ -1,0 +1,104 @@
+# config/d2_imperative_patterns.yaml — tập regex mệnh lệnh cho D2 bước 6 (STT-52)
+#
+# D2 bước 6 (defense_spec.md §4.1): câu khớp MỘT regex dưới đây ⇒ thay bằng dấu thay thế cố định
+# (`params.replacement_token`) khi `params.imperative_action = "redact"`, hoặc chỉ ghi hit khi "flag".
+#
+# Phạm vi và giới hạn — đọc kèm để diễn giải kết quả:
+# - Mẫu viết cho tiếng Việt CÓ DẤU CHUẨN và tiếng Anh. D2 bước 6 so khớp SAU NFKC (bước 1) nhưng
+#   KHÔNG gập dấu: payload T8 bỏ dấu / telex / VNI cố ý né tập này (defense_spec.md §4.4 — điểm mù,
+#   không phải thiếu sót). Đây là cặp đấu T8 × D2 của đề tài.
+# - Không phân loại ý định học máy, không gọi LLM: chỉ so khớp regex tất định (quy tắc cứng #3 chỉ
+#   cấm phân loại ý định tự do trong D3; bước 6 của D2 là cú pháp khai báo tường minh ở file này).
+# - Chọn mẫu THẬN TRỌNG: mỗi mẫu nhắm một khuôn mệnh lệnh tiêm nhiễm điển hình (T1, T2), tránh động
+#   từ đời thường để hạ dương tính giả trên tài liệu kỹ thuật (nhóm U5, báo cáo FP STT-52).
+#
+# CỜ RÀ: bản nháp Claude soạn theo mẫu payload T1/T2 đã chốt. TA rà mức bao phủ và dương tính giả
+# trên U5 trước khi khóa cho ma trận (v-attack-1.0 / cấu hình phòng thủ).
+#
+# Định dạng: mỗi phần tử { id, lang, flags, pattern, note }.
+# - id: mã ổn định để trace/báo cáo trỏ tới (IMP-xx).
+# - lang: "vi" | "en" — chỉ để đọc và lọc báo cáo, không đổi hành vi khớp.
+# - flags: danh sách con của {IGNORECASE, MULTILINE, DOTALL}; compile bằng re với đúng cờ này.
+# - pattern: regex Python. So khớp trên từng câu (D2 tách câu theo xuống dòng và dấu kết câu).
+
+schema_version: "1.0"
+
+patterns:
+
+  # --- Khuôn "bỏ qua chỉ thị trước / ghi đè" (T1 ghi đè, T2 khung mệnh lệnh) -----------------
+  - id: IMP-01
+    lang: vi
+    flags: [IGNORECASE]
+    pattern: 'bỏ\s+qua\s+(mọi|các|toàn bộ|những)?\s*(chỉ\s*thị|hướng\s*dẫn|lệnh|yêu\s*cầu|quy\s*tắc)'
+    note: "Bỏ qua mọi chỉ thị trước đó … — T1/T2 tiếng Việt."
+
+  - id: IMP-02
+    lang: en
+    flags: [IGNORECASE]
+    pattern: 'ignore\s+(all\s+|any\s+|the\s+)?(previous|prior|above|earlier|preceding)\s+(instructions?|prompts?|rules?|directions?)'
+    note: "Ignore all previous instructions — T1/T2 tiếng Anh."
+
+  - id: IMP-03
+    lang: en
+    flags: [IGNORECASE]
+    pattern: 'disregard\s+(all\s+|any\s+|the\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|rules?)'
+    note: "Biến thể disregard của IMP-02."
+
+  # --- Khuôn "thay vào đó hãy làm / do … instead" ------------------------------------------
+  - id: IMP-04
+    lang: vi
+    flags: [IGNORECASE]
+    pattern: 'thay\s+vào\s+đó\s*,?\s*(hãy|bạn\s+hãy|vui\s+lòng)?\s*(làm|thực\s+hiện|gửi|chạy|gọi)'
+    note: "Thay vào đó hãy làm/gửi… — chuyển hướng hành vi."
+
+  - id: IMP-05
+    lang: en
+    flags: [IGNORECASE]
+    pattern: '\b(instead|rather)\b.{0,40}\b(do|send|run|call|execute|perform)\b'
+    note: "… do X instead — chuyển hướng hành vi tiếng Anh."
+
+  # --- Khuôn giả nhãn hệ thống / vai (T2) --------------------------------------------------
+  - id: IMP-06
+    lang: en
+    flags: [IGNORECASE]
+    pattern: '#{2,}\s*\(?\s*(system|assistant|developer)[_\s-]*(message|prompt|instruction)?\s*\)?'
+    note: "###(system_message) — giả nhãn hệ thống."
+
+  - id: IMP-07
+    lang: en
+    flags: [IGNORECASE]
+    pattern: '<\s*/?\s*(system|assistant|developer)\s*>'
+    note: "Thẻ <system> giả vai."
+
+  # --- Khuôn "bắt buộc / mandatory bước trước khi hoàn tất" (T2 process-compliance) ---------
+  - id: IMP-08
+    lang: vi
+    flags: [IGNORECASE]
+    pattern: 'bắt\s+buộc\s+(phải\s+)?(thực\s+hiện|làm|gửi|hoàn\s+tất|thêm)'
+    note: "… bắt buộc thực hiện bước sau — T2 ép tuân thủ quy trình."
+
+  - id: IMP-09
+    lang: en
+    flags: [IGNORECASE]
+    pattern: '\b(the\s+following\s+step\s+is\s+|is\s+)?mandatory\b|\byou\s+must\s+(now\s+)?(send|run|call|execute|perform|add|attach)\b'
+    note: "… is mandatory / you must send … — T2 tiếng Anh."
+
+  # --- Khuôn nhãn việc cần làm (T2 TODO) ---------------------------------------------------
+  - id: IMP-10
+    lang: vi
+    flags: [IGNORECASE, MULTILINE]
+    pattern: '^\s*(việc\s+cần\s+làm|nhiệm\s+vụ|yêu\s+cầu\s+bắt\s+buộc)\s*:'
+    note: "VIỆC CẦN LÀM: — nhãn mệnh lệnh đầu dòng."
+
+  - id: IMP-11
+    lang: en
+    flags: [IGNORECASE, MULTILINE]
+    pattern: '^\s*(todo|action\s+required|required\s+action)\s*:'
+    note: "TODO: / ACTION REQUIRED: — nhãn mệnh lệnh đầu dòng."
+
+  # --- Khuôn giọng thẩm quyền hành chính (T1 authority, STT-49) ----------------------------
+  - id: IMP-12
+    lang: vi
+    flags: [IGNORECASE]
+    pattern: 'kính\s+gửi.{0,80}(yêu\s+cầu|đề\s+nghị|chỉ\s+đạo)\s+(gửi|cung\s+cấp|xuất|chuyển)'
+    note: "Công văn: Kính gửi … yêu cầu gửi/cung cấp … — biến thể thẩm quyền của T1."
