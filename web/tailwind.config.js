@@ -19,6 +19,9 @@ export default {
         payload: { 50: "#fff7ed", 100: "#ffedd5", 500: "#f97316", 600: "#ea580c" },
         canary: { 50: "#eff6ff", 100: "#dbeafe", 500: "#3b82f6", 600: "#2563eb" },
       },
+      keyframes: {
+        dash: { to: { strokeDashoffset: "-28" } },
+      },
       boxShadow: {
         card: "0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06)",
         pop: "0 12px 32px -8px rgba(16,24,40,.18)",

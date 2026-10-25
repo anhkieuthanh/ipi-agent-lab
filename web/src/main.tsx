@@ -14,6 +14,7 @@ import { LabPage } from "@/pages/Lab";
 import { OverviewPage } from "@/pages/Overview";
 import { RunDetailPage } from "@/pages/RunDetail";
 import { RunsPage } from "@/pages/Runs";
+import { SystemPage } from "@/pages/System";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 15_000, refetchOnWindowFocus: false, retry: 1 } },
@@ -25,6 +26,7 @@ const router = createBrowserRouter([
     element: <Layout />,
     children: [
       { index: true, element: <OverviewPage /> },
+      { path: "system", element: <SystemPage /> },
       { path: "batches", element: <BatchesPage /> },
       { path: "attack", element: <AttackPage /> },
       { path: "defense", element: <DefensePage /> },
