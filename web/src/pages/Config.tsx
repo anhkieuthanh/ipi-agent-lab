@@ -16,14 +16,14 @@ export function ConfigPage() {
     <>
       <PageHeader
         title="Cấu hình"
-        description="Hợp đồng thực nghiệm đã chốt: bộ model, cơ chế phòng thủ, kho payload, tác vụ chở. Chỉ đọc — mọi thay đổi đi qua config/ và tài liệu, không sửa ở đây."
+        info="Hợp đồng thực nghiệm đã chốt. Chỉ đọc — thay đổi đi qua config/ và tài liệu."
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader
             title="Mô hình đích"
-            subtitle={<>Khóa bằng <Mono>{meta.data?.model_tag}</Mono></>}
+            subtitle={<Mono>{meta.data?.model_tag}</Mono>}
             icon={<Cpu size={16} />}
           />
           <table className="table-base">
@@ -56,7 +56,7 @@ export function ConfigPage() {
         </Card>
 
         <Card>
-          <CardHeader title="Cơ chế phòng thủ" subtitle="Bốn cơ chế D1–D4" icon={<ShieldCheck size={16} />} />
+          <CardHeader title="Cơ chế phòng thủ"  icon={<ShieldCheck size={16} />} />
           <div className="divide-y divide-slate-100">
             {d.presets
               .find((p) => p.name === "all")
@@ -75,7 +75,7 @@ export function ConfigPage() {
         <Card>
           <CardHeader
             title="Kho payload"
-            subtitle={<>Khóa bằng <Mono>{meta.data?.attack_tag}</Mono></>}
+            subtitle={<Mono>{meta.data?.attack_tag}</Mono>}
             icon={<FileCode2 size={16} />}
           />
           <div className="p-5">
@@ -96,7 +96,7 @@ export function ConfigPage() {
         </Card>
 
         <Card>
-          <CardHeader title="Tác vụ chở" subtitle="Việc nghiệp vụ thật mà agent đang làm khi bị tấn công" icon={<Boxes size={16} />} />
+          <CardHeader title="Tác vụ chở"  icon={<Boxes size={16} />} />
           <table className="table-base">
             <thead>
               <tr>

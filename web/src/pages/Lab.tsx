@@ -140,15 +140,13 @@ export function LabPage() {
     <>
       <PageHeader
         title="Phòng thí nghiệm tấn công"
-        description="Chọn một kịch bản tiêm nhiễm thật, chạy trên model thật, so sánh trực tiếp khi tắt và bật phòng thủ. Mỗi lượt gọi API thật và được canh ngân sách."
+        info="Chọn kịch bản, chạy trên model thật, so trực tiếp khi tắt và bật phòng thủ. Mỗi lượt gọi API thật, có canh ngân sách."
       />
 
       {!live && (
         <div className="mb-6">
-          <Callout tone="brand" title="Đang ở chế độ chỉ xem">
-            Chạy trực tiếp cần khởi động console bằng <Mono>make console</Mono> (đặt <Mono>DEMO_LIVE=1</Mono>) trên máy có
-            hạ tầng lab (<Mono>make up</Mono>) và tệp <Mono>.env</Mono>. Có thể xem lại các lượt demo đã chạy ở trang Lô
-            thực nghiệm.
+          <Callout tone="brand">
+            Chế độ chỉ xem. Chạy trực tiếp cần <Mono>make console</Mono> trên máy có hạ tầng lab và <Mono>.env</Mono>.
           </Callout>
         </div>
       )}

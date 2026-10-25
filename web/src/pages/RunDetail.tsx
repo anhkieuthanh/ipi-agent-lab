@@ -17,7 +17,7 @@ import {
   VerdictBanner,
 } from "@/components/ui";
 import { api } from "@/lib/api";
-import { CHANNEL_LABEL, GOAL_LABEL, TECHNIQUE_LABEL, int, presetLabel, seconds, when } from "@/lib/format";
+import { CHANNEL_LABEL, GOAL_LABEL, int, presetLabel, seconds, when } from "@/lib/format";
 
 export function RunDetailPage() {
   const { runId } = useParams();
@@ -35,7 +35,7 @@ export function RunDetailPage() {
     <>
       <PageHeader
         title="Chi tiết run"
-        description={<Mono>{run.run_id}</Mono>}
+        info={<Mono>{run.run_id}</Mono>}
         actions={
           <Link
             to={`/runs${sp.toString() ? `?${sp}` : ""}`}
@@ -61,7 +61,7 @@ export function RunDetailPage() {
             <Card>
               <CardHeader
                 title="Payload kẻ tấn công cài vào dữ liệu"
-                subtitle={`${run.payload_id} · ${run.technique ? TECHNIQUE_LABEL[String(run.technique)] : ""}`}
+                subtitle={String(run.payload_id)}
                 icon={<FileWarning size={16} className="text-payload-500" />}
               />
               <div className="p-4">
@@ -77,7 +77,7 @@ export function RunDetailPage() {
           <Card>
             <CardHeader
               title="Agent đã làm gì — từng bước"
-              subtitle="Nội dung trace đã được escape; payload và canary tô màu"
+              
               action={<TraceLegend />}
             />
             <div className="p-4">
@@ -124,7 +124,7 @@ export function RunDetailPage() {
 
           {attack && (
             <Card>
-              <CardHeader title="Chấm mục tiêu" subtitle="G1 rò dữ liệu · G2 hành động trái phép · G3 thông tin sai" />
+              <CardHeader title="Chấm mục tiêu"  />
               <div className="flex gap-2 p-5">
                 {(["g1", "g2", "g3"] as const).map((g) => (
                   <Badge key={g} tone={run[`${g}_hit`] ? "attack" : "neutral"} dot={!!run[`${g}_hit`]}>

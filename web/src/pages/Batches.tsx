@@ -51,7 +51,7 @@ export function BatchesPage() {
     <>
       <PageHeader
         title="Lô thực nghiệm"
-        description="Mỗi lô là một lần chạy có kiểm soát: cùng phiên bản harness, cùng bộ model đã pin, chi phí canh theo dự toán. Lô chạy thử và lượt demo tách riêng, không vào số liệu chính."
+        info="Mỗi lô là một lần chạy có kiểm soát: cùng harness, bộ model đã pin, chi phí canh theo dự toán. Chạy thử và demo tách riêng, không vào số liệu chính."
         actions={
           <Segmented
             value={filter}

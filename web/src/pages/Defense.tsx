@@ -118,19 +118,19 @@ export function DefensePage() {
     <>
       <PageHeader
         title="Phân tích phòng thủ"
-        description="Mỗi cơ chế phòng thủ được đánh giá theo cặp: giảm được bao nhiêu tấn công (ASR) và làm mất bao nhiêu tính hữu dụng (USR, FRR). Điểm tốt nằm ở góc trên bên trái."
+        info="Mỗi cơ chế đánh giá theo cặp: giảm tấn công (ASR) đổi lấy mất hữu dụng (USR, FRR). Điểm tốt ở góc trên bên trái."
       />
       {(points.isLoading || presets.isLoading) && <Loading />}
       {points.error && <ErrorBox error={points.error} />}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
         <Card className="xl:col-span-3">
-          <CardHeader title="Đường đánh đổi an toàn – hữu dụng" subtitle="Một điểm cho mỗi cấu hình phòng thủ × model" />
+          <CardHeader title="Đường đánh đổi an toàn – hữu dụng"  />
           {points.data && <ParetoChart points={points.data.points} />}
         </Card>
 
         <Card className="xl:col-span-2">
-          <CardHeader title="Bốn cơ chế phòng thủ" subtitle="Tham số đọc từ config/defenses.yaml" />
+          <CardHeader title="Bốn cơ chế phòng thủ"  />
           <div className="divide-y divide-slate-100">
             {(["D1", "D2", "D3", "D4"] as const).map((code) => (
               <div key={code} className="flex items-start gap-3 px-5 py-3.5">
@@ -148,7 +148,7 @@ export function DefensePage() {
       </div>
 
       <Card className="mt-6">
-        <CardHeader title="Cấu hình phòng thủ (preset)" subtitle="Ma trận cơ chế bật và số đo trong phạm vi đang xem" />
+        <CardHeader title="Cấu hình phòng thủ (preset)"  />
         <table className="table-base">
           <thead>
             <tr>

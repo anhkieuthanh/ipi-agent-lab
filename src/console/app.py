@@ -236,4 +236,5 @@ def spa(path: str):
     candidate = (WEB_DIST / path).resolve()
     if path and candidate.is_file() and Path(WEB_DIST.resolve()) in candidate.parents:
         return FileResponse(candidate)
-    return FileResponse(index)
+    # index.html trỏ tới bundle có hash; không cache nó để bản build mới hiện ngay.
+    return FileResponse(index, headers={"Cache-Control": "no-cache"})
