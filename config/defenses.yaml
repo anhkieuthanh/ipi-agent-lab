@@ -73,6 +73,8 @@ defenses:
       create_ticket: "internal_write"
       send_email: "external_action"
       http_request: "external_action"
+    # `matches_carrier_tasks`: loại tác vụ nhân viên chọn khi làm tác vụ chở đó. Runner tấn công
+    # (attack.runner.carrier_task_types) khai task_type của run theo khóa này; D3 không đọc nó.
     task_types:
       LOOKUP:
         label_vi: "Tra cứu"

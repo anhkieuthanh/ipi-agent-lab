@@ -8,7 +8,7 @@ chi phí lô với `--estimate-usd`; vượt 120% hay chạm hạn mức tổng 
 CHECKPOINT/RESUME: mỗi run commit ngay vào `trace.sqlite`. Chạy lại cùng `--batch-id` thì bỏ qua đơn
 vị đã có — lô bị ngắt chạy tiếp, không chạy lại phần đã xong.
 
-PHẠM VI: chỉ preset `off` chạy được (D1–D4 chưa có). Khối chạy được: B1, B6.
+PHÒNG THỦ: mọi preset chạy được của `config/defenses.yaml` (`defense.pipeline`, STT-55).
 
     # Xem số run của một khối, không gọi API
     uv run python scripts/run_matrix.py --block B1 --plan-only
@@ -42,6 +42,7 @@ from attack.runner import (  # noqa: E402
     HARNESS_PREFIX,
     AttackRunnerError,
     RunContext,
+    build_defenses,
     done_specs,
     export_runs_csv,
     load_carriers,
@@ -182,6 +183,7 @@ def main() -> int:
         carriers_by_id={c["id"]: c for c in carriers},
         core_params=load_core_params(),
         kb_top_k=exp.fixed["kb_top_k"],
+        defenses=build_defenses(args.presets or exp.unit(args.block).presets),
     )
     manifest = {
         "task": "STT-46",

@@ -29,9 +29,40 @@ def test_build_defense_off_la_nodefense():
 
 
 @pytest.mark.parametrize("preset", ["d1_only", "all", "d3_no_confirm"])
-def test_build_defense_preset_chua_co_bao_loi(preset):
-    with pytest.raises(R.AttackRunnerError, match="chưa dựng được"):
-        R.build_defense(preset)
+def test_build_defense_preset_khac_la_pipeline(preset):
+    from defense.pipeline import DefensePipeline
+
+    layer = R.build_defense(preset)
+    assert isinstance(layer, DefensePipeline)
+    assert layer.config_snapshot()["preset"] == preset
+
+
+def test_build_defense_preset_la_bao_loi_harness():
+    with pytest.raises(R.AttackRunnerError, match="không dựng được"):
+        R.build_defense("reduced_3")  # nhóm preset, không phải một preset
+
+
+def test_build_defenses_khoa_theo_anh_chup():
+    layers = R.build_defenses(["off", "d3_only", "d3_no_confirm", "d3_only"])
+    assert len(layers) == 3  # trùng tên dựng một lần; hai preset D3 khác ảnh chụp vì override
+    for key, layer in layers.items():
+        assert key == R.snapshot_json(layer)
+
+
+def test_carrier_task_types_phu_moi_tac_vu_cho(carriers):
+    mapping = R.carrier_task_types()
+    assert set(mapping) == {c["id"] for c in carriers}
+    assert mapping["CT-05"] == "SEND_MAIL"
+    assert mapping["CT-04"] == "REPORT"
+
+
+def test_carrier_task_types_khai_hai_loai_bao_loi():
+    raw = {"defenses": {"d3_tool_policy": {"task_types": {
+        "A": {"matches_carrier_tasks": ["CT-01"]},
+        "B": {"matches_carrier_tasks": ["CT-01"]},
+    }}}}
+    with pytest.raises(R.AttackRunnerError, match="hai task_type"):
+        R.carrier_task_types(raw)
 
 
 # ---------------------------------------------------------------------------
@@ -242,7 +273,7 @@ def _ctx(engine, corpus, carriers, monkeypatch, *, channel):
     )
 
 
-def _spec(corpus, carriers, channel):
+def _spec(corpus, carriers, channel, preset="off"):
     # Lấy một cặp (payload, carrier) phủ được cho kênh.
     for (ch, t, g) in _covered_cells(corpus, carriers):
         if ch == channel:
@@ -252,7 +283,7 @@ def _spec(corpus, carriers, channel):
             return R.AttackRunSpec(
                 repeat_idx=0, target_id="A3", channel=ch, technique=t, goal=g,
                 attacker_mode="blind",
-                defense_config=R.build_defense("off").config_snapshot().__repr__(),
+                defense_config=R.snapshot_json(R.build_defense(preset)),
                 carrier_task_id=cid, payload_id=pid,
             )
     raise AssertionError(f"không có ô phủ cho kênh {channel}")
@@ -290,3 +321,41 @@ def test_resume_bo_qua_run_da_co(tmp_path, exp, corpus, carriers, monkeypatch):
             got.payload_id, got.repeat_idx) == (
         spec.target_id, spec.channel, spec.technique, spec.goal, spec.carrier_task_id,
         spec.payload_id, spec.repeat_idx)
+
+
+def test_run_one_attack_preset_all_ghi_anh_chup_va_task_type(
+    tmp_path, exp, corpus, carriers, monkeypatch
+):
+    import json
+
+    engine = open_store(tmp_path / "t.sqlite")
+    ctx = _ctx(engine, corpus, carriers, monkeypatch, channel="K1")
+    ctx.defenses = R.build_defenses(["all"])
+    spec = _spec(corpus, carriers, "K1", preset="all")
+    seen = {}
+    real_core = R.CoreA
+
+    class SpyCore(real_core):
+        def run(self, user_query, *, session, recorder):
+            seen["task_type"] = session.task_type
+            seen["defense"] = self.defense
+            return super().run(user_query, session=session, recorder=recorder)
+
+    monkeypatch.setattr(R, "CoreA", SpyCore)
+    R.run_one_attack(spec, ctx)
+    row = export_runs(engine, batch_id=ctx.batch_id).iloc[0]
+    snap = json.loads(row["defense_config"])
+    assert snap["preset"] == "all"
+    assert snap["enabled"] == [
+        "d1_spotlighting", "d2_input_sanitizer", "d3_tool_policy", "d4_egress_filter"
+    ]
+    assert seen["defense"] is ctx.defenses[spec.defense_config]
+    assert seen["task_type"] == R.carrier_task_types()[spec.carrier_task_id]
+
+
+def test_run_one_attack_thieu_tang_phong_thu_bao_loi(tmp_path, exp, corpus, carriers, monkeypatch):
+    engine = open_store(tmp_path / "t.sqlite")
+    ctx = _ctx(engine, corpus, carriers, monkeypatch, channel="K1")
+    spec = _spec(corpus, carriers, "K1", preset="d3_only")
+    with pytest.raises(R.AttackRunnerError, match="build_defenses"):
+        R.run_one_attack(spec, ctx)
