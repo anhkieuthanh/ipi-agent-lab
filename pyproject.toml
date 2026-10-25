@@ -59,7 +59,7 @@ ignore = ["E501"]
 # package name — ruff không tự suy ra được, phải khai báo.
 known-first-party = [
     "agent", "obs", "rag", "attack", "defense", "eval", "interfaces", "gen_corpus_pdfs",
-    "seed_db", "tools", "mcp_fake_backend", "tracedata", "ui",
+    "seed_db", "tools", "mcp_fake_backend", "tracedata", "ui", "demo",
 ]
 
 [build-system]

@@ -26,3 +26,6 @@ data/tickets.db
 # Hit của canary listener (STT-34) — trạng thái lúc chạy; scorer chấm G1 trên trace, listener chỉ
 # để đối chiếu.
 data/canary_hits.db
+
+# Lượt demo trực tiếp (STT-82) — trình diễn, không phải dữ liệu thực nghiệm.
+results/demo/

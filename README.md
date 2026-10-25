@@ -44,6 +44,22 @@ make down
 Các target khác: `reset` · `ps` · `logs` · `kb-build` · `kb-rebuild` ·
 `kb-bench` · `kb-stats`.
 
+## Demo trực tiếp
+
+Trang "Demo trực tiếp" của dashboard chạy thật một kịch bản tấn công dựng sẵn trên một model, với
+nhiều cấu hình phòng thủ (mặc định `off` và `all`), rồi so song song: tấn công thành công hay bị
+chặn, ai chặn (`defense` · `model_refusal` · `harness`), agent đã gọi tool gì ở từng bước.
+
+```bash
+make up      # hạ tầng lab: Qdrant, MailHog, canary listener
+make demo    # dashboard trên host, có quyền gọi model — http://localhost:8502
+```
+
+`make demo` chỉ nghe trên `127.0.0.1`, đọc khóa API và `COST_BUDGET_USD_TOTAL` từ `.env`; mỗi lượt
+canh chi phí như lô thực nghiệm. Run demo ghi vào `results/demo/` (không theo Git), không trộn với
+lô thực nghiệm. Dashboard trong container (`make dashboard`, cổng 8501) chỉ xem lại, không chạy.
+Chạy từ dòng lệnh: `uv run python dashboard/demo.py --list`.
+
 ## Kiểm thử
 
 ```bash
