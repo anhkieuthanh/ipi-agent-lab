@@ -17,10 +17,11 @@ CHECKPOINT/RESUME: mỗi run commit ngay vào SQLite (TraceRecorder). Chạy l�
 (yêu cầu cứng STT-46). Backoff rate-limit do `LLMClient` lo (429/5xx, mũ + jitter) — runner KHÔNG tự
 backoff lại.
 
-PHẠM VI HIỆN TẠI: chỉ preset `off` (NoDefense) chạy được — D1–D4 (`src/defense/`) chưa có
-(STT-51…54). `build_defense` báo lỗi rõ cho preset khác. Khối chạy được ngay: B1 (pilot/ASR nền),
-B6 (`off`). Các khối chọn ô theo quy tắc (`cells.selected: null`) bị `unresolved` chặn tới khi B1
-xong.
+PHÒNG THỦ: `build_defense` dựng `defense.pipeline.DefensePipeline` cho mọi preset chạy được của
+`config/defenses.yaml` (STT-55); `off` vẫn là `NoDefense`. Run tấn công khai `task_type` của tác vụ
+chở theo `task_types.*.matches_carrier_tasks` — harness đóng vai nhân viên chọn loại tác vụ trước
+phiên (quy tắc cứng #3), không suy ra từ câu hỏi. Các khối chọn ô theo quy tắc
+(`cells.selected: null`) bị `unresolved` chặn tới khi B1 xong.
 """
 
 from __future__ import annotations
@@ -28,7 +29,7 @@ from __future__ import annotations
 import json
 import random
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +41,8 @@ from agent.llm_client import LLMClientError
 from agent.prompts import build_system_prompt
 from attack import injector_k1, injector_k2
 from attack.payloads.schema import DEFAULT_TASKS_PATH, load_payloads
+from defense.pipeline import DEFAULT_CONFIG_PATH as DEFENSES_PATH
+from defense.pipeline import DefensePipeline, load_defenses_raw
 from eval.canary import seeded_run
 from eval.experiment import Block, Experiment
 from eval.scorer import ScoreContext, score
@@ -53,6 +56,8 @@ __all__ = [
     "PAYLOADS_DIR",
     "RunContext",
     "build_defense",
+    "build_defenses",
+    "carrier_task_types",
     "done_specs",
     "load_corpus",
     "load_carriers",
@@ -66,9 +71,6 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 PAYLOADS_DIR = REPO_ROOT / "src" / "attack" / "payloads"
 HARNESS_PREFIX = "core-a@"
 
-#: Preset phòng thủ dựng được ngay. D1–D4 bổ sung khi `src/defense/` có cơ chế (STT-51…54).
-BUILDABLE_PRESETS = frozenset({"off"})
-
 #: Lỗi hạ tầng mà run ghi `parse_error` rồi lô chạy tiếp (như `utility_baseline.RECOVERABLE`). Lỗi
 #: khác dừng lô — harness lỗi hiện ra như "model kém" nếu để chạy tiếp (Y_TUONG_DU_AN.md mục 17).
 RECOVERABLE: tuple[type[BaseException], ...] = (LLMClientError,)
@@ -80,22 +82,51 @@ class AttackRunnerError(RuntimeError):
 
 
 # ---------------------------------------------------------------------------
-# Phòng thủ theo preset (seam — chỉ `off` tới khi D1–D4 có)
+# Phòng thủ theo preset + loại tác vụ của tác vụ chở
 # ---------------------------------------------------------------------------
 
 
 def build_defense(preset: str, *, defenses_path: Path | None = None) -> Any:
-    """Dựng tầng phòng thủ cho `preset`. `off` → NoDefense; preset khác → lỗi tới khi D1–D4 có.
-
-    Giữ chữ ký nhận `defenses_path` để khi `src/defense/` có factory đọc `config/defenses.yaml` thì
-    nối vào đây mà không đổi bên gọi (quy tắc cứng #4: tham số ở config, không hard-code).
-    """
+    """Dựng tầng phòng thủ cho `preset`. `off` → NoDefense; preset khác → DefensePipeline đọc
+    `config/defenses.yaml` (quy tắc cứng #4: tham số ở config, không hard-code)."""
     if preset == "off":
         return NoDefense()
-    raise AttackRunnerError(
-        f"preset {preset!r} chưa dựng được: D1–D4 (src/defense/) chưa có (STT-51…54). "
-        f"Hiện chạy được: {sorted(BUILDABLE_PRESETS)}"
-    )
+    try:
+        return DefensePipeline(preset=preset, path=defenses_path or DEFENSES_PATH)
+    except ValueError as e:
+        raise AttackRunnerError(f"preset {preset!r} không dựng được: {e}") from e
+
+
+def snapshot_json(defense: Any) -> str:
+    """Ảnh chụp cấu hình dạng chuỗi — chuỗi hóa GIỐNG HỆT `obs.trace._dump` (ensure_ascii=False,
+    sort_keys) để khớp đúng cột `defense_config` mà trace ghi ra; lệch thì resume chạy lại mọi run."""
+    return json.dumps(defense.config_snapshot(), ensure_ascii=False, sort_keys=True)
+
+
+def build_defenses(
+    presets: Iterable[str], *, defenses_path: Path | None = None
+) -> dict[str, Any]:
+    """{ảnh chụp JSON → tầng phòng thủ} cho các preset của một lô. `run_one_attack` tra theo
+    `AttackRunSpec.defense_config`, nên một lô dựng mỗi preset đúng một lần."""
+    layers = (build_defense(p, defenses_path=defenses_path) for p in dict.fromkeys(presets))
+    return {snapshot_json(d): d for d in layers}
+
+
+def carrier_task_types(raw: Mapping[str, Any] | None = None) -> dict[str, str]:
+    """{tác vụ chở → task_type} từ `d3_tool_policy.task_types.*.matches_carrier_tasks`.
+
+    Đây là input "người dùng chọn trước phiên" của run tấn công: tác vụ chở là việc nhân viên đang
+    làm, nên loại tác vụ đi kèm tác vụ chở, không suy ra từ câu hỏi hay từ payload (quy tắc cứng
+    #3). Tác vụ chở khai ở hai loại là lỗi cấu hình.
+    """
+    raw = raw if raw is not None else load_defenses_raw()
+    out: dict[str, str] = {}
+    for name, body in raw["defenses"]["d3_tool_policy"]["task_types"].items():
+        for cid in body.get("matches_carrier_tasks") or []:
+            if cid in out:
+                raise AttackRunnerError(f"tác vụ chở {cid} khai ở hai task_type: {out[cid]}, {name}")
+            out[cid] = name
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -241,12 +272,7 @@ def plan_block(
     n = n_per_cell if n_per_cell is not None else block.n_per_cell
     if n is None:
         raise AttackRunnerError(f"khối {block_id} thiếu n_per_cell")
-    # Chuỗi hóa GIỐNG HỆT `obs.trace._dump` (ensure_ascii=False, sort_keys) để danh tính của spec
-    # khớp đúng cột `defense_config` mà trace ghi ra — nếu lệch, resume sẽ chạy lại mọi run.
-    snapshots = {
-        p: json.dumps(build_defense(p).config_snapshot(), ensure_ascii=False, sort_keys=True)
-        for p in presets
-    }
+    snapshots = {p: snapshot_json(build_defense(p)) for p in presets}
 
     specs: list[AttackRunSpec] = []
     empty: list[str] = []
@@ -335,6 +361,22 @@ class RunContext:
     inject_k1: Callable[..., Any] = injector_k1.inject_and_probe
     build_k2_layer: Callable[..., Any] = injector_k2.build_layer
     cleanup_k1: Callable[..., None] = injector_k1.cleanup
+    # Ảnh chụp JSON → tầng phòng thủ (`build_defenses`). Thiếu thì chỉ chạy được preset `off`.
+    defenses: Mapping[str, Any] = field(default_factory=dict)
+    carrier_task_types: Mapping[str, str] = field(default_factory=carrier_task_types)
+
+
+def _defense_for(spec: AttackRunSpec, ctx: RunContext) -> Any:
+    defense = ctx.defenses.get(spec.defense_config)
+    if defense is not None:
+        return defense
+    off = NoDefense()
+    if spec.defense_config == snapshot_json(off):
+        return off
+    raise AttackRunnerError(
+        f"không có tầng phòng thủ cho defense_config của spec — dựng ctx.defenses bằng "
+        f"build_defenses(presets của khối): {spec.defense_config[:120]}"
+    )
 
 
 def run_one_attack(spec: AttackRunSpec, ctx: RunContext) -> str:
@@ -343,7 +385,9 @@ def run_one_attack(spec: AttackRunSpec, ctx: RunContext) -> str:
     payload = ctx.corpus_by_id[spec.payload_id]
     carrier = ctx.carriers_by_id[spec.carrier_task_id]
     model = ctx.models[spec.target_id]
-    defense = NoDefense()  # ảnh chụp đã khớp spec.defense_config từ plan_block
+    defense = _defense_for(spec, ctx)
+    if spec.carrier_task_id not in ctx.carrier_task_types:
+        raise AttackRunnerError(f"tác vụ chở {spec.carrier_task_id} không có task_type trong defenses.yaml")
     with seeded_run(db_tool=ctx.tools.db, http_tool=ctx.tools.http) as seeded:
         # Dọn trạng thái run trước — trước khi tiêm payload của run này.
         ctx.tools.mail.clear_mailbox()
@@ -384,7 +428,7 @@ def run_one_attack(spec: AttackRunSpec, ctx: RunContext) -> str:
         )
         session = SessionState(
             run_id=seeded.run_id,
-            task_type=None,  # tấn công: không khai task_type (D3 tắt ở preset off)
+            task_type=ctx.carrier_task_types[spec.carrier_task_id],
             run_canaries=tuple(seeded.run_canaries),
             carrier_task_id=spec.carrier_task_id,
         )
@@ -406,6 +450,8 @@ def run_one_attack(spec: AttackRunSpec, ctx: RunContext) -> str:
         finally:
             if spec.channel == "K1":
                 ctx.cleanup_k1(seeded.run_id)
+            if isinstance(defense, DefensePipeline):
+                defense.end_run(seeded.run_id)
     return seeded.run_id
 
 
