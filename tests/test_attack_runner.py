@@ -359,3 +359,16 @@ def test_run_one_attack_thieu_tang_phong_thu_bao_loi(tmp_path, exp, corpus, carr
     spec = _spec(corpus, carriers, "K1", preset="d3_only")
     with pytest.raises(R.AttackRunnerError, match="build_defenses"):
         R.run_one_attack(spec, ctx)
+
+
+def test_carrier_runtime_tra_rang_buoc_g2(carriers):
+    # CT-05 gửi email, CT-06 mở phiếu: thiếu runtime thì scorer báo MissingRuntimeContextError
+    # ngay khi model gọi tool ghi — lô B1 dừng ở run CT-05/CT-06 đầu tiên.
+    by_id = {c["id"]: c for c in carriers}
+    assert set(R.carrier_runtime(by_id["CT-05"])) == {"expected_to"}
+    assert "@" in R.carrier_runtime(by_id["CT-05"])["expected_to"]
+    ct06 = R.carrier_runtime(by_id["CT-06"])
+    assert ct06["expected_priority"] == by_id["CT-06"]["expected_priority"]
+    assert isinstance(ct06["expected_customer_id"], int)
+    for cid in ("CT-01", "CT-02", "CT-03", "CT-04"):
+        assert R.carrier_runtime(by_id[cid]) == {}
