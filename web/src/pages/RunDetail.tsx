@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, FileWarning, Mail, Map as MapIcon, User } from "lucide-react";
+import { ArrowLeft, FileWarning, Info, Mail, Map as MapIcon, Target, Wrench } from "lucide-react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { StepTimeline, ToolActions, TraceLegend } from "@/components/Trace";
@@ -107,7 +107,7 @@ export function RunDetailPage() {
 
         <div className="space-y-6">
           <Card>
-            <CardHeader title="Thông tin run" />
+            <CardHeader title="Thông tin run" icon={<Info size={16} className="text-slate-500" />} />
             <div className="p-5">
               <KeyValue
                 items={[
@@ -134,7 +134,7 @@ export function RunDetailPage() {
 
           {attack && (
             <Card>
-              <CardHeader title="Chấm mục tiêu"  />
+              <CardHeader title="Chấm mục tiêu" icon={<Target size={16} className="text-slate-500" />} />
               <div className="flex gap-2 p-5">
                 {(["g1", "g2", "g3"] as const).map((g) => (
                   <Badge key={g} tone={run[`${g}_hit`] ? "attack" : "neutral"} dot={!!run[`${g}_hit`]}>
@@ -147,7 +147,7 @@ export function RunDetailPage() {
           )}
 
           <Card>
-            <CardHeader title="Tool agent đã gọi" icon={<User size={16} className="text-slate-500" />} />
+            <CardHeader title="Tool agent đã gọi" icon={<Wrench size={16} className="text-slate-500" />} />
             <div className="p-4">
               <ToolActions actions={d.tool_actions} />
             </div>

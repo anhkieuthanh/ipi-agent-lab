@@ -1,8 +1,20 @@
 import clsx from "clsx";
-import { MousePointerClick } from "lucide-react";
+import {
+  Cpu,
+  Crosshair,
+  Gauge,
+  ListChecks,
+  Lock,
+  type LucideIcon,
+  MousePointerClick,
+  Shield,
+  ShieldCheck,
+  Swords,
+  Syringe,
+} from "lucide-react";
 import { useState } from "react";
 
-import { MapLegend, SystemMap } from "@/components/SystemMap";
+import { MapLegend, NODES, SystemMap } from "@/components/SystemMap";
 import { Badge, Card, CardHeader, PageHeader } from "@/components/ui";
 import { GLOSSARY } from "@/lib/glossary";
 
@@ -34,6 +46,39 @@ const INFO: Record<string, Info> = {
   D3: { title: "D3 · Tool-call Policy", codes: ["pre_tool_execution"], desc: "Chặn tool không hợp loại tác vụ; hỏi xác nhận hành động ghi. Chạy ngoài LLM." },
   D4: { title: "D4 · Egress Filter", codes: ["pre_egress"], desc: "Soát dữ liệu trước khi rời hệ thống: canary, đích lạ, PII." },
 };
+
+const GROUP_ICON: Record<string, LucideIcon> = {
+  TS: Lock,
+  G: Crosshair,
+  K: Syringe,
+  T: Swords,
+  D: ShieldCheck,
+  A: Cpu,
+  W: ListChecks,
+  M: Gauge,
+};
+
+const TILE: Record<string, string> = {
+  brand: "bg-brand-600 text-white",
+  attack: "bg-attack-50 text-attack-600",
+  sink: "bg-orange-50 text-orange-700",
+  measure: "bg-violet-50 text-violet-600",
+  user: "bg-cyan-50 text-cyan-700",
+  tool: "bg-slate-100 text-slate-700",
+  store: "bg-slate-100 text-slate-600",
+};
+
+/** Ô icon của thành phần đang chọn — cùng icon với thẻ trên sơ đồ; điểm D dùng khiên. */
+function SelectedIcon({ id }: { id: string }) {
+  const node = NODES.find((n) => n.id === id);
+  const Icon = node?.icon ?? Shield;
+  const tile = node ? TILE[node.tone] ?? "bg-brand-50 text-brand-600" : "bg-defense-50 text-defense-600";
+  return (
+    <span className={clsx("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl", tile)}>
+      <Icon size={22} />
+    </span>
+  );
+}
 
 function codeTone(code: string) {
   if (code.startsWith("G")) return "attack" as const;
@@ -67,7 +112,10 @@ export function SystemPage() {
           <CardHeader title="Thành phần đang chọn" icon={<MousePointerClick size={16} />} />
           {info ? (
             <div className="space-y-3 p-5">
-              <div className="text-[16px] font-semibold text-slate-900">{info.title}</div>
+              <div className="flex items-center gap-3">
+                <SelectedIcon id={selected} />
+                <div className="text-[16px] font-semibold text-slate-900">{info.title}</div>
+              </div>
               {info.codes.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {info.codes.map((c) => (
@@ -86,19 +134,23 @@ export function SystemPage() {
 
         <Card className="xl:col-span-2">
           <div className="flex flex-wrap gap-1 border-b border-slate-100 px-3 pt-3">
-            {GLOSSARY.map((g) => (
-              <button
-                key={g.id}
-                onClick={() => setTab(g.id)}
-                className={clsx(
-                  "rounded-t-lg px-3 py-2 text-[13px] font-medium transition",
-                  tab === g.id ? "border-b-2 border-brand-600 text-brand-700" : "text-slate-500 hover:text-slate-800",
-                )}
-              >
-                {g.label}
-                <span className="ml-1.5 font-mono text-[11px] text-slate-400">{g.prefix}</span>
-              </button>
-            ))}
+            {GLOSSARY.map((g) => {
+              const Icon = GROUP_ICON[g.id] ?? ListChecks;
+              return (
+                <button
+                  key={g.id}
+                  onClick={() => setTab(g.id)}
+                  className={clsx(
+                    "flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-[13px] font-medium transition",
+                    tab === g.id ? "border-b-2 border-brand-600 text-brand-700" : "text-slate-500 hover:text-slate-800",
+                  )}
+                >
+                  <Icon size={14} />
+                  {g.label}
+                  <span className="font-mono text-[11px] text-slate-400">{g.prefix}</span>
+                </button>
+              );
+            })}
           </div>
           <div className="grid grid-cols-1 gap-2 p-4 md:grid-cols-2">
             {group.items.map((t) => (

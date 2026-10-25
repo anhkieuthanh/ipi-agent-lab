@@ -1,6 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
-import { FileWarning, FlaskConical, Loader2, Map as MapIcon, Play, ShieldCheck, User } from "lucide-react";
+import {
+  Columns2,
+  FileWarning,
+  FlaskConical,
+  Loader2,
+  Map as MapIcon,
+  Play,
+  Shield,
+  ShieldCheck,
+  SlidersHorizontal,
+  User,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -87,7 +98,10 @@ function ResultColumn({
   return (
     <Card className={clsx("flex flex-col", showing && "ring-2 ring-brand-500")}>
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-        <span className="text-[13px] font-semibold text-slate-700">Phòng thủ: {presetLabel(String(run.preset))}</span>
+        <span className="flex items-center gap-2 text-[13px] font-semibold text-slate-700">
+          <Shield size={15} className="text-slate-400" />
+          Phòng thủ: {presetLabel(String(run.preset))}
+        </span>
         <OutcomeBadge outcome={run.outcome} blockedBy={run.blocked_by} />
       </div>
       <div className="space-y-3 p-4">
@@ -155,7 +169,10 @@ function Results({
   if (!items.length) return null;
   return (
     <div className="mt-6">
-      <h2 className="mb-3 text-[15px] font-semibold text-slate-900">Kết quả so sánh</h2>
+      <h2 className="mb-3 flex items-center gap-2 text-[15px] font-semibold text-slate-900">
+        <Columns2 size={17} className="text-slate-400" />
+        Kết quả so sánh
+      </h2>
       <div className={clsx("grid gap-4", items.length > 1 ? "lg:grid-cols-2" : "lg:grid-cols-1")}>
         {items.map((r) => (
           <ResultColumn
@@ -343,7 +360,7 @@ export function LabPage() {
         />
 
         <Card>
-          <CardHeader title="Thiết lập lượt chạy" />
+          <CardHeader title="Thiết lập lượt chạy" icon={<SlidersHorizontal size={16} />} />
           <div className="space-y-4 p-5">
             <Select
               label="Model đích"
