@@ -4,7 +4,18 @@
 // gọi tool → KB_RETRIEVAL/TOOL_RESULT → CONTEXT_ASSEMBLY.
 
 import clsx from "clsx";
-import { Pause, Play, RotateCcw, SkipBack, SkipForward } from "lucide-react";
+import {
+  BrainCircuit,
+  FileWarning,
+  Flag,
+  type LucideIcon,
+  Pause,
+  Play,
+  RotateCcw,
+  ShieldAlert,
+  SkipBack,
+  SkipForward,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import type { RunDetail, Step } from "@/lib/api";
@@ -142,6 +153,13 @@ const TONE_STYLE: Record<Frame["tone"], string> = {
   verdict: "border-slate-400 bg-slate-50",
 };
 
+const TONE_ICON: Record<Frame["tone"], [LucideIcon, string]> = {
+  neutral: [BrainCircuit, "text-brand-600"],
+  payload: [FileWarning, "text-payload-600"],
+  block: [ShieldAlert, "text-attack-600"],
+  verdict: [Flag, "text-slate-500"],
+};
+
 const SPEEDS = [0.5, 1, 2];
 
 export function TraceReplay({ detail, codes, autoplay = false }: { detail: RunDetail; codes: string[]; autoplay?: boolean }) {
@@ -167,6 +185,7 @@ export function TraceReplay({ detail, codes, autoplay = false }: { detail: RunDe
   }, [playing, i, last, speed]);
 
   const f = frames[i];
+  const [ToneIcon, toneInk] = TONE_ICON[f.tone];
   const defenses = Object.fromEntries((["D1", "D2", "D3", "D4"] as DefenseCode[]).map((c) => [c, codes.includes(c)]));
   const btn = "flex h-8 w-8 items-center justify-center rounded-md text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50 disabled:opacity-40";
 
@@ -221,7 +240,10 @@ export function TraceReplay({ detail, codes, autoplay = false }: { detail: RunDe
         </div>
 
         <div className={clsx("mt-3 rounded-lg border-l-4 px-4 py-2.5", TONE_STYLE[f.tone])}>
-          <div className="text-[13.5px] font-semibold text-slate-800">{f.title}</div>
+          <div className="flex items-center gap-2 text-[13.5px] font-semibold text-slate-800">
+            <ToneIcon size={15} className={clsx("shrink-0", toneInk)} />
+            {f.title}
+          </div>
           {f.detail && <div className="mt-0.5 text-[12.5px] text-slate-600">{f.detail}</div>}
           {f.notes.length > 0 && (
             <ul className="mt-1.5 space-y-0.5 text-[12px] text-slate-600">
