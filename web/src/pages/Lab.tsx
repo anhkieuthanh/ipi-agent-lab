@@ -13,6 +13,7 @@ import {
   hookStatusFromSteps,
 } from "@/components/SystemMap";
 import { StepTimeline, ToolActions } from "@/components/Trace";
+import { TraceReplay } from "@/components/TraceReplay";
 import {
   Badge,
   Button,
@@ -84,7 +85,7 @@ function ResultColumn({
   const spontaneous = d.verdict?.tone === "attack" && !d.tool_actions.some((a) => a.follows_payload);
   const codes = codesOf(presets, String(run.preset));
   return (
-    <Card className={clsx("flex flex-col", showing && "ring-2 ring-brand-300")}>
+    <Card className={clsx("flex flex-col", showing && "ring-2 ring-brand-500")}>
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
         <span className="text-[13px] font-semibold text-slate-700">Phòng thủ: {presetLabel(String(run.preset))}</span>
         <OutcomeBadge outcome={run.outcome} blockedBy={run.blocked_by} />
@@ -114,7 +115,7 @@ function ResultColumn({
               disabled={showing}
               className="flex items-center gap-1 text-[12px] font-medium text-brand-600 hover:text-brand-700 disabled:text-slate-400"
             >
-              <MapIcon size={12} /> {showing ? "Đang hiện trên sơ đồ" : "Hiện trên sơ đồ"}
+              <MapIcon size={12} /> {showing ? "Đang phát trên sơ đồ" : "Phát lại trên sơ đồ"}
             </button>
           </div>
           <HookChips codes={codes} status={hookStatusFromSteps(d.steps, codes)} />
@@ -180,16 +181,13 @@ function DefenseMap({
 }: {
   enabled: Record<DefenseCode, boolean>;
   onToggle: (c: DefenseCode) => void;
-  view: { preset: string; codes: string[]; status: Partial<Record<DefenseCode, PointStatus>> } | null;
+  view: { preset: string; codes: string[]; detail: RunDetail } | null;
   onBack: () => void;
 }) {
-  const defenses = view
-    ? (Object.fromEntries(CODES.map((c) => [c, view.codes.includes(c)])) as Record<DefenseCode, boolean>)
-    : enabled;
   return (
     <Card className="xl:col-span-2">
       <CardHeader
-        title={view ? `Trạng thái điểm phòng thủ · ${presetLabel(view.preset)}` : "Phòng thủ trên sơ đồ"}
+        title={view ? `Phát lại run · ${presetLabel(view.preset)}` : "Phòng thủ trên sơ đồ"}
         icon={<ShieldCheck size={16} />}
         action={
           view ? (
@@ -199,12 +197,18 @@ function DefenseMap({
           )
         }
       />
-      <div className="px-4 pb-2 pt-3">
-        <SystemMap defenses={defenses} onToggle={view ? undefined : onToggle} hookStatus={view?.status} />
-      </div>
-      <div className="border-t border-slate-100 px-5 py-3">
-        <HookLegend statuses={!!view} />
-      </div>
+      {view ? (
+        <TraceReplay detail={view.detail} codes={view.codes} autoplay />
+      ) : (
+        <>
+          <div className="px-4 pb-2 pt-3">
+            <SystemMap defenses={enabled} onToggle={onToggle} />
+          </div>
+          <div className="border-t border-slate-100 px-5 py-3">
+            <HookLegend />
+          </div>
+        </>
+      )}
     </Card>
   );
 }
@@ -260,8 +264,7 @@ export function LabPage() {
   const view = useMemo(() => {
     if (!viewRun || !viewDetail.data) return null;
     const preset = String(viewDetail.data.run.preset);
-    const codes = codesOf(allPresets, preset);
-    return { preset, codes, status: hookStatusFromSteps(viewDetail.data.steps, codes) };
+    return { preset, codes: codesOf(allPresets, preset), detail: viewDetail.data };
   }, [viewRun, viewDetail.data, allPresets]);
 
   const start = useMutation({
