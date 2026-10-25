@@ -33,8 +33,8 @@ import { SCOPE_LABEL, useScope } from "@/lib/scope";
 function rateHint(r: Rate, noun: string) {
   if (!r) return `Chưa có ${noun}`;
   return (
-    <span>
-      {int(r.x)}/{int(r.n)} {noun} · CI 95% {ci(r.lo, r.hi)}
+    <span title={`CI 95% ${ci(r.lo, r.hi)}`}>
+      {int(r.x)}/{int(r.n)} {noun}
     </span>
   );
 }
@@ -82,20 +82,19 @@ export function OverviewPage() {
     <>
       <PageHeader
         title="Tổng quan"
-        description={
+        info={
           <>
             Sức chống chịu của agent trước tấn công tiêm nhiễm gián tiếp, trên{" "}
-            <b className="font-medium text-slate-700">{batch ? `lô ${batch}` : SCOPE_LABEL[kind].toLowerCase()}</b>.
-            Run lỗi hạ tầng (<span className="font-mono">parse_error</span>) bị loại khỏi mẫu số.
+            {batch ? `lô ${batch}` : SCOPE_LABEL[kind].toLowerCase()}. Run lỗi hạ tầng (parse_error) bị loại khỏi
+            mẫu số. ASR/DSR/USR/FRR theo định nghĩa scorer, CI Wilson 95%.
           </>
         }
       />
 
       {k.n_attack === 0 && (
-        <div className="mb-6">
-          <Callout tone="brand" title="Chưa có run tấn công trong phạm vi này">
-            Số liệu tấn công sẽ xuất hiện sau lô pilot (STT-60). Có thể xem các lượt chạy thử hoặc demo bằng
-            bộ chọn <b>Phạm vi</b> ở góc trên, hoặc chạy một kịch bản trong{" "}
+        <div className="mb-5">
+          <Callout tone="brand">
+            Chưa có run tấn công trong phạm vi này — số liệu có sau lô pilot (STT-60), hoặc chạy thử trong{" "}
             <Link to="/lab" className="font-semibold underline">
               Phòng thí nghiệm
             </Link>
@@ -151,7 +150,7 @@ export function OverviewPage() {
         <Card className="xl:col-span-2">
           <CardHeader
             title="So sánh theo model đích"
-            subtitle="Tỉ lệ tấn công thành công (ASR) và tỉ lệ hữu dụng (USR), % trên run hợp lệ"
+            subtitle="ASR và USR theo model (%)"
           />
           <div className="h-[290px] px-3 pb-3 pt-4">
             {chart.length ? (
@@ -184,7 +183,7 @@ export function OverviewPage() {
 
         <div className="flex flex-col gap-6">
           <Card>
-            <CardHeader title="Cổng nghiệm thu" subtitle="Điều kiện trước khi chạy ma trận đầy đủ" />
+            <CardHeader title="Cổng nghiệm thu"  />
             <div className="divide-y divide-slate-100">
               {d.gates.map((g) => (
                 <GateRow key={g.id} gate={g} />
@@ -192,7 +191,7 @@ export function OverviewPage() {
             </div>
           </Card>
           <Card>
-            <CardHeader title="Ai đã chặn" subtitle="Tách phòng thủ khỏi model tự từ chối" />
+            <CardHeader title="Ai đã chặn"  />
             <div className="space-y-3 px-5 py-4">
               {(Object.keys(k.blocked_by) as (keyof typeof k.blocked_by)[]).map((key) => {
                 const n = k.blocked_by[key];
@@ -231,7 +230,7 @@ export function OverviewPage() {
       <Card className="mt-6">
         <CardHeader
           title="Lô gần đây"
-          subtitle="Mọi loại lô — bấm để xem các run"
+          
           action={
             <Link to="/batches" className="inline-flex items-center gap-1 text-[13px] font-medium text-brand-600 hover:text-brand-700">
               Xem tất cả <ArrowRight size={14} />
@@ -276,10 +275,6 @@ export function OverviewPage() {
           </tbody>
         </table>
       </Card>
-      <p className="mt-3 text-[12px] text-slate-400">
-        Chi phí đọc từ <span className="font-mono">{b.source}</span>. ASR · DSR · USR · FRR theo định nghĩa của
-        scorer; khoảng tin cậy Wilson 95%.
-      </p>
     </>
   );
 }

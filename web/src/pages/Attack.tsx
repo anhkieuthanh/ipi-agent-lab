@@ -115,7 +115,7 @@ export function AttackPage() {
     <>
       <PageHeader
         title="Phân tích tấn công"
-        description="Tỉ lệ tấn công thành công ASR_e2e theo từng ô thực nghiệm. Mẫu số loại run lỗi hạ tầng; khoảng tin cậy Wilson 95%. Ô bật phòng thủ có thêm DSR = 1 − ASR."
+        info="ASR_e2e theo từng ô thực nghiệm. Mẫu số loại run lỗi hạ tầng; CI Wilson 95%. Ô bật phòng thủ có thêm DSR = 1 − ASR."
         actions={<Select value={view} onChange={setView} options={VIEWS} className="w-64" />}
       />
       {q.isLoading && <Loading />}
@@ -129,21 +129,20 @@ export function AttackPage() {
       )}
       {q.data && q.data.rows.length > 0 && (
         <div className="space-y-6">
-          <Callout tone="warn" title="Đọc kết quả G2 thận trọng">
-            Scorer hiện tính cả vi phạm phạm vi tự phát của agent (không do payload) là G2 thành công — Việc
-            treo VT-16. Kiểm “tool agent đã gọi” ở trang chi tiết run trước khi kết luận.
+          <Callout tone="warn">
+            G2: scorer còn tính cả vi phạm tự phát của agent (VT-16) — kiểm “tool đã gọi” trước khi kết luận.
           </Callout>
           {dims.length === 2 && (
             <Card>
               <CardHeader
                 title={`Bản đồ ASR · ${DIM_LABEL[dims[0]]} × ${DIM_LABEL[dims[1]]}`}
-                subtitle="Mỗi ô: ASR_e2e và số run thành công / run hợp lệ"
+                
               />
               <Heatmap rows={q.data.rows} dims={[dims[0], dims[1]]} />
             </Card>
           )}
           <Card>
-            <CardHeader title="Bảng chi tiết" subtitle="Phân rã nguyên nhân chặn: phòng thủ · model từ chối · harness" />
+            <CardHeader title="Bảng chi tiết"  />
             <table className="table-base">
               <thead>
                 <tr>

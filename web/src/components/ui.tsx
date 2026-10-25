@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { AlertTriangle, Inbox, Loader2 } from "lucide-react";
+import { AlertTriangle, HelpCircle, Inbox, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { Verdict } from "@/lib/api";
@@ -38,21 +38,32 @@ export function CardHeader({
   );
 }
 
+export function InfoDot({ children }: { children: ReactNode }) {
+  return (
+    <span className="group relative inline-flex">
+      <HelpCircle size={15} className="cursor-help text-slate-400 hover:text-slate-600" />
+      <span className="pointer-events-none absolute left-1/2 top-6 z-30 hidden w-64 -translate-x-1/2 rounded-lg bg-ink-900 px-3 py-2 text-[12px] leading-relaxed text-slate-100 shadow-pop group-hover:block">
+        {children}
+      </span>
+    </span>
+  );
+}
+
 export function PageHeader({
   title,
-  description,
+  info,
   actions,
 }: {
   title: string;
-  description?: ReactNode;
+  info?: ReactNode;
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 className="text-[22px] font-semibold tracking-tight text-slate-900">{title}</h1>
-        {description && <p className="mt-1 max-w-3xl text-[13.5px] text-slate-500">{description}</p>}
-      </div>
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+      <h1 className="flex items-center gap-2 text-[20px] font-semibold tracking-tight text-slate-900">
+        {title}
+        {info && <InfoDot>{info}</InfoDot>}
+      </h1>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>
   );

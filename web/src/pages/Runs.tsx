@@ -11,7 +11,7 @@ import { useScope } from "@/lib/scope";
 const PAGE = 40;
 
 export function RunsPage() {
-  const { params, batch } = useScope();
+  const { params } = useScope();
   const [sp] = useSearchParams();
   const [q, setQ] = useState("");
   const [runKind, setRunKind] = useState<"" | "attack" | "benign">("");
@@ -31,7 +31,7 @@ export function RunsPage() {
     <>
       <PageHeader
         title="Điều tra run"
-        description={batch ? <>Các run của lô <Mono>{batch}</Mono>.</> : "Mọi run trong phạm vi đang chọn. Bấm một run để xem từng bước, payload và canary được tô màu, tool agent đã gọi."}
+        info="Bấm một run để xem từng bước, payload và canary tô màu, tool agent đã gọi."
       />
 
       <Card className="mb-4">
