@@ -1,4 +1,4 @@
-"""Test dashboard (STT-58): lớp dữ liệu `dashboard/tracedata.py` và smoke test bốn trang.
+"""Test lớp dữ liệu console (STT-58, console/tracedata.py): lớp dữ liệu `dashboard/tracedata.py` và smoke test bốn trang.
 
 Store mẫu dựng bằng `TraceRecorder` thật — dữ liệu giả chỉ sống trong `tmp_path`, không vào
 `results/`. Điểm then chốt: bảng ASR của dashboard khớp `obs.trace.ASR_SQL`, màu "chặn" khớp
@@ -12,7 +12,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-import tracedata as td
+from console import tracedata as td
 from obs.trace import ASR_SQL, RunMeta, TraceRecorder, open_store
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -271,58 +271,9 @@ def test_compare_with_off(runs):
     assert t.loc["d3_only", "usr"] == 0.5 and t.loc["d3_only", "frr"] == 0.5
 
 
-# ---------------------------------------------------------------------------
-# Smoke test bốn trang — chạy script thật bằng AppTest, không mở cổng
-# ---------------------------------------------------------------------------
-
-PAGES = [
-    "dashboard/app.py",
-    "dashboard/pages/1_Bang_ASR.py",
-    "dashboard/pages/2_Pareto.py",
-    "dashboard/pages/3_Trace_viewer.py",
-    "dashboard/pages/4_Cong_tac_D1_D4.py",
-]
-
-
-@pytest.mark.parametrize("page", PAGES)
-def test_page_renders(page, store, monkeypatch):
-    testing = pytest.importorskip("streamlit.testing.v1")
-    monkeypatch.setenv("TRACES_DB", str(store))
-    at = testing.AppTest.from_file(str(ROOT / page), default_timeout=30)
-    at.run()
-    assert not at.exception, at.exception
-
-
-def test_trace_viewer_renders_blocked_run(store, monkeypatch):
-    testing = pytest.importorskip("streamlit.testing.v1")
-    monkeypatch.setenv("TRACES_DB", str(store))
-    at = testing.AppTest.from_file(str(ROOT / PAGES[3]), default_timeout=30)
-    at.run()
-    box = at.selectbox[0]
-    at = box.select(next(o for o in box.options if o.startswith("r-blocked"))).run()
-    assert not at.exception
-    html = "".join(m.value for m in at.markdown)
-    assert 'class="step block decisive"' in html
-    # Run có final_answer chứa thẻ HTML: hiển thị đã escape.
-    box = at.selectbox[0]
-    at = box.select(next(o for o in box.options if o.startswith("r-failed"))).run()
-    html = "".join(m.value for m in at.markdown)
-    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
-    assert "<script>" not in html
 
 
 def test_load_runs_null_is_none(runs):
     r = runs.set_index("run_id").loc["r-error"]
     assert r["outcome"] is None and r["final_answer"] is None
 
-
-def test_toggle_page_shows_d3(store, monkeypatch):
-    testing = pytest.importorskip("streamlit.testing.v1")
-    monkeypatch.setenv("TRACES_DB", str(store))
-    at = testing.AppTest.from_file(str(ROOT / PAGES[4]), default_timeout=30)
-    at.run()
-    at = at.toggle(key="toggle:D3").set_value(True).run()
-    assert not at.exception
-    assert any("d3_only" in s.value for s in at.success)
-    presets = set(at.dataframe[0].value["preset"])
-    assert presets == {"off", "d3_only"}

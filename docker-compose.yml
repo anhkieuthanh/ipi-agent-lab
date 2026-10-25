@@ -2,8 +2,8 @@
 #
 # 5 service: qdrant (vector store, volume bền), mailhog (SMTP giả cho tool
 # send_email, STT-29), canary-listener (bồn chứa của http_request, STT-34),
-# app (dev container, uv sync sẵn deps), dashboard (Streamlit, STT-58).
-# canary-listener, app, dashboard dùng chung một image.
+# app (dev container, uv sync sẵn deps).
+# canary-listener, app dùng chung một image.
 #
 # Image bên thứ ba pin phiên bản — `latest` làm hạ tầng trôi giữa các lần chạy
 # lô, số liệu không còn so sánh được. qdrant server khớp qdrant-client 1.19.
@@ -109,38 +109,8 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  dashboard:
-    build:
-      context: .
-    container_name: ipi-dashboard
-    command:
-      - uv
-      - run
-      - --no-sync
-      - streamlit
-      - run
-      - dashboard/app.py
-      - --server.port=8501
-      - --server.address=0.0.0.0
-      - --server.headless=true
-    ports:
-      - "8501:8501"
-    volumes:
-      - .:/workspace
-    environment:
-      TRACES_DB: /workspace/data/traces.db
-    # Image python:slim không có curl — gọi endpoint health của Streamlit bằng python.
-    healthcheck:
-      test:
-        - CMD
-        - python
-        - -c
-        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=3)"
-      interval: 10s
-      timeout: 5s
-      start_period: 20s
-      retries: 5
-    restart: unless-stopped
+# Giao diện IPI Guard Console (API FastAPI + web React) chạy trên host bằng `make console`, không
+# trong Compose: nó cần gọi model qua `.env` và bản build của web/, và chỉ nên nghe 127.0.0.1.
 
 volumes:
   qdrant_data:

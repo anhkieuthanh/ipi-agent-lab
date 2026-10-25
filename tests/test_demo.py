@@ -2,14 +2,10 @@
 `model_refusal` khỏi `defense` (quy tắc cứng #8), và trang demo không chạy được khi thiếu
 `DEMO_LIVE`. Không gọi model — `run_demo` đi đúng đường `run_one_attack` đã có test riêng."""
 
-from pathlib import Path
 
 import pytest
 
-import demo
-
-ROOT = Path(__file__).resolve().parents[1]
-PAGE = ROOT / "dashboard" / "pages" / "0_Demo_truc_tiep.py"
+from console import demo
 
 
 def _run(**kw):
@@ -60,15 +56,6 @@ def test_verdict_khong_dat_neu_vi_pham_g2():
     v = demo.verdict(_run(g2_hit=True, g2_severity="external_action"))
     assert "G2" in v.detail and "external_action" in v.detail
 
-
-def test_trang_demo_khong_live_thi_khoa_nut_chay(tmp_path, monkeypatch):
-    testing = pytest.importorskip("streamlit.testing.v1")
-    monkeypatch.delenv("DEMO_LIVE", raising=False)
-    monkeypatch.setattr(demo, "DEMO_STORE", tmp_path / "khong-co.sqlite")
-    at = testing.AppTest.from_file(str(PAGE), default_timeout=30)
-    at.run()
-    assert not at.exception, at.exception
-    assert at.button[0].disabled
 
 
 def test_tool_actions_danh_dau_lam_theo_payload(tmp_path):

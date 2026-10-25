@@ -1,4 +1,4 @@
-.PHONY: up down reset ps logs dashboard demo console console-build console-dev kb-build kb-rebuild kb-bench kb-stats test lint
+.PHONY: up down reset ps logs console console-build console-dev demo-cli kb-build kb-rebuild kb-bench kb-stats test lint
 
 # --wait: chỉ trả về khi cả 5 service đã HEALTHY (xem healthcheck trong
 # docker-compose.yml), thay vì trả về ngay lúc container vừa được tạo.
@@ -19,16 +19,6 @@ ps:
 
 logs:
 	docker compose logs -f --tail=100
-
-# Dashboard Streamlit (STT-58) — chạy riêng service này, không kéo cả lab.
-dashboard:
-	docker compose up -d --build --wait dashboard
-	@echo "Dashboard: http://localhost:8501"
-
-# Demo trực tiếp (STT-82) — dashboard chạy trên host để gọi được model và hạ tầng lab (cần
-# `make up` và `.env`). Trang "Demo trực tiếp" mở nút chạy khi DEMO_LIVE=1.
-demo:
-	DEMO_LIVE=1 uv run streamlit run dashboard/app.py --server.port=8502 --server.address=127.0.0.1 --server.headless=true
 
 # Kho tri thức (kênh K1). `src/` phải trên PYTHONPATH: các module nội bộ nạp theo
 # đường dẫn chứ không cài thành package, pytest tự lo qua pyproject nhưng
@@ -61,8 +51,12 @@ console-build:
 	cd web && npm install --no-audit --no-fund && npm run build
 
 console:
-	DEMO_LIVE=1 PYTHONPATH=src:dashboard uv run uvicorn console.app:app --host 127.0.0.1 --port 8600
+	DEMO_LIVE=1 PYTHONPATH=src uv run uvicorn console.app:app --host 127.0.0.1 --port 8600
 
 console-dev:
-	DEMO_LIVE=1 PYTHONPATH=src:dashboard uv run uvicorn console.app:app --host 127.0.0.1 --port 8600 --reload &
+	DEMO_LIVE=1 PYTHONPATH=src uv run uvicorn console.app:app --host 127.0.0.1 --port 8600 --reload &
 	cd web && npm run dev
+
+# Chạy một kịch bản demo từ dòng lệnh (không cần giao diện).
+demo-cli:
+	PYTHONPATH=src DEMO_LIVE=1 uv run python -m console.demo $(ARGS)

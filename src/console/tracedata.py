@@ -1,4 +1,4 @@
-"""Lớp dữ liệu của dashboard (STT-58) — hàm thuần, không import streamlit, test được.
+"""Lớp dữ liệu console (STT-58) — hàm thuần, test được.
 
 Dashboard chỉ ĐỌC trace store (mở SQLite chế độ `mode=ro`), không ghi trace, không sửa
 `config/defenses.yaml`. Mọi phép chấm lấy từ nguồn đã có, không tính lại theo cách riêng:
@@ -25,7 +25,7 @@ from typing import Any
 import pandas as pd
 import yaml
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 

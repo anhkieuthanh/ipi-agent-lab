@@ -10,9 +10,9 @@ thực nghiệm. Chi phí canh bằng `BudgetGuard` như `scripts/run_matrix.py`
 `COST_BUDGET_USD_TOTAL` thì từ chối chạy.
 
     # Liệt kê kịch bản
-    uv run python dashboard/demo.py --list
+    uv run python -m console.demo --list
     # Chạy một kịch bản trên A3, phòng thủ off và all
-    uv run python dashboard/demo.py --scenario exfil-email --target A3
+    uv run python -m console.demo --scenario exfil-email --target A3
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 

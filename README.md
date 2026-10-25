@@ -17,7 +17,8 @@ IPI) trên agent dùng RAG + MCP tool-calling.
 │   ├── defense/         # D1–D4 · pipeline
 │   ├── eval/            # allowed_actions · scorer (STT-35) · bench hữu dụng (STT-37)
 │   └── obs/             # trace store (STT-32) · canary (STT-33, STT-34)
-├── dashboard/           # Streamlit: app.py + pages/
+│   └── console/         # API FastAPI của giao diện (STT-58)
+├── web/                 # Giao diện React (Vite + Tailwind)
 ├── scripts/             # seed_db · gen_corpus_pdfs
 └── tests/
 ```
@@ -33,16 +34,15 @@ cp .env.example .env   # rồi điền giá trị thật; không commit .env
 
 Năm service trong `docker-compose.yml`: `qdrant` (vector store) · `mailhog` (SMTP giả) ·
 `canary-listener` (bồn chứa của `http_request`, `127.0.0.1:8099`, hit đọc qua `GET /hits?run=`) ·
-`app` (dev container) · `dashboard` (Streamlit, cổng 8501).
+`app` (dev container). Giao diện console chạy trên host (`make console`), không trong Compose.
 
 ```bash
 make up          # dựng cả lab, chờ mọi service healthy
-make dashboard   # chỉ dashboard — http://localhost:8501
 make down
 ```
 
 Các target khác: `reset` · `ps` · `logs` · `kb-build` · `kb-rebuild` ·
-`kb-bench` · `kb-stats`.
+`kb-bench` · `kb-stats` · `console` · `console-build`.
 
 ## IPI Guard Console — giao diện chính
 
@@ -62,14 +62,13 @@ make console        # API + giao diện ở một cổng — http://localhost:86
 phí như lô thực nghiệm. Run demo ghi `results/demo/` (không theo Git), không trộn với lô thực
 nghiệm. Phát triển giao diện: `make console-dev` (Vite 5173 + API 8600).
 
-Số liệu (ASR, DSR, USR, FRR, Wilson, tô màu bước) lấy từ cùng hàm mà scorer và dashboard dùng
-(`dashboard/tracedata.py`, `src/eval/metrics.py`) — console không tính lại theo cách riêng. Lớp
+Số liệu (ASR, DSR, USR, FRR, Wilson, tô màu bước) lấy từ cùng hàm mà scorer dùng
+(`src/console/tracedata.py`, `src/eval/metrics.py`) — console không tính lại theo cách riêng. Lớp
 API ở `src/console/`, giao diện ở `web/`.
 
-### Demo trực tiếp (bản Streamlit cũ)
+### Demo trực tiếp từ dòng lệnh
 
-Dashboard Streamlit bốn trang vẫn còn cho đối chiếu: `make dashboard` (cổng 8501, chỉ xem) và
-`make demo` (cổng 8502, có nút chạy). Chạy kịch bản từ dòng lệnh: `uv run python dashboard/demo.py --list`.
+Chạy một kịch bản không cần giao diện: `make demo-cli ARGS="--list"`.
 
 ## Kiểm thử
 
