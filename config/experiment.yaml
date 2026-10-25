@@ -325,7 +325,10 @@ blocks:
     cells: {from_block: B2, rule: S_adp, min_dsr_blind: 0.30, max_cells: 6, selected: null}
     chains_per_cell: 10
     max_rounds: 3                 # mức phản hồi PH1, G cố định suốt chuỗi
-    attacker_model: null          # checklist mục 8, việc 6 — chưa chốt
+    # Khối model trong config/models.yaml dùng để viết lại payload giữa các vòng (STT-57). Trỏ tới
+    # khối `attacker` (opus-5, đã pin). TA chốt dùng opus-5 cho cả B5 2026-10-25 (checklist mục 8
+    # việc 6); GVHD trước đó duyệt opus-5 cho paraphrase offline, nay mở rộng sang vòng thích ứng.
+    attacker_model: attacker
 
   B6:
     purpose: [RQ6]

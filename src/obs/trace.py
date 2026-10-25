@@ -118,7 +118,23 @@ class Run(SQLModel, table=True):
         ),
         CheckConstraint("g1_hit = 0 OR g1_channel IS NOT NULL", name="ck_g1_channel_on_hit"),
         CheckConstraint("leak_attempted = 0 OR g1_hit = 0", name="ck_leak_attempted_not_g1"),
+        # Threat Model mục 4 bất biến 1 + phần theo-hàng của bất biến 2: hai trường adaptive chỉ
+        # có ở run adaptive, cùng có hoặc cùng vắng, và round ∈ {1,2,3}. Phần chéo-hàng (≤3 run mỗi
+        # chuỗi, trường cố định trong chuỗi) kiểm bằng `attack.adaptive.check_adaptive_invariants`.
+        CheckConstraint(
+            "(attacker_mode = 'adaptive') = (adaptive_chain_id IS NOT NULL)",
+            name="ck_adaptive_chain_mode",
+        ),
+        CheckConstraint(
+            "(adaptive_chain_id IS NOT NULL) = (adaptive_round IS NOT NULL)",
+            name="ck_adaptive_round_pairs_chain",
+        ),
+        CheckConstraint(
+            "adaptive_round IS NULL OR adaptive_round IN (1, 2, 3)",
+            name="ck_adaptive_round_range",
+        ),
         Index("ix_runs_cell", "batch_id", "target_id", "technique", "channel", "goal"),
+        Index("ix_runs_adaptive_chain", "adaptive_chain_id"),
     )
 
     run_id: str = Field(primary_key=True)
@@ -147,6 +163,11 @@ class Run(SQLModel, table=True):
     goal: str | None = None
     channel: str | None = None
     attacker_mode: str | None = None
+    # Nhánh thích ứng (Threat Model mục 4). NULL ở mọi run blind/benign; cùng khác NULL ở run
+    # adaptive. `adaptive_chain_id` nhóm tối đa ba run của một chuỗi (đơn vị tính ASR là chuỗi,
+    # không phải run); `adaptive_round ∈ {1,2,3}` là vòng thứ mấy.
+    adaptive_chain_id: str | None = None
+    adaptive_round: int | None = None
     lang: str | None = None
     obfuscation: str | None = None
     run_canaries: str = "[]"  # JSON danh sách canary của run
@@ -304,6 +325,8 @@ class RunMeta:
     goal: str | None = None
     channel: str | None = None
     attacker_mode: str | None = None
+    adaptive_chain_id: str | None = None
+    adaptive_round: int | None = None
     lang: str | None = None
     obfuscation: str | None = None
     run_canaries: list[str] = field(default_factory=list)

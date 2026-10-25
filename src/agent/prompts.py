@@ -60,7 +60,9 @@ KNOBS: dict[str, tuple[str, ...]] = {
 }
 
 # `judge` là prompt của LLM judge (src/eval/judge.py đọc và kiểm), không phải prompt agent.
-_TOP_KEYS = frozenset({"schema_version", "active", "variants", "judge", "attacker"})
+_TOP_KEYS = frozenset(
+    {"schema_version", "active", "variants", "judge", "attacker", "attacker_adaptive"}
+)
 
 # ---------------------------------------------------------------------------
 # Văn bản
