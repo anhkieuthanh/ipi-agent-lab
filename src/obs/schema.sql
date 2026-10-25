@@ -19,6 +19,8 @@ CREATE TABLE runs (
 	goal VARCHAR, 
 	channel VARCHAR, 
 	attacker_mode VARCHAR, 
+	adaptive_chain_id VARCHAR, 
+	adaptive_round INTEGER, 
 	lang VARCHAR, 
 	obfuscation VARCHAR, 
 	run_canaries VARCHAR NOT NULL, 
@@ -60,8 +62,13 @@ CREATE TABLE runs (
 	CONSTRAINT ck_cause_needs_blocked CHECK (blocked_by IS NULL OR outcome = 'blocked'), 
 	CONSTRAINT ck_attack_labels CHECK (run_kind <> 'attack' OR (technique IS NOT NULL AND goal IS NOT NULL AND channel IS NOT NULL AND attacker_mode IS NOT NULL)), 
 	CONSTRAINT ck_g1_channel_on_hit CHECK (g1_hit = 0 OR g1_channel IS NOT NULL), 
-	CONSTRAINT ck_leak_attempted_not_g1 CHECK (leak_attempted = 0 OR g1_hit = 0)
+	CONSTRAINT ck_leak_attempted_not_g1 CHECK (leak_attempted = 0 OR g1_hit = 0), 
+	CONSTRAINT ck_adaptive_chain_mode CHECK ((attacker_mode = 'adaptive') = (adaptive_chain_id IS NOT NULL)), 
+	CONSTRAINT ck_adaptive_round_pairs_chain CHECK ((adaptive_chain_id IS NOT NULL) = (adaptive_round IS NOT NULL)), 
+	CONSTRAINT ck_adaptive_round_range CHECK (adaptive_round IS NULL OR adaptive_round IN (1, 2, 3))
 );
+
+CREATE INDEX ix_runs_adaptive_chain ON runs (adaptive_chain_id);
 
 CREATE INDEX ix_runs_batch_id ON runs (batch_id);
 
