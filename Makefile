@@ -1,4 +1,4 @@
-.PHONY: up down reset ps logs dashboard kb-build kb-rebuild kb-bench kb-stats test lint
+.PHONY: up down reset ps logs dashboard demo kb-build kb-rebuild kb-bench kb-stats test lint
 
 # --wait: chỉ trả về khi cả 5 service đã HEALTHY (xem healthcheck trong
 # docker-compose.yml), thay vì trả về ngay lúc container vừa được tạo.
@@ -24,6 +24,11 @@ logs:
 dashboard:
 	docker compose up -d --build --wait dashboard
 	@echo "Dashboard: http://localhost:8501"
+
+# Demo trực tiếp (STT-82) — dashboard chạy trên host để gọi được model và hạ tầng lab (cần
+# `make up` và `.env`). Trang "Demo trực tiếp" mở nút chạy khi DEMO_LIVE=1.
+demo:
+	DEMO_LIVE=1 uv run streamlit run dashboard/app.py --server.port=8502 --server.address=127.0.0.1 --server.headless=true
 
 # Kho tri thức (kênh K1). `src/` phải trên PYTHONPATH: các module nội bộ nạp theo
 # đường dẫn chứ không cài thành package, pytest tự lo qua pyproject nhưng

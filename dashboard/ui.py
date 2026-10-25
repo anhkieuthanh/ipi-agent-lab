@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import html
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -90,3 +92,99 @@ def filters(df: pd.DataFrame, columns: tuple[str, ...], *, key: str) -> dict[str
 
 def pct(x: float | None) -> str:
     return "—" if x is None or pd.isna(x) else f"{100 * x:.1f}%"
+
+
+def render_trace(store_path: str | Path, run: pd.Series) -> None:
+    """Payload, các bước tô màu và `final_answer` của một run (trang 3 và trang demo)."""
+    catalog = td.load_payload_catalog()
+    payload = catalog.get(run["payload_id"]) if run["payload_id"] else None
+    needles = td.payload_needles(payload, run["lang"])
+    canaries = json.loads(run["run_canaries"] or "[]")
+    if run["payload_id"]:
+        with st.expander(f"Payload `{run['payload_id']}`", expanded=False):
+            if payload is None:
+                st.warning("Không thấy payload này trong kho payload — không định vị được trong bước.")
+            else:
+                st.json(payload, expanded=False)
+
+    # --- Các bước --------------------------------------------------------------
+    steps = td.load_steps(store_path, run["run_id"])
+    views = td.classify_steps(
+        steps, final_answer=run["final_answer"], needles=needles, canaries=canaries
+    )
+    if run["payload_id"]:
+        located = [v.step.step_idx for v in views if v.payload_fields]
+        if located:
+            st.success(f"Payload định vị được ở bước {', '.join(map(str, located))}.")
+        elif run["channel"] == "K2a":
+            st.info("Kênh K2a: payload nằm trong mô tả tool, không xuất hiện trong nội dung bước.")
+        else:
+            st.warning(
+                "Không định vị được payload trong bước — payload có thể đã bị che giấu "
+                f"(obfuscation `{run['obfuscation']}`), bị D2 lọc, hoặc không được truy hồi."
+            )
+
+    st.markdown(
+        '<span class="badge block">chặn</span><span class="badge decisive">quyết định</span>'
+        '<span class="badge refusal">model từ chối</span>'
+        '<span class="badge transform">biến đổi</span><span class="badge payload">payload</span>'
+        '<span class="badge canary">canary</span>',
+        unsafe_allow_html=True,
+    )
+
+    for v in views:
+        s = v.step
+        classes = ["step"]
+        badges = [f'<span class="badge">#{s.step_idx} {html.escape(s.kind)}</span>']
+        if v.blocking:
+            classes.append("block")
+            badges.append('<span class="badge block">chặn</span>')
+        if v.refusal:
+            classes.append("refusal")
+            badges.append('<span class="badge refusal">model từ chối</span>')
+        if v.transforming:
+            classes.append("transform")
+            badges.append('<span class="badge transform">biến đổi</span>')
+        if v.decisive:
+            classes.append("decisive")
+            badges.append('<span class="badge decisive">quyết định blocked_by</span>')
+        if v.payload_fields:
+            badges.append('<span class="badge payload">payload</span>')
+        if v.canary_fields:
+            badges.append('<span class="badge canary">canary</span>')
+        head = " ".join(badges)
+        if s.tool_name:
+            head += f" <code>{html.escape(s.tool_name)}</code>"
+        meta = [f"{k} {getattr(s, k)}" for k in ("finish_reason", "latency_ms") if getattr(s, k)]
+        if meta:
+            head += f" <small>{html.escape(' · '.join(meta))}</small>"
+
+        body = []
+        for f in td.STEP_TEXT_FIELDS:
+            text = getattr(s, f)
+            if not text:
+                continue
+            marked = td.highlight(
+                text,
+                {"canary": td.find_spans(text, canaries), "payload": td.find_spans(text, needles)},
+            )
+            body.append(f"<b>{f}</b><pre>{marked}</pre>")
+        for hit in v.hits:
+            body.append(
+                f"<small>hit [{td.hit_source(hit)}] "
+                f"{html.escape(json.dumps(hit, ensure_ascii=False))}</small><br>"
+            )
+        for e in v.events:
+            body.append(f"<small>sự kiện chặn: {html.escape(e)}</small><br>")
+        st.markdown(
+            f'<div class="{" ".join(classes)}"><div>{head}</div>{"".join(body)}</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.subheader("final_answer")
+    st.markdown(
+        f'<div class="step"><pre>'
+        f'{td.highlight(run["final_answer"], {"canary": td.find_spans(run["final_answer"], canaries), "payload": td.find_spans(run["final_answer"], needles)})}'
+        f"</pre></div>",
+        unsafe_allow_html=True,
+    )
