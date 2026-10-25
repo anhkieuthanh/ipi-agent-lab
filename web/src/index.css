@@ -1,0 +1,62 @@
+@import "@fontsource/be-vietnam-pro/400.css";
+@import "@fontsource/be-vietnam-pro/500.css";
+@import "@fontsource/be-vietnam-pro/600.css";
+@import "@fontsource/be-vietnam-pro/700.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-slate-50 text-slate-800 font-sans text-[14px];
+    font-feature-settings: "tnum" 1;
+  }
+  ::selection {
+    @apply bg-brand-100;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-slate-200 bg-white shadow-card;
+  }
+  .label {
+    @apply text-[11px] font-semibold uppercase tracking-wider text-slate-500;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+  .input {
+    @apply h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none
+      transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
+  }
+  .table-base {
+    @apply w-full text-left text-sm;
+  }
+  .table-base thead th {
+    @apply border-b border-slate-200 bg-slate-50/80 px-4 py-2.5 text-[11px] font-semibold uppercase
+      tracking-wider text-slate-500;
+  }
+  .table-base tbody td {
+    @apply border-b border-slate-100 px-4 py-3 align-middle;
+  }
+  .table-base tbody tr:last-child td {
+    @apply border-b-0;
+  }
+  .code-block {
+    @apply whitespace-pre-wrap break-words rounded-lg bg-slate-50 p-3 font-mono text-[12.5px]
+      leading-relaxed text-slate-700 ring-1 ring-inset ring-slate-200;
+  }
+  mark.hl-payload {
+    @apply rounded bg-payload-100 px-0.5 text-payload-600 ring-1 ring-payload-500/30;
+  }
+  mark.hl-canary {
+    @apply rounded bg-canary-100 px-0.5 font-semibold text-canary-600 ring-1 ring-canary-500/30;
+  }
+}
