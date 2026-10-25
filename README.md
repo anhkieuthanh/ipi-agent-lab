@@ -44,21 +44,32 @@ make down
 Các target khác: `reset` · `ps` · `logs` · `kb-build` · `kb-rebuild` ·
 `kb-bench` · `kb-stats`.
 
-## Demo trực tiếp
+## IPI Guard Console — giao diện chính
 
-Trang "Demo trực tiếp" của dashboard chạy thật một kịch bản tấn công dựng sẵn trên một model, với
-nhiều cấu hình phòng thủ (mặc định `off` và `all`), rồi so song song: tấn công thành công hay bị
-chặn, ai chặn (`defense` · `model_refusal` · `harness`), agent đã gọi tool gì ở từng bước.
+Console web (FastAPI + React) là giao diện chính: tổng quan ASR/DSR/USR/FRR và cổng nghiệm thu, lô
+thực nghiệm, phân tích tấn công (bản đồ ASR), phân tích phòng thủ (đường đánh đổi Pareto), điều tra
+run từng bước (payload và canary tô màu), phòng thí nghiệm tấn công trực tiếp, và cấu hình đã chốt.
 
 ```bash
-make up      # hạ tầng lab: Qdrant, MailHog, canary listener
-make demo    # dashboard trên host, có quyền gọi model — http://localhost:8502
+make up             # hạ tầng lab: Qdrant, MailHog, canary listener
+make console-build  # build giao diện vào web/dist (cần Node ≥ 20)
+make console        # API + giao diện ở một cổng — http://localhost:8600
 ```
 
-`make demo` chỉ nghe trên `127.0.0.1`, đọc khóa API và `COST_BUDGET_USD_TOTAL` từ `.env`; mỗi lượt
-canh chi phí như lô thực nghiệm. Run demo ghi vào `results/demo/` (không theo Git), không trộn với
-lô thực nghiệm. Dashboard trong container (`make dashboard`, cổng 8501) chỉ xem lại, không chạy.
-Chạy từ dòng lệnh: `uv run python dashboard/demo.py --list`.
+`make console` chỉ nghe `127.0.0.1` và từ chối mọi Host ngoài localhost (chặn DNS rebinding). Chỉ
+ĐỌC trace store; lần ghi duy nhất là lượt demo trực tiếp ở trang "Phòng thí nghiệm" (bật khi
+`DEMO_LIVE=1`, `make console` đã bật sẵn), đi đúng đường `run_one_attack` của lô thật và canh chi
+phí như lô thực nghiệm. Run demo ghi `results/demo/` (không theo Git), không trộn với lô thực
+nghiệm. Phát triển giao diện: `make console-dev` (Vite 5173 + API 8600).
+
+Số liệu (ASR, DSR, USR, FRR, Wilson, tô màu bước) lấy từ cùng hàm mà scorer và dashboard dùng
+(`dashboard/tracedata.py`, `src/eval/metrics.py`) — console không tính lại theo cách riêng. Lớp
+API ở `src/console/`, giao diện ở `web/`.
+
+### Demo trực tiếp (bản Streamlit cũ)
+
+Dashboard Streamlit bốn trang vẫn còn cho đối chiếu: `make dashboard` (cổng 8501, chỉ xem) và
+`make demo` (cổng 8502, có nút chạy). Chạy kịch bản từ dòng lệnh: `uv run python dashboard/demo.py --list`.
 
 ## Kiểm thử
 
