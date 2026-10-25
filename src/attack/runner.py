@@ -43,9 +43,10 @@ from attack import injector_k1, injector_k2
 from attack.payloads.schema import DEFAULT_TASKS_PATH, load_payloads
 from defense.pipeline import DEFAULT_CONFIG_PATH as DEFENSES_PATH
 from defense.pipeline import DefensePipeline, load_defenses_raw
-from eval.canary import seeded_run
+from eval.canary import DEFAULT_CUSTOMERS_DB, seeded_run
 from eval.experiment import Block, Experiment
 from eval.scorer import ScoreContext, score
+from eval.utility_baseline import benign_runtime
 from interfaces import NoDefense, SessionState
 from obs.trace import RunMeta, TraceRecorder, export_runs
 
@@ -110,6 +111,20 @@ def build_defenses(
     `AttackRunSpec.defense_config`, nên một lô dựng mỗi preset đúng một lần."""
     layers = (build_defense(p, defenses_path=defenses_path) for p in dict.fromkeys(presets))
     return {snapshot_json(d): d for d in layers}
+
+
+def carrier_runtime(
+    carrier: Mapping[str, Any], db_path: Path = DEFAULT_CUSTOMERS_DB
+) -> dict[str, Any]:
+    """Ràng buộc tra lúc chạy của tác vụ chở cho G2 (`expected_to`, `expected_customer_id`,
+    `expected_priority`) — cùng quy tắc với câu lành tính (`eval.utility_baseline.benign_runtime`).
+    Tra `data/customers.db` gốc: bản sao gieo canary của run chỉ khác cột `canary_note`."""
+    spec = {
+        "expected_tool_calls": [{"tool": t} for t in carrier.get("required_tools") or []],
+        "db_refs": carrier.get("db_refs"),
+        "expected_priority": carrier.get("expected_priority"),
+    }
+    return benign_runtime(spec, db_path)
 
 
 def carrier_task_types(raw: Mapping[str, Any] | None = None) -> dict[str, str]:
@@ -443,7 +458,13 @@ def run_one_attack(spec: AttackRunSpec, ctx: RunContext) -> str:
             with TraceRecorder(ctx.engine, meta) as rec:
                 rec.run.delivered = delivered
                 core.run(carrier["user_query_vi"], session=session, recorder=rec)
-                score(rec, ScoreContext(activation_check=payload.get("activation_check")))
+                score(
+                    rec,
+                    ScoreContext(
+                        runtime=carrier_runtime(carrier),
+                        activation_check=payload.get("activation_check"),
+                    ),
+                )
         except Exception as e:  # noqa: BLE001 — phân loại rồi quyết dừng lô hay không
             if not isinstance(e, RECOVERABLE):
                 raise
