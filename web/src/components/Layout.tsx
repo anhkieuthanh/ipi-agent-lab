@@ -7,6 +7,7 @@ import {
   Gauge,
   Layers,
   ListTree,
+  Network,
   Settings2,
   ShieldCheck,
   Sparkles,
@@ -21,6 +22,7 @@ const NAV: { group: string; items: { to: string; label: string; icon: ReactNode;
   {
     group: "Giám sát",
     items: [
+      { to: "/system", label: "Sơ đồ hệ thống", icon: <Network size={17} /> },
       { to: "/", label: "Tổng quan", icon: <Gauge size={17} />, scoped: true },
       { to: "/batches", label: "Lô thực nghiệm", icon: <Layers size={17} /> },
     ],
@@ -45,6 +47,7 @@ const NAV: { group: string; items: { to: string; label: string; icon: ReactNode;
 
 const TITLES: Record<string, string> = {
   "/": "Tổng quan",
+  "/system": "Sơ đồ hệ thống",
   "/batches": "Lô thực nghiệm",
   "/attack": "Phân tích tấn công",
   "/defense": "Phân tích phòng thủ",
