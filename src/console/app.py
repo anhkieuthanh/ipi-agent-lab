@@ -6,7 +6,7 @@ Chỉ đọc trace store; ghi duy nhất qua lượt demo (`POST /api/demo/jobs`
 Server chỉ nghe `127.0.0.1` (`make console`). Middleware từ chối mọi Host ngoài localhost để chặn
 DNS rebinding — trang web lạ không thể gọi API qua tên miền trỏ về máy này mà đốt ngân sách API.
 
-    PYTHONPATH=src:dashboard uv run uvicorn console.app:app --host 127.0.0.1 --port 8600
+    PYTHONPATH=src uv run uvicorn console.app:app --host 127.0.0.1 --port 8600
 """
 
 from __future__ import annotations

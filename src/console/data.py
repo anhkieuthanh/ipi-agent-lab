@@ -24,12 +24,11 @@ import pandas as pd
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-for _p in (ROOT / "src", ROOT / "dashboard"):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
+if str(ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(ROOT / "src"))
 
-import demo  # noqa: E402
-import tracedata as td  # noqa: E402
+from console import demo  # noqa: E402
+from console import tracedata as td  # noqa: E402
 from eval.metrics import utility_summary  # noqa: E402
 from obs.cost import load_prices, spend_from_log  # noqa: E402
 from obs.trace import BLOCKED_BY  # noqa: E402

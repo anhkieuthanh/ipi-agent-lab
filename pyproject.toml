@@ -31,15 +31,10 @@ dev = [
     "pre-commit>=3.7",
     "fpdf2>=2.8.7",
 ]
-# Tách nhóm riêng: streamlit kéo theo nhiều gói, chỉ service `dashboard` cần.
-# `uv sync --all-groups` vẫn cài đủ.
-dashboard = [
-    "streamlit>=1.40",
-]
 
 [tool.pytest.ini_options]
 testpaths = ["src", "tests"]
-pythonpath = ["src", "scripts", "dashboard"]
+pythonpath = ["src", "scripts"]
 markers = [
   "qdrant: cần Qdrant đang chạy (`make up`); tự bỏ qua nếu không có",
   "mailhog: cần MailHog đang chạy (`make up`); tự bỏ qua nếu không có",
@@ -59,7 +54,7 @@ ignore = ["E501"]
 # package name — ruff không tự suy ra được, phải khai báo.
 known-first-party = [
     "agent", "obs", "rag", "attack", "defense", "eval", "interfaces", "gen_corpus_pdfs",
-    "seed_db", "tools", "mcp_fake_backend", "tracedata", "ui", "demo", "console",
+    "seed_db", "tools", "mcp_fake_backend", "console",
 ]
 
 [build-system]

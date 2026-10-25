@@ -27,8 +27,8 @@ SERVICES = COMPOSE["services"]
         "src/defense",
         "src/eval",
         "src/obs",
-        "dashboard/app.py",
-        "dashboard/pages",
+        "src/console",
+        "web/src",
         "scripts",
     ],
 )
@@ -41,13 +41,13 @@ def test_package_nap_duoc(mod):
     importlib.import_module(mod)
 
 
-@pytest.mark.parametrize("mod", ["fastapi", "sqlmodel", "uvicorn", "streamlit", "qdrant_client"])
+@pytest.mark.parametrize("mod", ["fastapi", "sqlmodel", "uvicorn", "qdrant_client"])
 def test_dependency_nen_da_cai(mod):
     importlib.import_module(mod)
 
 
 def test_compose_du_service():
-    assert set(SERVICES) == {"qdrant", "mailhog", "canary-listener", "app", "dashboard"}
+    assert set(SERVICES) == {"qdrant", "mailhog", "canary-listener", "app"}
 
 
 def test_compose_listener_chi_mo_loopback_va_app_tro_toi_no():
@@ -69,7 +69,7 @@ def test_compose_image_ben_thu_ba_da_pin():
 
 def test_service_ha_tang_deu_co_healthcheck():
     # `app` là dev container đứng chờ, không phục vụ request nên không cần healthcheck.
-    for name in ("qdrant", "mailhog", "dashboard"):
+    for name in ("qdrant", "mailhog", "canary-listener"):
         assert "healthcheck" in SERVICES[name], f"{name} thiếu healthcheck"
 
 
