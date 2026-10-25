@@ -218,7 +218,7 @@ export function SystemMap({ selected, onSelect, defenses, onToggle, hookStatus, 
             <title>
               {`${h.code} · ${!enabled ? "tắt" : status ? STATUS_LABEL[status] : "bật"}${onToggle ? " — bấm để " + (enabled ? "tắt" : "bật") : ""}`}
             </title>
-            {status === "block" && <circle r={22} fill="#dc2626" opacity={0.18} className="animate-ping" style={{ transformOrigin: "center" }} />}
+            {status === "block" && <circle r={22} fill="#dc2626" opacity={0.18} className="animate-ping" style={{ transformBox: "fill-box", transformOrigin: "center" }} />}
             <rect x={-22} y={-12} width={44} height={24} rx={12} fill={s.fill} stroke={selected === h.code ? "#2a55e0" : s.stroke} strokeWidth={selected === h.code ? 2.4 : 1.4} />
             <text y={4.5} textAnchor="middle" fontSize={12} fontWeight={700} fill={s.text}>
               {h.code}

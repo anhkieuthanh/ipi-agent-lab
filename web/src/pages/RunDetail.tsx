@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, FileWarning, Mail, User } from "lucide-react";
+import { ArrowLeft, FileWarning, Mail, Map as MapIcon, User } from "lucide-react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { StepTimeline, ToolActions, TraceLegend } from "@/components/Trace";
 import { HighlightText } from "@/components/Trace";
+import { TraceReplay } from "@/components/TraceReplay";
 import {
   Badge,
   Callout,
@@ -23,6 +24,7 @@ export function RunDetailPage() {
   const { runId } = useParams();
   const [sp] = useSearchParams();
   const q = useQuery({ queryKey: ["run", runId], queryFn: () => api.run(runId!), enabled: !!runId });
+  const config = useQuery({ queryKey: ["config"], queryFn: api.config });
 
   if (q.isLoading) return <Loading />;
   if (q.error) return <ErrorBox error={q.error} />;
@@ -73,6 +75,14 @@ export function RunDetailPage() {
               </div>
             </Card>
           )}
+
+          <Card>
+            <CardHeader title="Phát lại trên sơ đồ" icon={<MapIcon size={16} className="text-slate-500" />} />
+            <TraceReplay
+              detail={d}
+              codes={config.data?.presets.find((p) => p.name === String(run.preset))?.codes ?? []}
+            />
+          </Card>
 
           <Card>
             <CardHeader
