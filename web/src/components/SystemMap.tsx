@@ -215,6 +215,9 @@ export function SystemMap({ selected, onSelect, defenses, onToggle, hookStatus, 
             }}
             className={clsx(interactive && "cursor-pointer")}
           >
+            <title>
+              {`${h.code} · ${!enabled ? "tắt" : status ? STATUS_LABEL[status] : "bật"}${onToggle ? " — bấm để " + (enabled ? "tắt" : "bật") : ""}`}
+            </title>
             {status === "block" && <circle r={22} fill="#dc2626" opacity={0.18} className="animate-ping" style={{ transformOrigin: "center" }} />}
             <rect x={-22} y={-12} width={44} height={24} rx={12} fill={s.fill} stroke={selected === h.code ? "#2a55e0" : s.stroke} strokeWidth={selected === h.code ? 2.4 : 1.4} />
             <text y={4.5} textAnchor="middle" fontSize={12} fontWeight={700} fill={s.text}>
@@ -225,6 +228,46 @@ export function SystemMap({ selected, onSelect, defenses, onToggle, hookStatus, 
         );
       })}
     </svg>
+  );
+}
+
+export const STATUS_LABEL: Record<PointStatus, string> = {
+  idle: "bật",
+  pass: "không can thiệp",
+  transform: "biến đổi / gắn cờ",
+  block: "chặn / xin xác nhận",
+};
+
+type Hit = Record<string, unknown>;
+
+/** Trạng thái từng điểm móc của một run: chặn (block/confirm) > biến đổi (transform/flag) > cho qua.
+ *  `codes` là các mã D bật trong preset của run; mã không bật thì không có trạng thái. */
+export function hookStatusFromSteps(steps: { hits: Hit[] }[], codes: string[]): Partial<Record<DefenseCode, PointStatus>> {
+  const out: Partial<Record<DefenseCode, PointStatus>> = {};
+  for (const c of codes) out[c as DefenseCode] = "pass";
+  for (const h of steps.flatMap((s) => s.hits)) {
+    const code = String(h.defense ?? "").slice(0, 2).toUpperCase() as DefenseCode;
+    if (!(code in out)) continue;
+    const action = String(h.action ?? "");
+    if (action === "block" || action === "confirm") out[code] = "block";
+    else if ((action === "transform" || action === "flag") && out[code] !== "block") out[code] = "transform";
+  }
+  return out;
+}
+
+export function HookLegend({ statuses = false }: { statuses?: boolean }) {
+  const dot = (color: string) => <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />;
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px] text-slate-500">
+      <span className="flex items-center gap-1.5">{dot("#cbd5e1")}Tắt</span>
+      <span className="flex items-center gap-1.5">{dot("#22c55e")}{statuses ? "Bật, không can thiệp" : "Bật"}</span>
+      {statuses && (
+        <>
+          <span className="flex items-center gap-1.5">{dot("#f97316")}Biến đổi / gắn cờ</span>
+          <span className="flex items-center gap-1.5">{dot("#dc2626")}Chặn / xin xác nhận</span>
+        </>
+      )}
+    </div>
   );
 }
 
