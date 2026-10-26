@@ -333,7 +333,7 @@ export function SystemMap({
               />
               <text
                 x={n.x + 20 + tile}
-                y={n.sub ? cy - 3 : cy + 5}
+                y={cy + 5}
                 fontSize={mono ? 12.5 : 13.5}
                 fontWeight={600}
                 fill={t.title}
@@ -341,11 +341,6 @@ export function SystemMap({
               >
                 {n.title}
               </text>
-              {n.sub && (
-                <text x={n.x + 20 + tile} y={cy + 13} fontSize={11} fill="#64748b">
-                  {n.sub}
-                </text>
-              )}
             </g>
           );
         })}

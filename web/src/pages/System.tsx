@@ -159,19 +159,19 @@ export function SystemPage() {
                 <Tag
                   key={t.code}
                   onClick={canClick ? () => setAsset(t.code as AssetCode) : undefined}
+                  title={canClick ? undefined : t.desc}
                   className={clsx(
-                    "flex gap-3 rounded-lg border border-slate-100 p-3 text-left",
+                    "flex items-center gap-3 rounded-lg border border-slate-100 p-3 text-left",
                     canClick ? "cursor-pointer hover:border-brand-300 hover:bg-brand-50/40" : "hover:border-slate-200",
                   )}
                 >
                   <Badge tone={codeTone(t.code)} className="h-fit shrink-0 font-mono">
                     {t.code}
                   </Badge>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="text-[13.5px] font-semibold text-slate-800">{t.name}</div>
-                    <div className="text-[12.5px] text-slate-500">{t.desc}</div>
-                    {canClick && <div className="mt-1 text-[11.5px] font-medium text-brand-600">Bấm để xem chi tiết →</div>}
                   </div>
+                  {canClick && <span className="shrink-0 text-[11.5px] font-medium text-brand-600">Chi tiết →</span>}
                 </Tag>
               );
             })}
