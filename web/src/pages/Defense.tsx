@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
-import { Check, ChevronDown, ShieldCheck } from "lucide-react";
+import { Check, ChevronDown, ChartScatter, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { Fragment, useState } from "react";
 import {
   CartesianGrid,
@@ -17,6 +17,7 @@ import {
 import { Badge, Card, CardHeader, Empty, ErrorBox, Loading, PageHeader, RateBar } from "@/components/ui";
 import { api, type DefensePoint } from "@/lib/api";
 import { DEFENSE_LABEL, ci, int, pct, presetLabel } from "@/lib/format";
+import { DEFENSE_ICON } from "@/lib/icons";
 import { useScope } from "@/lib/scope";
 
 const PRESET_COLOR: Record<string, string> = {
@@ -125,30 +126,38 @@ export function DefensePage() {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
         <Card className="xl:col-span-3">
-          <CardHeader title="Đường đánh đổi an toàn – hữu dụng"  />
+          <CardHeader title="Đường đánh đổi an toàn – hữu dụng" icon={<ChartScatter size={16} />} />
           {points.data && <ParetoChart points={points.data.points} />}
         </Card>
 
         <Card className="xl:col-span-2">
-          <CardHeader title="Bốn cơ chế phòng thủ"  />
+          <CardHeader title="Bốn cơ chế phòng thủ" icon={<ShieldCheck size={16} />} />
           <div className="divide-y divide-slate-100">
-            {(["D1", "D2", "D3", "D4"] as const).map((code) => (
-              <div key={code} className="flex items-start gap-3 px-5 py-3.5">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-defense-50 text-[12px] font-bold text-defense-700">
-                  {code}
+            {(["D1", "D2", "D3", "D4"] as const).map((code) => {
+              const Icon = DEFENSE_ICON[code];
+              return (
+                <div key={code} className="flex items-start gap-3 px-5 py-3.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-defense-50 text-defense-600">
+                    <Icon size={17} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 text-[13.5px] font-semibold text-slate-800">
+                      <Badge tone="defense" className="font-mono">
+                        {code}
+                      </Badge>
+                      {DEFENSE_LABEL[code]}
+                    </div>
+                    <div className="mt-0.5 text-[12.5px] text-slate-500">{DEFENSE_DESC[code]}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-[13.5px] font-semibold text-slate-800">{DEFENSE_LABEL[code]}</div>
-                  <div className="text-[12.5px] text-slate-500">{DEFENSE_DESC[code]}</div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
       </div>
 
       <Card className="mt-6">
-        <CardHeader title="Cấu hình phòng thủ (preset)"  />
+        <CardHeader title="Cấu hình phòng thủ (preset)" icon={<SlidersHorizontal size={16} />} />
         <table className="table-base">
           <thead>
             <tr>

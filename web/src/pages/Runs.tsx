@@ -6,6 +6,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Badge, Card, Empty, ErrorBox, Loading, Mono, OutcomeBadge, PageHeader, Select } from "@/components/ui";
 import { api } from "@/lib/api";
 import { CHANNEL_LABEL, GOAL_LABEL, int, presetLabel, when } from "@/lib/format";
+import { KindIcon } from "@/lib/icons";
 import { useScope } from "@/lib/scope";
 
 const PAGE = 40;
@@ -117,6 +118,7 @@ export function RunsPage() {
                       </td>
                       <td>
                         <Badge tone={r.run_kind === "attack" ? "attack" : "brand"}>
+                          <KindIcon kind={r.run_kind} />
                           {r.run_kind === "attack" ? "Tấn công" : "Lành tính"}
                         </Badge>
                       </td>
