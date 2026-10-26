@@ -20,6 +20,26 @@ Ba quy tắc, ghi trước khi chỉnh (`Y_TUONG_DU_AN.md` mục 10.3):
 Hết núm hợp lệ mà ASR vẫn dưới cổng: ghi là kết quả (`below_gate_after_all_knobs: report_as_result`),
 không chỉnh tiếp.
 
+### Ý nghĩa với người dùng tool
+
+Hiệu chỉnh chỉnh **môi trường**, không chỉnh model. Ba núm là cấu hình triển khai của trợ lý doanh nghiệp, tức
+system prompt mà một công ty tự viết cho trợ lý nội bộ của mình. Code model, payload và scorer không đổi. Làm
+một lần cho nghiên cứu này, khóa sau vòng cuối (`config/prompts.yaml`; đổi sau đó làm lệch `env_hash`).
+
+- **Thay model không hiệu chỉnh lại.** Model mới chạy trên môi trường đã khóa. ASR dưới 20% là một kết quả:
+  "model kháng IPI tốt trong lab này". Cái giá là phép đo delta phòng thủ trên model đó yếu đi, vì có ít ca
+  thành công để chặn. Đây là giới hạn phải khai trong báo cáo, không phải lý do để chỉnh tiếp.
+- **Cổng dùng để có khoảng chênh, không phải để có số đẹp.** Ở sàn (ASR ≈ 0) thì bật D1–D4 ASR vẫn ≈ 0,
+  không phân biệt được phòng thủ tốt với phòng thủ vô dụng. Giá trị của tool là delta giữa các cấu hình trong
+  cùng lab; ASR tuyệt đối không so được giữa các lab (`Y_TUONG_DU_AN.md`, hạn chế #4).
+- **Thiên lệch còn lại.** Môi trường được chọn để A2/A3 lọt cổng, nên nó nghiêng về hai model này. Cách xử lý:
+  báo cáo ASR của **mọi** vòng (`baseline`, `trusting`, `most_trusting`) như một đường cong độ nhạy theo mức
+  "cả tin" của cấu hình doanh nghiệp, không chỉ báo cáo vòng cuối (quy tắc 3). Người dùng tool đọc đường cong và
+  chọn hồ sơ gần với triển khai của mình.
+- **Phương án mạnh hơn, chưa áp dụng.** Biến biến thể prompt thành một trục thực nghiệm của ma trận. Cách này
+  không phụ thuộc model, nhưng nhân chi phí ma trận khoảng 3–4 lần và đổi thiết kế đã chốt. Đã đưa vào
+  `docs/06. Track/Xin ý kiến GVHD — họp kế tiếp.md` mục 4.
+
 ## 2. Mẫu
 
 `attack.runner.plan_calibration`, tất định theo `run_order.seed`:
@@ -62,5 +82,10 @@ TA quyết vòng kế tiếp sau khi đọc kết quả vòng trước.
 
 ## 5. Vòng 0 — `baseline`
 
-Lệnh: `uv run python scripts/run_matrix.py --block B1 --calibration-round 0 --estimate-usd 12`.
-Kết quả ghi ở `round_0/<batch_id>/`.
+Lô `calib-r0-B1-20261026T091819Z`, kết quả ở `round_0/calib-r0-B1-20261026T091819Z/`.
+
+Lô mở với `--estimate-usd 12`, dừng tay sau 3 run (0,22 USD). Lý do: dự toán đặt quá sát đơn giá pilot.
+A1 tốn 0,10–0,12 USD/run ở pilot, và K1 sau P2-a tới được ngữ cảnh nên dài hơn. Ước cả lô 13–15 USD,
+tức guard 120% sẽ dừng lô giữa chừng ở 14,4 USD. Lô chạy tiếp cùng `batch_id` với
+`--estimate-usd 16`. 3 run đã xong giữ nguyên. Phiên đầu bị dừng nên không ghi `manifest.json`;
+`manifest.json` chỉ có phiên chạy tiếp.
