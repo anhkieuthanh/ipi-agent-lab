@@ -181,8 +181,10 @@ payload chưa chạy: chạy bổ sung ở vòng cuối, hoặc giữ nguyên v�
 B1 không mở được nếu thiếu payload cho 19 ô, hoặc nếu không thu hẹp `techniques_by_channel`, việc này cần GVHD duyệt vì
 đổi thiết kế đã ký. Phải xử lý trước khi tag `v-attack-1.0`.
 
-**TA quyết: viết thêm payload (P4-a), không thu hẹp B1.** 19 ô gom lại thành 7 tổ hợp kỹ thuật × mục tiêu: T2·G2, T2·G3,
-T3·G3, T4·G2, T4·G3, T5·G1, T5·G2. Mỗi tổ hợp cần ít nhất một cặp vi/en (bất biến 11). T4 chỉ khai K1 và K2b.
+**TA quyết: viết thêm payload (P4-a), không thu hẹp B1. ĐÃ XONG.** 7 cặp vi/en mới (TA điền chuỗi tấn công, Claude dựng
+khung + ráp): T2·G2, T2·G3, T3·G3, T4·G2, T4·G3 (các cặp này `hidden_css`, K1+K2b), T5·G1, T5·G2. Corpus 49 → 63 payload.
+B1 giờ phủ **63/63 ô**, `plan_block` sinh 3780 run, không còn ô trống. 1402 test qua. T5·G1/G2 và T2·G2, T4·G2 mỗi ô 2
+cặp K1 (hẹp theo luật ghép tác vụ chở); các ô G3 có 12 cặp K1.
 
 ## 6. Mở tay 10 trace (TA)
 
@@ -215,5 +217,5 @@ của lô chạy lại: `pilot-B1-20261026T034810Z/review_sheet.csv` có 10 trac
 
 1. TA mở tay 10 trace (mục 6).
 2. P2-a xong. Lô hiệu chỉnh đầu của STT-61 sẽ cho `delivered` K1 chính thức.
-3. P4-a: viết payload cho 7 tổ hợp. P3: chốt cách xử lý 20 payload chưa chạy.
+3. P4-a xong. P3: chốt cách xử lý 20 payload chưa chạy (giờ là 20 + payload P4-a mới, đều chưa chạy pilot).
 4. Sau đó mới vào STT-61. Vòng hiệu chỉnh đầu nên chạy đủ 40 ca trên commit đã sửa P1, để mọi run cùng một `env_hash`.

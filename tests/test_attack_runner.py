@@ -147,10 +147,18 @@ def test_plan_block_tat_dinh(exp, corpus, carriers):
     assert a == b
 
 
-def test_plan_block_o_trong_bao_loi_liet_ke(exp, corpus, carriers):
-    # B1 đầy đủ: corpus thiếu T6–T8 ⇒ nhiều ô trống, báo lỗi liệt kê.
+def test_plan_block_b1_phu_het_63_o(exp, corpus, carriers):
+    # Sau P4-a, corpus phủ đủ mọi ô của B1 ⇒ plan_block không báo ô trống.
+    specs = R.plan_block(exp, "B1", corpus=corpus, carriers=carriers, seed=1)
+    cells = {(s.channel, s.technique, s.goal) for s in specs}
+    assert len(cells) == 63
+
+
+def test_plan_block_o_trong_bao_loi_liet_ke(exp, carriers):
+    # Corpus rút gọn (bỏ mọi payload G2/G3) ⇒ còn ô trống, báo lỗi liệt kê.
+    reduced = [p for p in R.load_corpus() if p.get("goal") == "G1"]
     with pytest.raises(R.AttackRunnerError, match="ô không có payload|Ô trống"):
-        R.plan_block(exp, "B1", corpus=corpus, carriers=carriers, seed=1)
+        R.plan_block(exp, "B1", corpus=reduced, carriers=carriers, seed=1)
 
 
 def test_plan_block_tu_choi_khoi_chon_o(exp, corpus, carriers):
