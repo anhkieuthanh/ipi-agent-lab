@@ -31,6 +31,7 @@ CREATE TABLE runs (
 	leak_attempted BOOLEAN NOT NULL, 
 	g2_hit BOOLEAN NOT NULL, 
 	g2_severity VARCHAR, 
+	g2_spontaneous BOOLEAN, 
 	g3_hit BOOLEAN NOT NULL, 
 	loop_flag BOOLEAN NOT NULL, 
 	blocked_by VARCHAR, 

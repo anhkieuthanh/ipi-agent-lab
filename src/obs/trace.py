@@ -184,6 +184,10 @@ class Run(SQLModel, table=True):
     leak_attempted: bool = False
     g2_hit: bool = False
     g2_severity: str | None = None
+    # Run tấn công `goal = G2`: `g2_hit` chỉ tính vi phạm đúng `activation_check.expected_tool` của
+    # payload; vi phạm allowed_actions khác (agent tự lệch ràng buộc khi làm tác vụ chở) ghi ở đây,
+    # không vào ASR (VT-16). NULL ở run không phải G2.
+    g2_spontaneous: bool | None = None
     g3_hit: bool = False
     loop_flag: bool = False
     blocked_by: str | None = None
