@@ -10,6 +10,10 @@ vị đã có — lô bị ngắt chạy tiếp, không chạy lại phần đã
 
 PHÒNG THỦ: mọi preset chạy được của `config/defenses.yaml` (`defense.pipeline`, STT-55).
 
+PILOT (STT-60): `--pilot` thay kế hoạch khối bằng `plan_pilot` — `pilot.runs` ca từ ô đã phủ của
+`--block`, D=OFF, trên `pilot.targets` + `pilot.observe_targets`. Lô tiền tố `pilot-`, lưu ở
+`results/raw/pilot/`; không vào bảng kết quả nào (giao thức thực nghiệm mục 3).
+
     # Xem số run của một khối, không gọi API
     uv run python scripts/run_matrix.py --block B1 --plan-only
     # Chạy thử phần corpus đã phủ: K1, T1–T5, 2 run/ô, 1 model
@@ -17,6 +21,8 @@ PHÒNG THỦ: mọi preset chạy được của `config/defenses.yaml` (`defens
         --techniques T1 T2 T3 T4 T5 --per-cell 2 --targets A3 --estimate-usd 2
     # Lô thật; chạy lại cùng --batch-id để tiếp tục lô bị ngắt
     uv run python scripts/run_matrix.py --block B1 --estimate-usd <dự toán>
+    # Pilot STT-60: 40 ca × (A2, A3, A1), D=OFF
+    uv run python scripts/run_matrix.py --block B1 --pilot --estimate-usd <dự toán>
     # Chỉ xuất lại CSV từ store của một lô
     uv run python scripts/run_matrix.py --block B1 --batch-id attack-B1-... --export-only
 """
@@ -48,6 +54,7 @@ from attack.runner import (  # noqa: E402
     load_carriers,
     load_corpus,
     plan_block,
+    plan_pilot,
     run_one_attack,
 )
 from eval.canary import sweep_stale_run_dirs  # noqa: E402
@@ -65,6 +72,7 @@ MODELS = ROOT / "config" / "models.yaml"
 TOOLS = ROOT / "config" / "tools.yaml"
 LOG = ROOT / "logs" / "llm_client.jsonl"
 BATCH_ROOT = ROOT / "results" / "attack_matrix"
+PILOT_ROOT = ROOT / "results" / "raw" / "pilot"
 TABLES = ROOT / "results" / "tables"
 
 
@@ -79,6 +87,7 @@ def main() -> int:
     parser.add_argument("--estimate-usd", type=float, help="dự toán chi phí của lô (USD)")
     parser.add_argument("--plan-only", action="store_true", help="in số run, không gọi API")
     parser.add_argument("--export-only", action="store_true", help="chỉ xuất CSV từ store")
+    parser.add_argument("--pilot", action="store_true", help="lô pilot STT-60 từ ô của --block")
     dry = parser.add_argument_group("chạy thử (chỉ cùng --dry-run)")
     dry.add_argument("--dry-run", action="store_true", help="lô thử, tiền tố dryrun-")
     dry.add_argument("--targets", nargs="+", help="tập con target của khối")
@@ -101,6 +110,10 @@ def main() -> int:
     ]
     if any(narrow) and not args.dry_run:
         parser.error("các cờ thu hẹp chỉ dùng với --dry-run")
+    if args.pilot and args.dry_run:
+        parser.error("--pilot không đi với --dry-run")
+    if args.batch_id and args.pilot != args.batch_id.startswith("pilot-"):
+        parser.error("--pilot phải đi với batch_id tiền tố pilot- và ngược lại")
     if args.batch_id and args.dry_run != args.batch_id.startswith("dryrun-"):
         parser.error("--dry-run phải đi với batch_id tiền tố dryrun- và ngược lại")
 
@@ -115,29 +128,37 @@ def main() -> int:
     carriers = load_carriers()
     seed = exp.raw["run_order"]["seed"]
     try:
-        specs = plan_block(
-            exp,
-            args.block,
-            corpus=corpus,
-            carriers=carriers,
-            seed=seed,
-            targets=args.targets,
-            presets=args.presets,
-            n_per_cell=args.per_cell,
-            channels=args.channels,
-            techniques=args.techniques,
-            goals=args.goals,
-        )
+        if args.pilot:
+            specs = plan_pilot(
+                exp, corpus=corpus, carriers=carriers, seed=seed, source_block=args.block
+            )
+        else:
+            specs = plan_block(
+                exp,
+                args.block,
+                corpus=corpus,
+                carriers=carriers,
+                seed=seed,
+                targets=args.targets,
+                presets=args.presets,
+                n_per_cell=args.per_cell,
+                channels=args.channels,
+                techniques=args.techniques,
+                goals=args.goals,
+            )
     except AttackRunnerError as e:
         print(str(e))
         return 2
     targets = sorted({s.target_id for s in specs})
 
-    prefix = f"dryrun-attack-{args.block}" if args.dry_run else f"attack-{args.block}"
+    if args.pilot:
+        prefix = f"pilot-{args.block}"
+    else:
+        prefix = f"dryrun-attack-{args.block}" if args.dry_run else f"attack-{args.block}"
     batch_id = args.batch_id or f"{prefix}-{_stamp()}"
-    batch_dir = BATCH_ROOT / batch_id
+    batch_dir = (PILOT_ROOT if args.pilot else BATCH_ROOT) / batch_id
     store = batch_dir / "trace.sqlite"
-    tables_dir = batch_dir if args.dry_run else TABLES
+    tables_dir = batch_dir if args.dry_run or args.pilot else TABLES
     runs_csv = tables_dir / f"{batch_id}_runs.csv"
 
     if (args.plan_only or args.export_only) and not store.is_file():
@@ -183,11 +204,14 @@ def main() -> int:
         carriers_by_id={c["id"]: c for c in carriers},
         core_params=load_core_params(),
         kb_top_k=exp.fixed["kb_top_k"],
-        defenses=build_defenses(args.presets or exp.unit(args.block).presets),
+        defenses=build_defenses(
+            ["off"] if args.pilot else args.presets or exp.unit(args.block).presets
+        ),
     )
     manifest = {
-        "task": "STT-46",
+        "task": "STT-60" if args.pilot else "STT-46",
         "block": args.block,
+        "pilot": args.pilot,
         "batch_id": batch_id,
         "dry_run": args.dry_run,
         "lab_git_commit": commit,

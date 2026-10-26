@@ -155,6 +155,37 @@ def test_plan_block_tu_choi_khoi_chon_o(exp, corpus, carriers):
         R.plan_block(exp, "B2", corpus=corpus, carriers=carriers, seed=1)
 
 
+def test_plan_pilot_so_ca_va_cung_ca_moi_target(exp, corpus, carriers):
+    specs = R.plan_pilot(exp, corpus=corpus, carriers=carriers, seed=1)
+    pilot = exp.raw["pilot"]
+    targets = [*pilot["targets"], *pilot["observe_targets"]]
+    assert len(specs) == pilot["runs"] * len(targets)
+    assert len(set(specs)) == len(specs)
+    cases = {
+        t: sorted((s.channel, s.technique, s.goal, s.payload_id, s.carrier_task_id)
+                  for s in specs if s.target_id == t)
+        for t in targets
+    }
+    assert all(c == cases[targets[0]] for c in cases.values())
+    off = R.snapshot_json(R.build_defense("off"))
+    assert {s.defense_config for s in specs} == {off}
+
+
+def test_plan_pilot_phu_kenh_ky_thuat_muc_tieu_tac_vu(exp, corpus, carriers):
+    specs = R.plan_pilot(exp, corpus=corpus, carriers=carriers, seed=1)
+    covered = _covered_cells(corpus, carriers)
+    got = {(s.channel, s.technique, s.goal) for s in specs}
+    assert {(c, t) for c, t, _ in covered} <= {(c, t) for c, t, _ in got}
+    assert {(c, g) for c, _, g in covered} <= {(c, g) for c, _, g in got}
+    assert {s.carrier_task_id for s in specs} == {c["id"] for c in carriers}
+
+
+def test_plan_pilot_tat_dinh(exp, corpus, carriers):
+    a = R.plan_pilot(exp, corpus=corpus, carriers=carriers, seed=7)
+    b = R.plan_pilot(exp, corpus=corpus, carriers=carriers, seed=7)
+    assert a == b
+
+
 # ---------------------------------------------------------------------------
 # Hạ tầng giả cho run end-to-end
 # ---------------------------------------------------------------------------
