@@ -14,6 +14,11 @@ PILOT (STT-60): `--pilot` thay kế hoạch khối bằng `plan_pilot` — `pilo
 `--block`, D=OFF, trên `pilot.targets` + `pilot.observe_targets`. Lô tiền tố `pilot-`, lưu ở
 `results/raw/pilot/`; không vào bảng kết quả nào (giao thức thực nghiệm mục 3).
 
+HIỆU CHỈNH (STT-61): `--calibration-round N` thay kế hoạch bằng `plan_calibration` — mọi ô của
+`--block` một ca, thêm ca cho payload chưa dùng, D=OFF, cùng target với pilot. Mẫu không đổi giữa các
+vòng; vòng chỉ khác biến thể `active` của `config/prompts.yaml`. Lô tiền tố `calib-r<N>-`, lưu ở
+`results/calibration/round_<N>/` kèm `system_prompt_template.txt` (prompt còn placeholder) để lấy diff.
+
     # Xem số run của một khối, không gọi API
     uv run python scripts/run_matrix.py --block B1 --plan-only
     # Chạy thử phần corpus đã phủ: K1, T1–T5, 2 run/ô, 1 model
@@ -25,6 +30,8 @@ PILOT (STT-60): `--pilot` thay kế hoạch khối bằng `plan_pilot` — `pilo
     uv run python scripts/run_matrix.py --block B1 --pilot --estimate-usd <dự toán>
     # Chạy lại riêng các ca K1 của pilot (cùng ca với lô đầy đủ), lô pilot- mới
     uv run python scripts/run_matrix.py --block B1 --pilot --channels K1 --estimate-usd <dự toán>
+    # Vòng hiệu chỉnh STT-61 (biến thể prompt = `active` của config/prompts.yaml)
+    uv run python scripts/run_matrix.py --block B1 --calibration-round 0 --estimate-usd <dự toán>
     # Chỉ xuất lại CSV từ store của một lô
     uv run python scripts/run_matrix.py --block B1 --batch-id attack-B1-... --export-only
 """
@@ -45,7 +52,7 @@ from dotenv import load_dotenv  # noqa: E402
 
 from agent.core import load_core_params  # noqa: E402
 from agent.llm_client import LLMClient  # noqa: E402
-from agent.prompts import template_hash  # noqa: E402
+from agent.prompts import load_prompt_config, template_hash, template_text  # noqa: E402
 from attack.runner import (  # noqa: E402
     HARNESS_PREFIX,
     AttackRunnerError,
@@ -56,6 +63,7 @@ from attack.runner import (  # noqa: E402
     load_carriers,
     load_corpus,
     plan_block,
+    plan_calibration,
     plan_pilot,
     run_one_attack,
 )
@@ -75,6 +83,7 @@ TOOLS = ROOT / "config" / "tools.yaml"
 LOG = ROOT / "logs" / "llm_client.jsonl"
 BATCH_ROOT = ROOT / "results" / "attack_matrix"
 PILOT_ROOT = ROOT / "results" / "raw" / "pilot"
+CALIBRATION_ROOT = ROOT / "results" / "calibration"
 TABLES = ROOT / "results" / "tables"
 
 
@@ -90,6 +99,9 @@ def main() -> int:
     parser.add_argument("--plan-only", action="store_true", help="in số run, không gọi API")
     parser.add_argument("--export-only", action="store_true", help="chỉ xuất CSV từ store")
     parser.add_argument("--pilot", action="store_true", help="lô pilot STT-60 từ ô của --block")
+    parser.add_argument(
+        "--calibration-round", type=int, metavar="N", help="vòng hiệu chỉnh STT-61 (0 = baseline)"
+    )
     dry = parser.add_argument_group("chạy thử (chỉ cùng --dry-run)")
     dry.add_argument("--dry-run", action="store_true", help="lô thử, tiền tố dryrun-")
     dry.add_argument("--targets", nargs="+", help="tập con target của khối")
@@ -112,8 +124,18 @@ def main() -> int:
     ]
     if any(narrow) and not args.dry_run:
         parser.error("các cờ thu hẹp chỉ dùng với --dry-run")
+    calib = args.calibration_round is not None
     if args.pilot and args.dry_run:
         parser.error("--pilot không đi với --dry-run")
+    if calib and (args.pilot or args.dry_run or args.channels):
+        parser.error("--calibration-round không đi với --pilot, --dry-run, --channels")
+    if calib and args.calibration_round < 0:
+        parser.error("--calibration-round phải ≥ 0")
+    calib_prefix = f"calib-r{args.calibration_round}-" if calib else None
+    if args.batch_id and calib != args.batch_id.startswith("calib-"):
+        parser.error("--calibration-round phải đi với batch_id tiền tố calib- và ngược lại")
+    if args.batch_id and calib and not args.batch_id.startswith(calib_prefix):
+        parser.error(f"batch_id của vòng {args.calibration_round} phải có tiền tố {calib_prefix}")
     if args.batch_id and args.pilot != args.batch_id.startswith("pilot-"):
         parser.error("--pilot phải đi với batch_id tiền tố pilot- và ngược lại")
     if args.batch_id and args.dry_run != args.batch_id.startswith("dryrun-"):
@@ -130,7 +152,11 @@ def main() -> int:
     carriers = load_carriers()
     seed = exp.raw["run_order"]["seed"]
     try:
-        if args.pilot:
+        if calib:
+            specs = plan_calibration(
+                exp, corpus=corpus, carriers=carriers, seed=seed, source_block=args.block
+            )
+        elif args.pilot:
             specs = plan_pilot(
                 exp,
                 corpus=corpus,
@@ -158,14 +184,20 @@ def main() -> int:
         return 2
     targets = sorted({s.target_id for s in specs})
 
-    if args.pilot:
+    if calib:
+        prefix = f"{calib_prefix}{args.block}"
+    elif args.pilot:
         prefix = f"pilot-{args.block}"
     else:
         prefix = f"dryrun-attack-{args.block}" if args.dry_run else f"attack-{args.block}"
     batch_id = args.batch_id or f"{prefix}-{_stamp()}"
-    batch_dir = (PILOT_ROOT if args.pilot else BATCH_ROOT) / batch_id
+    if calib:
+        root = CALIBRATION_ROOT / f"round_{args.calibration_round}"
+    else:
+        root = PILOT_ROOT if args.pilot else BATCH_ROOT
+    batch_dir = root / batch_id
     store = batch_dir / "trace.sqlite"
-    tables_dir = batch_dir if args.dry_run or args.pilot else TABLES
+    tables_dir = batch_dir if args.dry_run or args.pilot or calib else TABLES
     runs_csv = tables_dir / f"{batch_id}_runs.csv"
 
     if (args.plan_only or args.export_only) and not store.is_file():
@@ -196,6 +228,7 @@ def main() -> int:
     guard = budget_from_env(args.estimate_usd)
     models = {t: LLMClient(t, config_path=MODELS, log_path=LOG, run_id=batch_id) for t in targets}
     env_hash = compute_env_hash(template_hash(), TOOLS, commit)
+    prompt_cfg = load_prompt_config()
     swept = sweep_stale_run_dirs()
     if swept:
         print(f"Đã dọn {len(swept)} thư mục run cũ còn sót.")
@@ -212,13 +245,17 @@ def main() -> int:
         core_params=load_core_params(),
         kb_top_k=exp.fixed["kb_top_k"],
         defenses=build_defenses(
-            ["off"] if args.pilot else args.presets or exp.unit(args.block).presets
+            ["off"] if args.pilot or calib else args.presets or exp.unit(args.block).presets
         ),
     )
     manifest = {
-        "task": "STT-60" if args.pilot else "STT-46",
+        "task": "STT-61" if calib else "STT-60" if args.pilot else "STT-46",
         "block": args.block,
         "pilot": args.pilot,
+        "calibration_round": args.calibration_round,
+        "prompt_variant": prompt_cfg.active,
+        "prompt_knobs": prompt_cfg.knobs(),
+        "prompt_template_sha256": template_hash(),
         "batch_id": batch_id,
         "dry_run": args.dry_run,
         "lab_git_commit": commit,
@@ -230,6 +267,8 @@ def main() -> int:
         "started_at_utc": _stamp(),
     }
     batch_dir.mkdir(parents=True, exist_ok=True)
+    if calib:
+        (batch_dir / "system_prompt_template.txt").write_text(template_text() + "\n", "utf-8")
 
     status = "ok"
     t0 = time.monotonic()

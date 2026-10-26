@@ -14,12 +14,14 @@ thư mục:
 Không gọi API. Số pilot không vào bảng kết quả nào (giao thức thực nghiệm mục 3).
 
     uv run python scripts/pilot_review.py --batch-id pilot-B1-<UTC>
+    uv run python scripts/pilot_review.py --batch-id calib-r0-B1-<UTC>    # vòng hiệu chỉnh STT-61
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import sqlite3
 import sys
 from pathlib import Path
@@ -267,12 +269,21 @@ def dump_trace(run: pd.Series, steps: pd.DataFrame, out: Path) -> None:
     out.write_text("\n".join(lines), encoding="utf-8")
 
 
+def _batch_dir(batch_id: str) -> Path:
+    """Lô pilot ở `results/raw/pilot/`; lô hiệu chỉnh STT-61 `calib-r<N>-…` ở
+    `results/calibration/round_<N>/`."""
+    m = re.match(r"calib-r(\d+)-", batch_id)
+    if m:
+        return ROOT / "results" / "calibration" / f"round_{m.group(1)}" / batch_id
+    return PILOT_ROOT / batch_id
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--batch-id", required=True)
     args = parser.parse_args()
 
-    batch_dir = PILOT_ROOT / args.batch_id
+    batch_dir = _batch_dir(args.batch_id)
     store = batch_dir / "trace.sqlite"
     if not store.is_file():
         parser.error(f"không có store {store.relative_to(ROOT)}")

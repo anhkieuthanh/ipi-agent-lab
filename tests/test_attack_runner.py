@@ -191,6 +191,38 @@ def test_plan_pilot_phu_kenh_ky_thuat_muc_tieu_tac_vu(exp, corpus, carriers):
     assert {s.carrier_task_id for s in specs} == {c["id"] for c in carriers}
 
 
+def test_plan_calibration_phu_moi_o_va_moi_payload(exp, corpus, carriers):
+    specs = R.plan_calibration(exp, corpus=corpus, carriers=carriers, seed=1)
+    covered = _covered_cells(corpus, carriers)
+    assert {(s.channel, s.technique, s.goal) for s in specs} == set(covered)
+    eligible = {
+        p["id"] for ch, t, g in covered for p in R.select_payloads(corpus, ch, t, g)
+    }
+    assert {s.payload_id for s in specs} == eligible
+    assert len(set(specs)) == len(specs)
+    off = R.snapshot_json(R.build_defense("off"))
+    assert {s.defense_config for s in specs} == {off}
+
+
+def test_plan_calibration_cung_ca_moi_target_va_tat_dinh(exp, corpus, carriers):
+    a = R.plan_calibration(exp, corpus=corpus, carriers=carriers, seed=7)
+    assert a == R.plan_calibration(exp, corpus=corpus, carriers=carriers, seed=7)
+    pilot = exp.raw["pilot"]
+    targets = [*pilot["targets"], *pilot["observe_targets"]]
+    cases = {
+        t: sorted((s.channel, s.technique, s.goal, s.payload_id, s.carrier_task_id)
+                  for s in a if s.target_id == t)
+        for t in targets
+    }
+    assert all(c == cases[targets[0]] for c in cases.values())
+
+
+def test_plan_calibration_tu_choi_khi_con_o_trong(exp, corpus, carriers):
+    reduced = [p for p in corpus if p["technique"]["code"] != "T5"]
+    with pytest.raises(R.AttackRunnerError, match="còn ô trống"):
+        R.plan_calibration(exp, corpus=reduced, carriers=carriers, seed=1)
+
+
 def test_plan_pilot_tat_dinh(exp, corpus, carriers):
     a = R.plan_pilot(exp, corpus=corpus, carriers=carriers, seed=7)
     b = R.plan_pilot(exp, corpus=corpus, carriers=carriers, seed=7)
