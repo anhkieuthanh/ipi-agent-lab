@@ -1,0 +1,27 @@
+[
+  {
+    "task": "STT-60",
+    "block": "B1",
+    "pilot": true,
+    "batch_id": "pilot-B1-20261026T034810Z",
+    "dry_run": false,
+    "lab_git_commit": "fadbedf840ec789a3a508d298d9d2709a0ff4798",
+    "env_hash": "11247dccdd69fbf3ee691e0f7cf1f5329be2a4e49d618a28bccf2693e65d5c89",
+    "models": {
+      "A1": "claude-opus-5",
+      "A2": "glm-5.2",
+      "A3": "glm-5.3-flash"
+    },
+    "targets": [
+      "A1",
+      "A2",
+      "A3"
+    ],
+    "n_planned": 45,
+    "estimate_usd": 4.0,
+    "started_at_utc": "20261026T035500Z",
+    "finished_at_utc": "20261026T042433Z",
+    "spent_usd": 2.3077001,
+    "budget_status": "ok"
+  }
+]
