@@ -63,6 +63,7 @@ __all__ = [
     "load_corpus",
     "load_carriers",
     "plan_block",
+    "plan_pilot",
     "run_one_attack",
     "select_payloads",
     "cell_units",
@@ -327,6 +328,92 @@ def plan_block(
             "Thu hẹp bằng --channels/--techniques/--goals để chạy phần đã phủ."
         )
     random.Random(f"{seed}:{block_id}").shuffle(specs)
+    return specs
+
+
+def plan_pilot(
+    exp: Experiment,
+    *,
+    corpus: Sequence[dict[str, Any]],
+    carriers: Sequence[dict[str, Any]],
+    seed: int,
+    source_block: str = "B1",
+    tasks_path: Path | str = DEFAULT_TASKS_PATH,
+) -> list[AttackRunSpec]:
+    """Pilot STT-60: `pilot.runs` ca lấy từ ô ĐÃ PHỦ của `source_block`, D=OFF, mỗi ca 1 run trên mỗi
+    target ở `pilot.targets` + `pilot.observe_targets` (cùng các ca cho mọi target).
+
+    Chọn ca tất định theo `seed`:
+      1. Ô = (kênh × kỹ thuật × mục tiêu) có ít nhất một cặp (payload, tác vụ chở). Ô trống bỏ qua —
+         pilot đo phần corpus đã có, ô trống ghi vào pilot_findings, không lấp bằng payload viết vội.
+      2. Thừa ô: bỏ dần ô theo thứ tự xáo trộn, chỉ bỏ khi mọi (kênh, kỹ thuật) và (kênh, mục tiêu)
+         vẫn còn ít nhất một ô. Thiếu ô: lặp lại ô theo thứ tự xáo trộn, lấy cặp khác.
+      3. Mỗi ca lấy cặp có payload chưa dùng và tác vụ chở ít dùng nhất — phủ CT-01…CT-06.
+    """
+    block = _technique_block(exp.unit(source_block))
+    pilot = exp.raw["pilot"]
+    n = int(pilot["runs"])
+    targets = [*pilot["targets"], *(pilot.get("observe_targets") or [])]
+    rng = random.Random(f"{seed}:pilot")
+
+    cell_pairs: dict[tuple[str, str, str], list[tuple[str, str]]] = {}
+    for channel, techs in block.techniques_by_channel.items():
+        for technique in techs:
+            for goal in block.goals:
+                payloads = select_payloads(corpus, channel, technique, goal)
+                pairs = _cell_pairs(payloads, channel, carriers, tasks_path=tasks_path)
+                if pairs:
+                    cell_pairs[(channel, technique, goal)] = pairs
+    if not cell_pairs:
+        raise AttackRunnerError(f"khối {source_block} không có ô nào phủ được — corpus trống")
+
+    cells = sorted(cell_pairs)
+    rng.shuffle(cells)
+    chosen = list(cells)
+
+    def _covers(cs: Sequence[tuple[str, str, str]]) -> set[tuple[str, str]]:
+        return {(c, t) for c, t, _ in cs} | {(c, g) for c, _, g in cs}
+
+    need = _covers(chosen)
+    for cell in list(cells):
+        if len(chosen) <= n:
+            break
+        rest = [c for c in chosen if c != cell]
+        if _covers(rest) == need:
+            chosen = rest
+    while len(chosen) < n:
+        chosen.append(cells[(len(chosen) - len(cells)) % len(cells)])
+
+    used_payloads: set[str] = set()
+    used_pairs: set[tuple[str, str]] = set()
+    carrier_count: dict[str, int] = {c["id"]: 0 for c in carriers}
+    units: list[tuple[tuple[str, str, str], str, str]] = []
+    for cell in chosen:
+        options = [p for p in cell_pairs[cell] if p not in used_pairs] or cell_pairs[cell]
+        rng.shuffle(options)
+        pid, cid = min(options, key=lambda p: (p[0] in used_payloads, carrier_count.get(p[1], 0)))
+        used_payloads.add(pid)
+        used_pairs.add((pid, cid))
+        carrier_count[cid] = carrier_count.get(cid, 0) + 1
+        units.append((cell, pid, cid))
+
+    snapshot = snapshot_json(build_defense("off"))
+    specs = [
+        AttackRunSpec(
+            repeat_idx=0,
+            target_id=target,
+            channel=channel,
+            technique=technique,
+            goal=goal,
+            attacker_mode=block.attacker_mode or "blind",
+            defense_config=snapshot,
+            carrier_task_id=cid,
+            payload_id=pid,
+        )
+        for (channel, technique, goal), pid, cid in units
+        for target in targets
+    ]
+    random.Random(f"{seed}:pilot:order").shuffle(specs)
     return specs
 
 
