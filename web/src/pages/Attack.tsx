@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
-import { Crosshair } from "lucide-react";
+import { Crosshair, Grid3x3, Table2 } from "lucide-react";
 import { useState } from "react";
 
 import { Badge, Callout, Card, CardHeader, Empty, ErrorBox, Loading, PageHeader, RateBar, Select } from "@/components/ui";
@@ -136,13 +136,13 @@ export function AttackPage() {
             <Card>
               <CardHeader
                 title={`Bản đồ ASR · ${DIM_LABEL[dims[0]]} × ${DIM_LABEL[dims[1]]}`}
-                
+                icon={<Grid3x3 size={16} />}
               />
               <Heatmap rows={q.data.rows} dims={[dims[0], dims[1]]} />
             </Card>
           )}
           <Card>
-            <CardHeader title="Bảng chi tiết"  />
+            <CardHeader title="Bảng chi tiết" icon={<Table2 size={16} />} />
             <table className="table-base">
               <thead>
                 <tr>

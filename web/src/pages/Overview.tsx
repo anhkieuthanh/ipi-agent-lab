@@ -3,10 +3,14 @@ import clsx from "clsx";
 import {
   ArrowRight,
   Ban,
+  BarChart3,
   CheckCircle2,
   CircleDashed,
   Coins,
   Crosshair,
+  Flag,
+  Layers,
+  ShieldBan,
   ShieldCheck,
   ThumbsUp,
   XCircle,
@@ -28,6 +32,7 @@ import {
 } from "@/components/ui";
 import { api, type Gate, type Rate } from "@/lib/api";
 import { BLOCKED_LABEL, KIND_LABEL, ci, int, pct, usd, when } from "@/lib/format";
+import { BLOCKED_ICON, KindIcon } from "@/lib/icons";
 import { SCOPE_LABEL, useScope } from "@/lib/scope";
 
 function rateHint(r: Rate, noun: string) {
@@ -151,6 +156,7 @@ export function OverviewPage() {
           <CardHeader
             title="So sánh theo model đích"
             subtitle="ASR và USR theo model (%)"
+            icon={<BarChart3 size={16} />}
           />
           <div className="h-[290px] px-3 pb-3 pt-4">
             {chart.length ? (
@@ -183,7 +189,7 @@ export function OverviewPage() {
 
         <div className="flex flex-col gap-6">
           <Card>
-            <CardHeader title="Cổng nghiệm thu"  />
+            <CardHeader title="Cổng nghiệm thu" icon={<Flag size={16} />} />
             <div className="divide-y divide-slate-100">
               {d.gates.map((g) => (
                 <GateRow key={g.id} gate={g} />
@@ -191,21 +197,28 @@ export function OverviewPage() {
             </div>
           </Card>
           <Card>
-            <CardHeader title="Ai đã chặn"  />
+            <CardHeader title="Ai đã chặn" icon={<ShieldBan size={16} />} />
             <div className="space-y-3 px-5 py-4">
               {(Object.keys(k.blocked_by) as (keyof typeof k.blocked_by)[]).map((key) => {
                 const n = k.blocked_by[key];
                 const tone = key === "defense" ? "defense" : key === "model_refusal" ? "refusal" : "neutral";
+                const Icon = BLOCKED_ICON[key];
                 return (
                   <div key={key}>
                     <div className="mb-1 flex items-center justify-between text-[13px]">
                       <span className="flex items-center gap-2 text-slate-700">
                         <span
                           className={clsx(
-                            "h-2 w-2 rounded-full",
-                            tone === "defense" ? "bg-defense-500" : tone === "refusal" ? "bg-refusal-500" : "bg-slate-400",
+                            "flex h-6 w-6 items-center justify-center rounded-md",
+                            tone === "defense"
+                              ? "bg-defense-50 text-defense-600"
+                              : tone === "refusal"
+                                ? "bg-refusal-50 text-refusal-600"
+                                : "bg-slate-100 text-slate-500",
                           )}
-                        />
+                        >
+                          <Icon size={13} />
+                        </span>
                         {BLOCKED_LABEL[key]}
                       </span>
                       <span className="num font-medium text-slate-900">{int(n)}</span>
@@ -230,7 +243,7 @@ export function OverviewPage() {
       <Card className="mt-6">
         <CardHeader
           title="Lô gần đây"
-          
+          icon={<Layers size={16} />}
           action={
             <Link to="/batches" className="inline-flex items-center gap-1 text-[13px] font-medium text-brand-600 hover:text-brand-700">
               Xem tất cả <ArrowRight size={14} />
@@ -261,6 +274,7 @@ export function OverviewPage() {
                 </td>
                 <td>
                   <Badge tone={bt.kind === "experiment" ? "brand" : bt.kind === "demo" ? "payload" : "neutral"}>
+                    <KindIcon kind={bt.kind} />
                     {KIND_LABEL[bt.kind]}
                   </Badge>
                 </td>

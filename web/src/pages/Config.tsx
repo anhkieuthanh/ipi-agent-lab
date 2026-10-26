@@ -4,6 +4,16 @@ import { Boxes, Cpu, FileCode2, ShieldCheck } from "lucide-react";
 import { Badge, Card, CardHeader, ErrorBox, Loading, Mono, PageHeader } from "@/components/ui";
 import { api } from "@/lib/api";
 import { DEFENSE_LABEL, TECHNIQUE_LABEL, usd } from "@/lib/format";
+import { DEFENSE_ICON } from "@/lib/icons";
+
+function DefenseTile({ code }: { code: string }) {
+  const Icon = DEFENSE_ICON[code] ?? ShieldCheck;
+  return (
+    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-defense-50 text-defense-600">
+      <Icon size={15} />
+    </span>
+  );
+}
 
 export function ConfigPage() {
   const q = useQuery({ queryKey: ["config"], queryFn: api.config });
@@ -56,13 +66,16 @@ export function ConfigPage() {
         </Card>
 
         <Card>
-          <CardHeader title="Cơ chế phòng thủ"  icon={<ShieldCheck size={16} />} />
+          <CardHeader title="Cơ chế phòng thủ" icon={<ShieldCheck size={16} />} />
           <div className="divide-y divide-slate-100">
             {d.presets
               .find((p) => p.name === "all")
               ?.codes.map((code) => (
                 <div key={code} className="flex items-center gap-3 px-5 py-3">
-                  <Badge tone="defense">{code}</Badge>
+                  <DefenseTile code={code} />
+                  <Badge tone="defense" className="font-mono">
+                    {code}
+                  </Badge>
                   <span className="text-[13.5px] text-slate-700">{DEFENSE_LABEL[code]}</span>
                 </div>
               ))}

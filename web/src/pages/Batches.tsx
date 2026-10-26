@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { Badge, Card, Empty, ErrorBox, Loading, Mono, PageHeader, RateBar, Segmented } from "@/components/ui";
 import { api, type Batch } from "@/lib/api";
 import { CHANNEL_LABEL, GOAL_LABEL, KIND_LABEL, int, kilo, pct, presetLabel, usd, when } from "@/lib/format";
+import { KindIcon } from "@/lib/icons";
 
 type Filter = "all" | Batch["kind"];
 
@@ -91,6 +92,7 @@ export function BatchesPage() {
                   </td>
                   <td>
                     <Badge tone={b.kind === "experiment" ? "brand" : b.kind === "demo" ? "payload" : "neutral"}>
+                      <KindIcon kind={b.kind} />
                       {KIND_LABEL[b.kind]}
                     </Badge>
                   </td>
