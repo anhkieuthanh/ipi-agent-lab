@@ -202,7 +202,7 @@ function DefenseMap({
   onBack: () => void;
 }) {
   return (
-    <Card className="xl:col-span-2">
+    <Card className="xl:col-span-3">
       <CardHeader
         title={view ? `Phát lại run · ${presetLabel(view.preset)}` : "Phòng thủ trên sơ đồ"}
         icon={<ShieldCheck size={16} />}
@@ -359,9 +359,10 @@ export function LabPage() {
           onBack={() => setViewRun(null)}
         />
 
-        <Card>
+        <Card className="xl:col-span-3">
           <CardHeader title="Thiết lập lượt chạy" icon={<SlidersHorizontal size={16} />} />
           <div className="space-y-4 p-5">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <Select
               label="Model đích"
               value={target}
@@ -414,9 +415,10 @@ export function LabPage() {
                 Chạy kèm bản tắt phòng thủ để so sánh
               </label>
             </div>
+            </div>
             <Button
               variant="primary"
-              className="w-full"
+              className="w-full lg:ml-auto lg:flex lg:w-[320px]"
               disabled={!live || !presets.length || !!running || start.isPending}
               onClick={() => start.mutate()}
               icon={running || start.isPending ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}

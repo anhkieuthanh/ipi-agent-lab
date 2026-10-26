@@ -91,6 +91,12 @@ def overview(batch: Batches = None, kind: Kinds = None) -> dict:
     return data.overview(cache, scoped(batch, kind))
 
 
+@app.get("/api/gates")
+def gate_status() -> list[dict]:
+    """Cổng trước ma trận, luôn tính trên lô thực nghiệm — không theo phạm vi đang xem."""
+    return data.gates(scoped(None, None))
+
+
 @app.get("/api/batches")
 def batches(kind: Annotated[list[str] | None, Query()] = None) -> list[dict]:
     return data.batches(cache, kind or data.KINDS)

@@ -52,7 +52,6 @@ export type Batch = {
 export type Overview = {
   kpis: Kpis;
   by_target: ({ target_id: string } & Kpis)[];
-  gates: Gate[];
   budget: {
     total_usd: number | null;
     alert_pct: number;
@@ -279,6 +278,7 @@ export type AssetTools = {
 export const api = {
   meta: () => request<Meta>("/api/meta"),
   overview: (p: Params) => request<Overview>(`/api/overview${qs(p)}`),
+  gates: () => request<Gate[]>("/api/gates"),
   batches: (p: Params = {}) => request<Batch[]>(`/api/batches${qs(p)}`),
   asr: (p: Params) => request<{ by: string[]; rows: AsrRow[] }>(`/api/attack/asr${qs(p)}`),
   defensePoints: (p: Params) =>

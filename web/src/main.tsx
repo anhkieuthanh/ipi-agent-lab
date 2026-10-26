@@ -12,6 +12,7 @@ import { ConfigPage } from "@/pages/Config";
 import { DefensePage } from "@/pages/Defense";
 import { LabPage } from "@/pages/Lab";
 import { OverviewPage } from "@/pages/Overview";
+import { ProcessPage } from "@/pages/Process";
 import { RunDetailPage } from "@/pages/RunDetail";
 import { RunsPage } from "@/pages/Runs";
 import { SystemPage } from "@/pages/System";
@@ -34,6 +35,7 @@ const router = createBrowserRouter([
       { path: "runs/:runId", element: <RunDetailPage /> },
       { path: "lab", element: <LabPage /> },
       { path: "config", element: <ConfigPage /> },
+      { path: "process", element: <ProcessPage /> },
     ],
   },
 ]);

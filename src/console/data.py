@@ -325,7 +325,6 @@ def overview(cache: RunCache, runs: pd.DataFrame) -> dict[str, Any]:
     return {
         "kpis": kpis(runs),
         "by_target": by_target(runs),
-        "gates": gates(runs),
         "budget": budget(),
         "recent_batches": batches(cache)[:6],
     }
