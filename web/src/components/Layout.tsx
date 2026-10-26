@@ -8,6 +8,7 @@ import {
   Layers,
   ListTree,
   Network,
+  Route,
   Settings2,
   ShieldCheck,
   Sparkles,
@@ -16,9 +17,12 @@ import type { ReactNode } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { api } from "@/lib/api";
+import { allGatesPass } from "@/pages/Process";
 import { SCOPE_LABEL, type ScopeKind, useScope } from "@/lib/scope";
 
-const NAV: { group: string; items: { to: string; label: string; icon: ReactNode; scoped?: boolean }[] }[] = [
+type NavItem = { to: string; label: string; icon: ReactNode; scoped?: boolean };
+
+const NAV: { group: string; items: NavItem[] }[] = [
   {
     group: "Giám sát",
     items: [
@@ -41,7 +45,10 @@ const NAV: { group: string; items: { to: string; label: string; icon: ReactNode;
   },
   {
     group: "Hệ thống",
-    items: [{ to: "/config", label: "Cấu hình", icon: <Settings2 size={17} /> }],
+    items: [
+      { to: "/config", label: "Cấu hình", icon: <Settings2 size={17} /> },
+      { to: "/process", label: "Quy trình", icon: <Route size={17} /> },
+    ],
   },
 ];
 
@@ -54,11 +61,15 @@ const TITLES: Record<string, string> = {
   "/runs": "Điều tra run",
   "/lab": "Phòng thí nghiệm tấn công",
   "/config": "Cấu hình",
+  "/process": "Quy trình",
 };
 
 function Sidebar() {
   const { search } = useScope();
   const meta = useQuery({ queryKey: ["meta"], queryFn: api.meta, staleTime: 60_000 });
+  // Cổng chỉ có nghĩa trước ma trận: qua hết thì ẩn "Quy trình" khỏi menu (URL vẫn mở được).
+  const gates = useQuery({ queryKey: ["gates"], queryFn: api.gates, staleTime: 60_000 });
+  const hide = allGatesPass(gates.data) ? new Set(["/process"]) : new Set<string>();
   return (
     <aside className="fixed inset-y-0 left-0 z-20 flex w-[248px] flex-col bg-ink-950 text-slate-300">
       <div className="flex h-16 items-center gap-3 border-b border-white/5 px-5">
@@ -78,7 +89,7 @@ function Sidebar() {
               {g.group}
             </div>
             <div className="space-y-0.5">
-              {g.items.map((it) => (
+              {g.items.filter((it) => !hide.has(it.to)).map((it) => (
                 <NavLink
                   key={it.to}
                   to={{ pathname: it.to, search: it.scoped ? search : "" }}

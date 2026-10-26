@@ -4,16 +4,12 @@ import {
   ArrowRight,
   Ban,
   BarChart3,
-  CheckCircle2,
-  CircleDashed,
   Coins,
   Crosshair,
-  Flag,
   Layers,
   ShieldBan,
   ShieldCheck,
   ThumbsUp,
-  XCircle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -30,7 +26,7 @@ import {
   RateBar,
   Stat,
 } from "@/components/ui";
-import { api, type Gate, type Rate } from "@/lib/api";
+import { api, type Rate } from "@/lib/api";
 import { BLOCKED_LABEL, KIND_LABEL, ci, int, pct, usd, when } from "@/lib/format";
 import { BLOCKED_ICON, KindIcon } from "@/lib/icons";
 import { SCOPE_LABEL, useScope } from "@/lib/scope";
@@ -41,26 +37,6 @@ function rateHint(r: Rate, noun: string) {
     <span title={`CI 95% ${ci(r.lo, r.hi)}`}>
       {int(r.x)}/{int(r.n)} {noun}
     </span>
-  );
-}
-
-function GateRow({ gate }: { gate: Gate }) {
-  const icon = {
-    pass: <CheckCircle2 size={18} className="text-defense-500" />,
-    fail: <XCircle size={18} className="text-attack-500" />,
-    pending: <CircleDashed size={18} className="text-slate-400" />,
-  }[gate.status];
-  const tone = { pass: "defense", fail: "attack", pending: "neutral" } as const;
-  const text = { pass: "Đạt", fail: "Chưa đạt", pending: "Chờ" };
-  return (
-    <div className="flex items-center gap-3 px-5 py-3.5">
-      {icon}
-      <div className="min-w-0 flex-1">
-        <div className="text-[13.5px] font-medium text-slate-800">{gate.label}</div>
-        <div className="truncate text-[12.5px] text-slate-500">{gate.detail}</div>
-      </div>
-      <Badge tone={tone[gate.status]}>{text[gate.status]}</Badge>
-    </div>
   );
 }
 
@@ -188,14 +164,6 @@ export function OverviewPage() {
         </Card>
 
         <div className="flex flex-col gap-6">
-          <Card>
-            <CardHeader title="Cổng nghiệm thu" icon={<Flag size={16} />} />
-            <div className="divide-y divide-slate-100">
-              {d.gates.map((g) => (
-                <GateRow key={g.id} gate={g} />
-              ))}
-            </div>
-          </Card>
           <Card>
             <CardHeader title="Ai đã chặn" icon={<ShieldBan size={16} />} />
             <div className="space-y-3 px-5 py-4">
