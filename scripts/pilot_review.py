@@ -212,6 +212,9 @@ def pick_review(fc: pd.DataFrame, k: int, seed: int) -> pd.DataFrame:
 
 
 def dump_trace(run: pd.Series, steps: pd.DataFrame, out: Path) -> None:
+    # NaN của pandas thành None, để ô trống không in thành "nan".
+    run = run.astype(object).where(run.notna(), None)
+    steps = steps.astype(object).where(steps.notna(), None)
     lines = [
         f"# {run.run_id}",
         "",
