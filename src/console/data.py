@@ -513,3 +513,100 @@ def scenarios() -> list[dict[str, Any]]:
         })
     return out
 
+
+
+# ---------------------------------------------------------------------------
+# Tài sản bảo vệ TS1–TS3 — trực quan hoá khi click (trang Sơ đồ hệ thống)
+# ---------------------------------------------------------------------------
+
+TOOLS_PATH = ROOT / "config" / "tools.yaml"
+CUSTOMERS_DB = ROOT / "data" / "customers.db"
+_CANARY_MASK = "‹bản ghi mồi canary — ẩn›"
+
+
+def asset_system_prompt(variant: str | None = None) -> dict[str, Any]:
+    """TS1 — system prompt baseline đã render, canary giữ ở dạng placeholder (không lộ canary thật).
+
+    Dùng `_template` nên văn bản còn `<canary>` nguyên vị trí; `template_hash` là phần system prompt
+    của `env_hash`. Không gọi `build_system_prompt` vì hàm đó đòi canary thật của một run.
+    """
+    from agent import prompts
+
+    active, variants = demo.prompt_variants()
+    name = variant or active
+    text = prompts._template(name, prompts.DEFAULT_PATH, None, None)
+    return clean({
+        "variant": name,
+        "active": active,
+        "variants": variants,
+        "canary_placeholder": prompts.CANARY_PLACEHOLDER,
+        "template_hash": prompts.template_hash(name),
+        "text": text,
+        "chars": len(text),
+    })
+
+
+def asset_customers(limit: int = 12) -> dict[str, Any]:
+    """TS2 — lược đồ + bản ghi mẫu của customers.db (dữ liệu Faker mô phỏng).
+
+    `canary_note` chỉ có ở bản ghi mồi (DB_CANARY_ROW_ID); thay bằng nhãn để không lộ chuỗi canary.
+    Chỉ đọc (`mode=ro`).
+    """
+    import sqlite3
+
+    from eval.canary import DB_CANARY_ROW_ID
+
+    uri = f"file:{CUSTOMERS_DB.resolve()}?mode=ro"
+    with sqlite3.connect(uri, uri=True) as conn:
+        conn.row_factory = sqlite3.Row
+        cols = [
+            {"name": r["name"], "type": r["type"], "notnull": bool(r["notnull"])}
+            for r in conn.execute("PRAGMA table_info(customers)")
+        ]
+        total = conn.execute("SELECT COUNT(*) AS n FROM customers").fetchone()["n"]
+        seeded = conn.execute(
+            "SELECT COUNT(*) AS n FROM customers WHERE canary_note IS NOT NULL AND canary_note != ''"
+        ).fetchone()["n"]
+        rows = [
+            dict(r) for r in conn.execute(
+                "SELECT * FROM customers ORDER BY id LIMIT ?", (limit,)
+            )
+        ]
+    for r in rows:
+        if r.get("canary_note"):
+            r["canary_note"] = _CANARY_MASK
+        r["_seeded"] = r["id"] == DB_CANARY_ROW_ID
+    return clean({
+        "table": "customers",
+        "columns": cols,
+        "total": total,
+        "seeded_rows": seeded,
+        "canary_row_id": DB_CANARY_ROW_ID,
+        "rows": rows,
+        "note": "Dữ liệu mô phỏng bằng Faker vi_VN, seed cố định — không phải khách hàng thật.",
+    })
+
+
+def asset_tools() -> dict[str, Any]:
+    """TS3 — năm tool của agent (config/tools.yaml) + ma trận tool được phép theo tác vụ chở."""
+    raw = yaml.safe_load(TOOLS_PATH.read_text(encoding="utf-8"))
+    tools = []
+    for name, spec in (raw.get("tools") or {}).items():
+        props = ((spec.get("input_schema") or {}).get("properties") or {})
+        tools.append({
+            "name": name,
+            "code": spec.get("code"),
+            "kind": spec.get("kind"),
+            "side_effect": bool(spec.get("side_effect")),
+            "description": " ".join((spec.get("description") or "").split()),
+            "args": [
+                {"name": k, "type": v.get("type"), "required":
+                 k in ((spec.get("input_schema") or {}).get("required") or [])}
+                for k, v in props.items()
+            ],
+        })
+    carriers = [
+        {"id": c["id"], "name": c.get("name"), "allowed_tools": c.get("allowed_tools") or []}
+        for c in demo.load_carriers()
+    ]
+    return clean({"tools": tools, "carriers": carriers})

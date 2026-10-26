@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+import { AssetPanel, type AssetCode } from "@/components/AssetPanel";
 import { MapLegend, NODES, SystemMap } from "@/components/SystemMap";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { GLOSSARY } from "@/lib/glossary";
@@ -112,7 +113,9 @@ function codeTone(code: string) {
 
 export function SystemPage() {
   const [tab, setTab] = useState(GLOSSARY[0].id);
+  const [asset, setAsset] = useState<AssetCode | null>(null);
   const group = GLOSSARY.find((g) => g.id === tab)!;
+  const isTS = tab === "TS";
 
   return (
     <>
@@ -149,20 +152,33 @@ export function SystemPage() {
             })}
           </div>
           <div className="grid grid-cols-1 gap-2 p-4 md:grid-cols-2 xl:grid-cols-3">
-            {group.items.map((t) => (
-              <div key={t.code} className="flex gap-3 rounded-lg border border-slate-100 p-3 hover:border-slate-200">
-                <Badge tone={codeTone(t.code)} className="h-fit shrink-0 font-mono">
-                  {t.code}
-                </Badge>
-                <div className="min-w-0">
-                  <div className="text-[13.5px] font-semibold text-slate-800">{t.name}</div>
-                  <div className="text-[12.5px] text-slate-500">{t.desc}</div>
-                </div>
-              </div>
-            ))}
+            {group.items.map((t) => {
+              const canClick = isTS;
+              const Tag = canClick ? "button" : "div";
+              return (
+                <Tag
+                  key={t.code}
+                  onClick={canClick ? () => setAsset(t.code as AssetCode) : undefined}
+                  className={clsx(
+                    "flex gap-3 rounded-lg border border-slate-100 p-3 text-left",
+                    canClick ? "cursor-pointer hover:border-brand-300 hover:bg-brand-50/40" : "hover:border-slate-200",
+                  )}
+                >
+                  <Badge tone={codeTone(t.code)} className="h-fit shrink-0 font-mono">
+                    {t.code}
+                  </Badge>
+                  <div className="min-w-0">
+                    <div className="text-[13.5px] font-semibold text-slate-800">{t.name}</div>
+                    <div className="text-[12.5px] text-slate-500">{t.desc}</div>
+                    {canClick && <div className="mt-1 text-[11.5px] font-medium text-brand-600">Bấm để xem chi tiết →</div>}
+                  </div>
+                </Tag>
+              );
+            })}
           </div>
         </Card>
       </div>
+      <AssetPanel code={asset} onClose={() => setAsset(null)} />
     </>
   );
 }
