@@ -40,76 +40,119 @@ export type PointStatus = "idle" | "pass" | "transform" | "block";
 type Tone = "user" | "agent" | "brand" | "tool" | "store" | "sink" | "attack" | "measure";
 type Box = { id: string; x: number; y: number; w: number; h: number; title: string; sub?: string; tone: Tone; icon: LucideIcon };
 
-const W = 1180;
-const H = 620;
+// Lưới bố cục: năm cột (người dùng · agent · khe điểm móc · công cụ · khe điểm móc · dữ liệu), hàng
+// công cụ cách đều; mọi đường nối vuông góc, không cắt qua thẻ, nhãn hay tiêu đề vùng.
+const W = 1200;
+const H = 640;
+
+const TOP = 100; // mép trên các vùng
+const ROW0 = 136; // hàng thẻ đầu tiên
+const ROW_H = 48;
+const ROW_GAP = 22;
+const ROWS = [0, 1, 2, 3, 4].map((i) => ROW0 + i * (ROW_H + ROW_GAP));
+const mid = (i: number) => ROWS[i] + ROW_H / 2;
+
+const AGENT_X = 216;
+const AGENT_W = 324;
+const AGENT_R = AGENT_X + AGENT_W; // 540
+const AGENT_C = AGENT_X + AGENT_W / 2; // 378
+const TOOLS_Z = 652; // mép trái vùng công cụ
+const TOOL_X = 668;
+const TOOL_W = 184;
+const TOOL_R = TOOL_X + TOOL_W; // 852
+const DATA_X = 960;
+const DATA_W = 208;
+const GAP1 = (AGENT_R + 16 + TOOLS_Z) / 2; // tâm khe agent–công cụ (D2, D3)
+const GAP2 = (TOOL_R + 16 + DATA_X - 16) / 2; // tâm khe công cụ–dữ liệu (D4)
+
+const CTX_Y = 206;
+const CTX_H = 60;
+const LLM_Y = 292;
+const LLM_H = 64;
+const LOOP_Y = 382;
+const LOOP_H = 60;
+const RESULT_Y = CTX_Y + CTX_H / 2; // 236
+const CALL_Y = LLM_Y + LLM_H / 2; // 324
 
 const ZONES: { id: string; x: number; y: number; w: number; h: number; label: string; icon: LucideIcon }[] = [
-  { id: "z-user", x: 16, y: 96, w: 150, h: 380, label: "Người dùng", icon: Users },
-  { id: "z-agent", x: 196, y: 96, w: 372, h: 380, label: "Agent", icon: Bot },
-  { id: "z-tools", x: 620, y: 96, w: 210, h: 380, label: "Công cụ MCP", icon: Wrench },
-  { id: "z-data", x: 880, y: 96, w: 284, h: 380, label: "Dữ liệu & bồn chứa", icon: HardDrive },
-  { id: "z-measure", x: 196, y: 510, w: 968, h: 96, label: "Hệ đo", icon: Activity },
+  { id: "z-user", x: 16, y: TOP, w: 160, h: 380, label: "Người dùng", icon: Users },
+  { id: "z-agent", x: 200, y: TOP, w: 356, h: 380, label: "Agent", icon: Bot },
+  { id: "z-tools", x: TOOLS_Z, y: TOP, w: 216, h: 380, label: "Công cụ MCP", icon: Wrench },
+  { id: "z-data", x: DATA_X - 16, y: TOP, w: 240, h: 380, label: "Dữ liệu & bồn chứa", icon: HardDrive },
+  { id: "z-measure", x: 200, y: 508, w: 984, h: 116, label: "Hệ đo", icon: Activity },
 ];
-
-const ROWS = [128, 196, 264, 332, 400];
-const TOOL_X = 632;
-const TOOL_W = 186;
 
 export const NODES: Box[] = [
-  { id: "user", x: 30, y: 246, w: 122, h: 78, title: "Nhân viên", sub: "giao tác vụ", tone: "user", icon: UserRound },
-  { id: "sys", x: 216, y: 128, w: 332, h: 50, title: "System prompt", sub: "TS1 · có canary", tone: "agent", icon: ScrollText },
-  { id: "ctx", x: 216, y: 204, w: 332, h: 62, title: "Ghép ngữ cảnh", sub: "câu hỏi · tài liệu · kết quả tool", tone: "agent", icon: Layers },
-  { id: "llm", x: 216, y: 292, w: 332, h: 70, title: "LLM", sub: "A1 · A2 · A3", tone: "brand", icon: BrainCircuit },
-  { id: "loop", x: 216, y: 388, w: 332, h: 62, title: "Vòng lặp agent", sub: "gọi tool hoặc trả lời", tone: "agent", icon: Repeat },
-  { id: "search_kb", x: TOOL_X, y: ROWS[0], w: TOOL_W, h: 48, title: "search_kb", sub: "tra kho tri thức", tone: "tool", icon: Search },
-  { id: "query_customer_db", x: TOOL_X, y: ROWS[1], w: TOOL_W, h: 48, title: "query_customer_db", sub: "đọc khách hàng", tone: "tool", icon: Database },
-  { id: "http_request", x: TOOL_X, y: ROWS[2], w: TOOL_W, h: 48, title: "http_request", sub: "gọi API", tone: "tool", icon: Globe },
-  { id: "send_email", x: TOOL_X, y: ROWS[3], w: TOOL_W, h: 48, title: "send_email", sub: "gửi ra ngoài", tone: "tool", icon: Send },
-  { id: "create_ticket", x: TOOL_X, y: ROWS[4], w: TOOL_W, h: 48, title: "create_ticket", sub: "ghi nội bộ", tone: "tool", icon: Ticket },
-  { id: "kb", x: 900, y: ROWS[0], w: 244, h: 48, title: "Kho tri thức", sub: "Qdrant · đích K1", tone: "store", icon: Library },
-  { id: "db", x: 900, y: ROWS[1], w: 244, h: 48, title: "customers.db", sub: "TS2 · có canary", tone: "store", icon: Database },
-  { id: "canary", x: 900, y: ROWS[2], w: 244, h: 48, title: "Canary listener", sub: "bồn G1 · HTTP", tone: "sink", icon: RadioTower },
-  { id: "mail", x: 900, y: ROWS[3], w: 244, h: 48, title: "MailHog", sub: "bồn G1/G2 · email", tone: "sink", icon: Inbox },
-  { id: "tickets", x: 900, y: ROWS[4], w: 244, h: 48, title: "Kho phiếu", sub: "bồn G2 · ghi nội bộ", tone: "sink", icon: ClipboardList },
-  { id: "attacker", x: 700, y: 12, w: 300, h: 54, title: "Kẻ tấn công", sub: "cài payload T1–T8 vào dữ liệu", tone: "attack", icon: Skull },
-  { id: "trace", x: 216, y: 534, w: 280, h: 54, title: "Trace store", sub: "mọi bước · blocked_by", tone: "measure", icon: History },
-  { id: "scorer", x: 540, y: 534, w: 280, h: 54, title: "Scorer", sub: "chấm G1 · G2 · G3", tone: "measure", icon: ClipboardCheck },
-  { id: "console", x: 864, y: 534, w: 280, h: 54, title: "Console", sub: "ASR · DSR · USR · FRR", tone: "measure", icon: LayoutDashboard },
+  { id: "user", x: 28, y: CTX_Y, w: 136, h: CTX_H, title: "Nhân viên", sub: "giao tác vụ", tone: "user", icon: UserRound },
+  { id: "sys", x: AGENT_X, y: ROW0, w: AGENT_W, h: 48, title: "System prompt", sub: "TS1 · có canary", tone: "agent", icon: ScrollText },
+  { id: "ctx", x: AGENT_X, y: CTX_Y, w: AGENT_W, h: CTX_H, title: "Ghép ngữ cảnh", sub: "câu hỏi · tài liệu · kết quả tool", tone: "agent", icon: Layers },
+  { id: "llm", x: AGENT_X, y: LLM_Y, w: AGENT_W, h: LLM_H, title: "LLM", sub: "A1 · A2 · A3", tone: "brand", icon: BrainCircuit },
+  { id: "loop", x: AGENT_X, y: LOOP_Y, w: AGENT_W, h: LOOP_H, title: "Vòng lặp agent", sub: "gọi tool hoặc trả lời", tone: "agent", icon: Repeat },
+  { id: "search_kb", x: TOOL_X, y: ROWS[0], w: TOOL_W, h: ROW_H, title: "search_kb", sub: "tra kho tri thức", tone: "tool", icon: Search },
+  { id: "query_customer_db", x: TOOL_X, y: ROWS[1], w: TOOL_W, h: ROW_H, title: "query_customer_db", sub: "đọc khách hàng", tone: "tool", icon: Database },
+  { id: "http_request", x: TOOL_X, y: ROWS[2], w: TOOL_W, h: ROW_H, title: "http_request", sub: "gọi API", tone: "tool", icon: Globe },
+  { id: "send_email", x: TOOL_X, y: ROWS[3], w: TOOL_W, h: ROW_H, title: "send_email", sub: "gửi ra ngoài", tone: "tool", icon: Send },
+  { id: "create_ticket", x: TOOL_X, y: ROWS[4], w: TOOL_W, h: ROW_H, title: "create_ticket", sub: "ghi nội bộ", tone: "tool", icon: Ticket },
+  { id: "kb", x: DATA_X, y: ROWS[0], w: DATA_W, h: ROW_H, title: "Kho tri thức", sub: "Qdrant · đích K1", tone: "store", icon: Library },
+  { id: "db", x: DATA_X, y: ROWS[1], w: DATA_W, h: ROW_H, title: "customers.db", sub: "TS2 · có canary", tone: "store", icon: Database },
+  { id: "canary", x: DATA_X, y: ROWS[2], w: DATA_W, h: ROW_H, title: "Canary listener", sub: "bồn G1 · HTTP", tone: "sink", icon: RadioTower },
+  { id: "mail", x: DATA_X, y: ROWS[3], w: DATA_W, h: ROW_H, title: "MailHog", sub: "bồn G1/G2 · email", tone: "sink", icon: Inbox },
+  { id: "tickets", x: DATA_X, y: ROWS[4], w: DATA_W, h: ROW_H, title: "Kho phiếu", sub: "bồn G2 · ghi nội bộ", tone: "sink", icon: ClipboardList },
+  { id: "attacker", x: 740, y: 18, w: 300, h: 52, title: "Kẻ tấn công", sub: "cài payload T1–T8 vào dữ liệu", tone: "attack", icon: Skull },
+  { id: "trace", x: AGENT_X, y: 540, w: AGENT_W, h: 54, title: "Trace store", sub: "mọi bước · blocked_by", tone: "measure", icon: History },
+  { id: "scorer", x: TOOL_X, y: 540, w: TOOL_W, h: 54, title: "Scorer", sub: "chấm G1 · G2 · G3", tone: "measure", icon: ClipboardCheck },
+  { id: "console", x: DATA_X, y: 540, w: DATA_W, h: 54, title: "Console", sub: "ASR · DSR · USR · FRR", tone: "measure", icon: LayoutDashboard },
 ];
 
-type Edge = { id: string; d: string; kind?: "flow" | "inject" | "measure"; label?: string; lx?: number; ly?: number };
+type Edge = {
+  id: string;
+  d: string;
+  kind?: "flow" | "inject" | "measure";
+  label?: string;
+  lx?: number;
+  ly?: number;
+  anchor?: "start" | "middle" | "end";
+};
 
-const mid = (i: number) => ROWS[i] + 24;
-const TOOL_R = TOOL_X + TOOL_W;
+const R = 8; // bán kính bo góc đường gấp khúc
 
 export const EDGES: Edge[] = [
-  { id: "user-ctx", d: "M152 272 C184 272 186 235 216 235", label: "tác vụ", lx: 176, ly: 244 },
-  { id: "sys-ctx", d: "M382 178 V204" },
-  { id: "ctx-llm", d: "M382 266 V292" },
-  { id: "llm-loop", d: "M382 362 V388" },
-  { id: "loop-user", d: "M216 430 C140 430 91 400 91 324", label: "câu trả lời · G3", lx: 112, ly: 450 },
-  { id: "call", d: `M548 327 H${TOOL_X - 12}`, label: "gọi tool", lx: 584, ly: 318 },
-  { id: "result", d: `M${TOOL_X - 12} 235 H548`, label: "kết quả", lx: 566, ly: 226 },
-  { id: "kb-io", d: `M${TOOL_R} ${mid(0)} H900` },
-  { id: "db-io", d: `M${TOOL_R} ${mid(1)} H900` },
-  { id: "http-out", d: `M${TOOL_R} ${mid(2)} H900` },
-  { id: "mail-out", d: `M${TOOL_R} ${mid(3)} H900` },
-  { id: "ticket-out", d: `M${TOOL_R} ${mid(4)} H900` },
-  { id: "k1", d: "M960 66 C960 96 1022 100 1022 128", kind: "inject", label: "K1", lx: 1000, ly: 94 },
-  { id: "k2a", d: "M760 66 V128", kind: "inject", label: "K2a", lx: 778, ly: 94 },
-  { id: "k2b", d: "M700 40 C604 40 604 150 604 227", kind: "inject", label: "K2b", lx: 622, ly: 94 },
-  { id: "to-trace", d: "M300 450 V534", kind: "measure" },
-  { id: "trace-scorer", d: "M496 561 H540", kind: "measure" },
-  { id: "scorer-console", d: "M820 561 H864", kind: "measure" },
+  { id: "user-ctx", d: `M164 ${RESULT_Y} H${AGENT_X}`, label: "tác vụ", lx: 190, ly: RESULT_Y - 8 },
+  { id: "sys-ctx", d: `M${AGENT_C} ${ROW0 + 48} V${CTX_Y}` },
+  { id: "ctx-llm", d: `M${AGENT_C} ${CTX_Y + CTX_H} V${LLM_Y}` },
+  { id: "llm-loop", d: `M${AGENT_C} ${LLM_Y + LLM_H} V${LOOP_Y}` },
+  {
+    id: "loop-user",
+    d: `M${AGENT_X} ${LOOP_Y + LOOP_H / 2} H${96 + R} Q96 ${LOOP_Y + LOOP_H / 2} 96 ${LOOP_Y + LOOP_H / 2 - R} V${CTX_Y + CTX_H}`,
+    label: "trả lời · G3",
+    lx: 88,
+    ly: 344,
+    anchor: "end",
+  },
+  { id: "call", d: `M${AGENT_R} ${CALL_Y} H${TOOLS_Z}`, label: "gọi tool", lx: GAP1, ly: CALL_Y - 20 },
+  { id: "result", d: `M${TOOLS_Z} ${RESULT_Y} H${AGENT_R}`, label: "kết quả", lx: GAP1, ly: RESULT_Y - 20 },
+  // Dữ liệu chảy về tool khi đọc; chảy từ tool ra bồn chứa khi ghi/gửi.
+  { id: "kb-io", d: `M${DATA_X} ${mid(0)} H${TOOL_R}` },
+  { id: "db-io", d: `M${DATA_X} ${mid(1)} H${TOOL_R}` },
+  { id: "http-out", d: `M${TOOL_R} ${mid(2)} H${DATA_X}` },
+  { id: "mail-out", d: `M${TOOL_R} ${mid(3)} H${DATA_X}` },
+  { id: "ticket-out", d: `M${TOOL_R} ${mid(4)} H${DATA_X}` },
+  { id: "k1", d: `M1040 44 H${1150 - R} Q1150 44 1150 ${44 + R} V${ROWS[0]}`, kind: "inject", label: "K1", lx: 1142, ly: 92, anchor: "end" },
+  { id: "k2a", d: `M800 70 V${ROWS[0]}`, kind: "inject", label: "K2a", lx: 808, ly: 92, anchor: "start" },
+  { id: "k2b", d: `M740 44 H${640 + R} Q640 44 640 ${44 + R} V${RESULT_Y - 4}`, kind: "inject", label: "K2b", lx: 632, ly: 92, anchor: "end" },
+  { id: "to-trace", d: `M${AGENT_C} ${LOOP_Y + LOOP_H} V540`, kind: "measure" },
+  { id: "trace-scorer", d: `M${AGENT_R} 567 H${TOOL_X}`, kind: "measure" },
+  { id: "scorer-console", d: `M${TOOL_R} 567 H${DATA_X}`, kind: "measure" },
 ];
 
-/** Điểm móc phòng thủ — `stage` trùng `pipeline_order` của config/defenses.yaml. */
+/** Điểm móc phòng thủ — `stage` trùng `pipeline_order` của config/defenses.yaml. D1 nằm trong thẻ
+ *  "Ghép ngữ cảnh"; D2/D3 ở khe agent–công cụ trên đường kết quả/lời gọi; D4 ở khe công cụ–bồn chứa. */
 export const HOOKS: { id: string; code: DefenseCode; x: number; y: number; stage: string }[] = [
-  { id: "h-d1", code: "D1", x: 512, y: 204, stage: "context_assembly" },
-  { id: "h-d2", code: "D2", x: 584, y: 250, stage: "kb_retrieval · tool_result" },
-  { id: "h-d3", code: "D3", x: 584, y: 342, stage: "pre_tool_execution" },
-  { id: "h-d4a", code: "D4", x: 859, y: mid(2), stage: "pre_egress" },
-  { id: "h-d4b", code: "D4", x: 859, y: mid(3), stage: "pre_egress" },
+  { id: "h-d1", code: "D1", x: AGENT_R - 36, y: RESULT_Y, stage: "context_assembly" },
+  { id: "h-d2", code: "D2", x: GAP1, y: RESULT_Y, stage: "kb_retrieval · tool_result" },
+  { id: "h-d3", code: "D3", x: GAP1, y: CALL_Y, stage: "pre_tool_execution" },
+  { id: "h-d4a", code: "D4", x: GAP2, y: mid(2), stage: "pre_egress" },
+  { id: "h-d4b", code: "D4", x: GAP2, y: mid(3), stage: "pre_egress" },
 ];
 
 /** Bảng màu theo nhóm thành phần: nền thẻ, viền, nền ô icon, màu icon/tiêu đề. */
@@ -173,12 +216,7 @@ export function SystemMap({ selected, onSelect, defenses, onToggle, hookStatus, 
         <filter id={`glow-${uid}`} x="-20%" y="-40%" width="140%" height="180%">
           <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#2a55e0" floodOpacity="0.35" />
         </filter>
-        <pattern id={`grid-${uid}`} width="16" height="16" patternUnits="userSpaceOnUse">
-          <circle cx="1" cy="1" r="0.9" fill="#e2e8f0" />
-        </pattern>
       </defs>
-
-      <rect x={0} y={0} width={W} height={H} fill={ref("grid")} />
 
       {ZONES.map((z) => {
         const Icon = z.icon;
@@ -191,8 +229,7 @@ export function SystemMap({ selected, onSelect, defenses, onToggle, hookStatus, 
               height={z.h}
               rx={16}
               fill="#f8fafc"
-              fillOpacity={0.92}
-              stroke="#e2e8f0"
+              stroke="#eef2f6"
               strokeDasharray={z.id === "z-measure" ? "5 4" : undefined}
             />
             <Icon x={z.x + 14} y={z.y + 10} width={14} height={14} color="#94a3b8" strokeWidth={2} />
@@ -209,7 +246,6 @@ export function SystemMap({ selected, onSelect, defenses, onToggle, hookStatus, 
         const measure = e.kind === "measure";
         const color = inject ? "#e5484d" : on ? "#2a55e0" : measure ? "#c4b5fd" : "#94a3b8";
         const marker = inject ? ref("arrow-red") : on ? ref("arrow-blue") : measure ? ref("arrow-violet") : ref("arrow");
-        const both = ["kb-io", "db-io"].includes(e.id);
         return (
           <g key={e.id} opacity={lit(e.id) ? 1 : 0.15} style={{ transition: "opacity .3s" }}>
             <path
@@ -220,7 +256,6 @@ export function SystemMap({ selected, onSelect, defenses, onToggle, hookStatus, 
               strokeLinecap="round"
               strokeDasharray={on ? "9 5" : inject ? "6 5" : measure ? "3 4" : undefined}
               markerEnd={marker}
-              markerStart={both ? marker : undefined}
               className={clsx(on && "animate-[dash_1s_linear_infinite]")}
             />
             {e.label && (
@@ -228,7 +263,7 @@ export function SystemMap({ selected, onSelect, defenses, onToggle, hookStatus, 
                 x={e.lx}
                 y={e.ly}
                 fontSize={10.5}
-                textAnchor="middle"
+                textAnchor={e.anchor ?? "middle"}
                 fill={inject ? "#c5221f" : on ? "#2a55e0" : "#64748b"}
                 fontWeight={inject ? 700 : 600}
                 {...HALO}
@@ -321,19 +356,19 @@ export function SystemMap({ selected, onSelect, defenses, onToggle, hookStatus, 
               <circle r={22} fill="#dc2626" opacity={0.18} className="animate-ping" style={{ transformBox: "fill-box", transformOrigin: "center" }} />
             )}
             <rect
-              x={-25}
-              y={-12}
-              width={50}
-              height={24}
-              rx={12}
+              x={-23}
+              y={-11}
+              width={46}
+              height={22}
+              rx={11}
               fill={s.fill}
               stroke={selected === h.code ? "#2a55e0" : s.stroke}
               strokeWidth={selected === h.code ? 2.4 : 1.2}
               strokeDasharray={enabled ? undefined : "3 2"}
               filter={ref("shadow")}
             />
-            <Icon x={-19} y={-6.5} width={13} height={13} color={s.text} strokeWidth={2.4} />
-            <text x={6} y={4.5} textAnchor="middle" fontSize={11.5} fontWeight={700} fill={s.text}>
+            <Icon x={-17} y={-6} width={12} height={12} color={s.text} strokeWidth={2.4} />
+            <text x={6} y={4} textAnchor="middle" fontSize={11} fontWeight={700} fill={s.text}>
               {h.code}
             </text>
           </g>
