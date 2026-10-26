@@ -171,6 +171,29 @@ def config() -> dict:
     return data.config_summary()
 
 
+# ---------------------------------------------------------------------------
+# Tài sản bảo vệ TS1–TS3 (trang Sơ đồ hệ thống)
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/assets/system_prompt")
+def asset_system_prompt(variant: str | None = None) -> dict:
+    try:
+        return data.asset_system_prompt(variant)
+    except KeyError as e:
+        raise HTTPException(404, f"không có biến thể prompt: {variant}") from e
+
+
+@app.get("/api/assets/customers")
+def asset_customers(limit: Annotated[int, Query(ge=1, le=50)] = 12) -> dict:
+    return data.asset_customers(limit)
+
+
+@app.get("/api/assets/tools")
+def asset_tools() -> dict:
+    return data.asset_tools()
+
+
 @app.get("/api/demo/scenarios")
 def scenarios() -> list[dict]:
     return data.scenarios()

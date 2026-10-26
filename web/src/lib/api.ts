@@ -244,6 +244,38 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export type AssetSystemPrompt = {
+  variant: string;
+  active: string;
+  variants: string[];
+  canary_placeholder: string;
+  template_hash: string;
+  text: string;
+  chars: number;
+};
+export type AssetColumn = { name: string; type: string; notnull: boolean };
+export type AssetCustomers = {
+  table: string;
+  columns: AssetColumn[];
+  total: number;
+  seeded_rows: number;
+  canary_row_id: number;
+  rows: Record<string, unknown>[];
+  note: string;
+};
+export type AssetTool = {
+  name: string;
+  code: string | null;
+  kind: string | null;
+  side_effect: boolean;
+  description: string;
+  args: { name: string; type: string | null; required: boolean }[];
+};
+export type AssetTools = {
+  tools: AssetTool[];
+  carriers: { id: string; name: string | null; allowed_tools: string[] }[];
+};
+
 export const api = {
   meta: () => request<Meta>("/api/meta"),
   overview: (p: Params) => request<Overview>(`/api/overview${qs(p)}`),
@@ -260,4 +292,7 @@ export const api = {
     request<Job>("/api/demo/jobs", { method: "POST", body: JSON.stringify(body) }),
   job: (id: string) => request<Job>(`/api/demo/jobs/${id}`),
   activeJob: () => request<Job | null>("/api/demo/active"),
+  assetSystemPrompt: () => request<AssetSystemPrompt>("/api/assets/system_prompt"),
+  assetCustomers: () => request<AssetCustomers>("/api/assets/customers"),
+  assetTools: () => request<AssetTools>("/api/assets/tools"),
 };

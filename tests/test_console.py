@@ -185,3 +185,32 @@ def test_demo_tu_choi_dau_vao_la(client, monkeypatch):
         {"scenario": "khong-co", "target": "A3", "presets": ["off"]},
     ]
     assert [client.post("/api/demo/jobs", json=b).status_code for b in bad] == [422, 400, 404]
+
+
+def test_asset_system_prompt(client):
+    d = client.get("/api/assets/system_prompt").json()
+    assert d["variant"] == d["active"]
+    assert d["canary_placeholder"] in d["text"]
+    assert len(d["template_hash"]) == 64
+    # Không lộ canary thật — chỉ placeholder.
+    assert "CANARY_SYSPROMPT_" not in d["text"]
+
+
+def test_asset_customers_an_canary(client):
+    d = client.get("/api/assets/customers", params={"limit": 5}).json()
+    assert d["table"] == "customers"
+    assert d["total"] >= len(d["rows"]) == 5
+    assert {"name", "contact_email", "canary_note"} <= {c["name"] for c in d["columns"]}
+    # Cột canary_note không chứa chuỗi canary thật.
+    assert all("CANARY_DB_" not in str(r.get("canary_note") or "") for r in d["rows"])
+    seeded = [r for r in d["rows"] if r.get("_seeded")]
+    assert len(seeded) == 1 and seeded[0]["id"] == d["canary_row_id"]
+
+
+def test_asset_tools_va_ma_tran(client):
+    d = client.get("/api/assets/tools").json()
+    names = {t["name"] for t in d["tools"]}
+    assert names == {"search_kb", "query_customer_db", "http_request", "send_email", "create_ticket"}
+    assert all(c["allowed_tools"] for c in d["carriers"])
+    # search_kb có ở mọi tác vụ chở (tool đọc nền).
+    assert all("search_kb" in c["allowed_tools"] for c in d["carriers"])
