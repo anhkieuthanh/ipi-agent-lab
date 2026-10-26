@@ -174,6 +174,9 @@ class Run(SQLModel, table=True):
 
     # Kết quả chấm.
     delivered: bool | None = None  # chỉ biến thiên ở K1; K2a/K2b luôn true
+    # K1: probe truy hồi bằng câu hỏi gốc trước khi agent chạy — chẩn đoán khâu truy hồi, không vào
+    # công thức nào. `delivered` tính từ kết quả search_kb thật (`injector_k1.observed_delivered`).
+    delivered_probe: bool | None = None
     g1_hit: bool = False
     g1_channel: str | None = None
     # Canary đã vào context agent nhưng CHƯA rời vành đai — không tính G1 (`canary_handling` của
@@ -224,12 +227,27 @@ class Step(SQLModel, table=True):
 
 
 def open_store(path: str | Path = ":memory:") -> Engine:
-    """Mở (tạo nếu chưa có) trace store SQLite."""
+    """Mở (tạo nếu chưa có) trace store SQLite. Store tạo trước khi lược đồ có thêm cột NULL được
+    (vd `delivered_probe`) được thêm cột đó, giá trị NULL — hàng cũ giữ nguyên. Đọc store mà không
+    muốn chạm file thì dùng `console.tracedata` (SQLite `mode=ro`)."""
     if str(path) != ":memory:":
         Path(path).parent.mkdir(parents=True, exist_ok=True)
     engine = create_engine(f"sqlite:///{path}")
     SQLModel.metadata.create_all(engine)
+    _add_missing_nullable_columns(engine)
     return engine
+
+
+def _add_missing_nullable_columns(engine: Engine) -> None:
+    """Thêm cột NULL được còn thiếu. Cột NOT NULL thiếu thì để nguyên: ghi sẽ lỗi rõ ràng."""
+    with engine.begin() as conn:
+        for table in SQLModel.metadata.sorted_tables:
+            present = {r[1] for r in conn.exec_driver_sql(f'PRAGMA table_info("{table.name}")')}
+            for col in table.columns:
+                if col.name in present or not col.nullable or col.server_default is not None:
+                    continue
+                kind = col.type.compile(engine.dialect)
+                conn.exec_driver_sql(f'ALTER TABLE "{table.name}" ADD COLUMN "{col.name}" {kind}')
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]

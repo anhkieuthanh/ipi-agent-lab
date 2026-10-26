@@ -2,9 +2,10 @@
 
 Kênh K1: kết quả mang nguồn `kb_chunk`, lõi agent cho nó qua hook KB_RETRIEVAL rồi CONTEXT_ASSEMBLY.
 Handler không lọc theo `source`/`run_id` — top-k là đúng thứ retriever trả, kể cả tài liệu injector
-K1 (STT-44) chèn cho run. `delivered` tính trên cùng `search()` nên khớp thứ agent nhận.
+K1 (STT-44) chèn cho run. `delivered` của run K1 đọc `doc_id` từ chính kết quả tool này trong trace
+(`attack.injector_k1.observed_delivered`), nên khớp thứ agent nhận.
 
-`k` model không truyền thì lấy `fixed.kb_top_k` của experiment.yaml — cùng k mà `delivered` dùng.
+`k` model không truyền thì lấy `fixed.kb_top_k` của experiment.yaml — cùng k với probe `delivered_probe`.
 
 Kết quả vào context là JSON `{"results": [{"doc_id", "chunk"}, ...]}`; điểm tương đồng ở `meta`,
 không vào context. Qdrant hay embedder lỗi thì exception lan ra: đó là lỗi harness, run thành

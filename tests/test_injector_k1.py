@@ -11,8 +11,10 @@ offline (qdrant_client import được mà không cần server).
 
 from __future__ import annotations
 
+import json
 import uuid
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import yaml
@@ -137,6 +139,48 @@ def test_t6_thieu_manh_bao_loi():
     p["fragments"] = p["fragments"][:1]
     with pytest.raises(InjectorK1Error, match="≥2 fragments"):
         k1.plan_docs(p, "run-6")
+
+
+# ─────────────── delivered từ kết quả search_kb thật ───────────────
+def _step(kind="tool", tool="search_kb", doc_ids=(), raw=None):
+    content = raw if raw is not None else json.dumps(
+        {"results": [{"doc_id": d, "chunk": "..."} for d in doc_ids]}
+    )
+    return SimpleNamespace(kind=kind, tool_name=tool, tool_result=content)
+
+
+def test_observed_delivered_khi_search_kb_tra_tai_lieu_tiem():
+    steps = [_step(doc_ids=["POL-003.md", "inject::r1"])]
+    assert k1.observed_delivered(steps, ["inject::r1"]) is True
+
+
+def test_observed_delivered_false_khi_agent_khong_goi_hoac_khong_thay():
+    assert k1.observed_delivered([], ["inject::r1"]) is False
+    assert k1.observed_delivered([_step(doc_ids=["POL-003.md"])], ["inject::r1"]) is False
+
+
+def test_observed_delivered_t6_can_du_manh_qua_nhieu_lan_goi():
+    need = ["inject::r1::f1", "inject::r1::f2"]
+    assert k1.observed_delivered([_step(doc_ids=[need[0]])], need) is False
+    assert k1.observed_delivered([_step(doc_ids=[need[0]]), _step(doc_ids=[need[1]])], need)
+
+
+def test_observed_delivered_bo_qua_buoc_bi_chan_va_tool_khac():
+    steps = [
+        _step(kind="defense", doc_ids=["inject::r1"]),       # gọi bị chặn: không vào ngữ cảnh
+        _step(tool="http_request", doc_ids=["inject::r1"]),  # tool khác không mang tài liệu K1
+        _step(kind="llm", tool=None, raw=None, doc_ids=[]),
+    ]
+    assert k1.observed_delivered(steps, ["inject::r1"]) is False
+
+
+def test_observed_delivered_ket_qua_hong_bao_loi_harness():
+    with pytest.raises(InjectorK1Error, match="không phải JSON"):
+        k1.observed_delivered([_step(raw="không phải json")], ["inject::r1"])
+
+
+def test_observed_delivered_khong_tai_lieu_yeu_cau_la_false():
+    assert k1.observed_delivered([_step(doc_ids=["POL-003.md"])], []) is False
 
 
 # ───────────────────────── Ghép tác vụ chở ─────────────────────────

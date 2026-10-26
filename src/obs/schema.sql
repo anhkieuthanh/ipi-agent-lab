@@ -25,6 +25,7 @@ CREATE TABLE runs (
 	obfuscation VARCHAR, 
 	run_canaries VARCHAR NOT NULL, 
 	delivered BOOLEAN, 
+	delivered_probe BOOLEAN, 
 	g1_hit BOOLEAN NOT NULL, 
 	g1_channel VARCHAR, 
 	leak_attempted BOOLEAN NOT NULL, 

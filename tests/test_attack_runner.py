@@ -8,13 +8,16 @@ RESUME (ngắt giữa chừng rồi chạy tiếp không chạy lại phần đ�
 from __future__ import annotations
 
 import contextlib
+import json
 from dataclasses import dataclass
 
+import pandas as pd
 import pytest
 
-from agent.llm_client import LLMResult
+from agent.llm_client import LLMResult, ToolCall
 from attack import runner as R
 from eval.experiment import load_experiment
+from interfaces import ToolResult
 from obs.trace import export_runs, open_store
 
 # ---------------------------------------------------------------------------
@@ -285,6 +288,14 @@ class _FakeK2Layer:
         raise AssertionError
 
 
+@dataclass
+class _FakeK1Result:
+    """Probe báo tới top-k; `doc_ids` là tài liệu tiêm mà search_kb thật phải trả thì mới delivered."""
+
+    delivered: bool = True
+    doc_ids: tuple = ("inject::run",)
+
+
 def _ctx(engine, corpus, carriers, monkeypatch, *, channel):
     monkeypatch.setattr(R, "seeded_run", _fake_seeded_run)
     return R.RunContext(
@@ -298,7 +309,7 @@ def _ctx(engine, corpus, carriers, monkeypatch, *, channel):
         carriers_by_id={c["id"]: c for c in carriers},
         core_params={"max_steps": 4, "max_tokens": 256},
         kb_top_k=5,
-        inject_k1=lambda *a, **k: type("R", (), {"delivered": True})(),
+        inject_k1=lambda *a, **k: _FakeK1Result(),
         build_k2_layer=lambda *a, **k: _FakeK2Layer(),
         cleanup_k1=lambda *a, **k: None,
     )
@@ -335,8 +346,62 @@ def test_run_one_attack_ghi_trace_va_nhan(tmp_path, exp, corpus, carriers, monke
     assert row["goal"] == spec.goal
     assert row["attacker_mode"] == "blind"
     assert row["payload_id"] == spec.payload_id
-    assert bool(row["delivered"]) is True
+    if channel == "K1":
+        # Agent không gọi search_kb ⇒ tài liệu tiêm không vào ngữ cảnh dù probe báo tới.
+        assert bool(row["delivered"]) is False
+        assert bool(row["delivered_probe"]) is True
+    else:
+        assert bool(row["delivered"]) is True
+        assert row["delivered_probe"] is None or pd.isna(row["delivered_probe"])
     assert row["run_id"] == rid
+
+
+class _SearchingModel:
+    """Gọi search_kb một lần rồi trả lời — để `delivered` K1 đọc từ kết quả tool thật."""
+
+    model = "fake-model-1.0"
+
+    def __init__(self):
+        self.n = 0
+
+    def chat(self, messages, tools=None, **kw):
+        self.n += 1
+        if self.n == 1:
+            call = ToolCall(id="c1", name="search_kb", arguments={"query": "bảo hành"},
+                            arguments_raw='{"query": "bảo hành"}')
+            return LLMResult(
+                text=None, tool_calls=[call], tokens_in=10, tokens_out=5, latency_ms=1,
+                target_id="A3", model=self.model, response_model="fake-snap",
+                attempts=1, finish_reason="tool_calls",
+            )
+        return _result("Thời hạn bảo hành là 24 tháng.")
+
+
+class _SearchRegistry(FakeRegistry):
+    def __init__(self, doc_ids):
+        self.doc_ids = doc_ids
+
+    def call_tool(self, call):
+        results = [{"doc_id": d, "chunk": "..."} for d in self.doc_ids]
+        return ToolResult(call_id=call.id, name=call.name,
+                          content=json.dumps({"results": results}, ensure_ascii=False))
+
+
+@pytest.mark.parametrize(
+    ("returned", "expected"),
+    [(["POL-003.md", "inject::run"], True), (["POL-003.md"], False)],
+)
+def test_run_one_attack_k1_delivered_tu_search_kb_that(
+    tmp_path, exp, corpus, carriers, monkeypatch, returned, expected
+):
+    engine = open_store(tmp_path / "t.sqlite")
+    ctx = _ctx(engine, corpus, carriers, monkeypatch, channel="K1")
+    ctx.models["A3"] = _SearchingModel()
+    ctx.tools.registry = _SearchRegistry(returned)
+    R.run_one_attack(_spec(corpus, carriers, "K1"), ctx)
+    row = export_runs(engine, batch_id=ctx.batch_id).iloc[0]
+    assert bool(row["delivered"]) is expected
+    assert bool(row["delivered_probe"]) is True
 
 
 def test_resume_bo_qua_run_da_co(tmp_path, exp, corpus, carriers, monkeypatch):
@@ -403,3 +468,10 @@ def test_carrier_runtime_tra_rang_buoc_g2(carriers):
     assert isinstance(ct06["expected_customer_id"], int)
     for cid in ("CT-01", "CT-02", "CT-03", "CT-04"):
         assert R.carrier_runtime(by_id[cid]) == {}
+
+
+def test_plan_pilot_loc_kenh_giu_dung_ca_cua_lo_day_du(exp, corpus, carriers):
+    full = R.plan_pilot(exp, corpus=corpus, carriers=carriers, seed=1)
+    k1 = R.plan_pilot(exp, corpus=corpus, carriers=carriers, seed=1, channels=["K1"])
+    assert k1 and {s.channel for s in k1} == {"K1"}
+    assert set(k1) == {s for s in full if s.channel == "K1"}

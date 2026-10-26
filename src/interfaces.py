@@ -392,8 +392,8 @@ class ToolLayer(Protocol):
 class KnowledgeBase(Protocol):
     """Tầng 3 — vector store kênh K1. Hiện thực: `rag.retriever.search` + `rag.ingest`.
 
-    `search` là điểm truy hồi duy nhất, dùng chung cho tool `search_kb` và cho kiểm `delivered`
-    (`rag.retriever.is_delivered`), để "nằm trong top-k" luôn khớp thứ agent thực sự nhận.
+    `search` là điểm truy hồi duy nhất, dùng chung cho tool `search_kb` và cho probe `delivered_probe`.
+    `delivered` đọc từ kết quả search_kb thật trong trace (`attack.injector_k1.observed_delivered`).
     Vector store chỉ chứa văn bản thô; D2 chạy trên chunk đã truy hồi (hook KB_RETRIEVAL).
     """
 

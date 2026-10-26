@@ -8,8 +8,9 @@ Một run tấn công:
 
     seeded_run (canary TS1/TS2, bản sao customers.db, gắn handler)
       → reset hộp thư + phiếu + mô tả tool + dọn KB của run trước
-      → tiêm payload: K1 `inject_and_probe` vào KB (ghi `delivered`); K2 bọc `K2ToolLayer`
+      → tiêm payload: K1 `inject_and_probe` vào KB (ghi `delivered_probe`); K2 bọc `K2ToolLayer`
       → TraceRecorder: CoreA.run(carrier.user_query_vi) → score(ScoreContext(activation_check))
+         K1: `delivered` từ kết quả search_kb thật của run (`injector_k1.observed_delivered`)
       → K1: cleanup(run_id) xóa tài liệu đã chèn
 
 CHECKPOINT/RESUME: mỗi run commit ngay vào SQLite (TraceRecorder). Chạy lại cùng `--batch-id` thì
@@ -338,6 +339,7 @@ def plan_pilot(
     carriers: Sequence[dict[str, Any]],
     seed: int,
     source_block: str = "B1",
+    channels: Sequence[str] | None = None,
     tasks_path: Path | str = DEFAULT_TASKS_PATH,
 ) -> list[AttackRunSpec]:
     """Pilot STT-60: `pilot.runs` ca lấy từ ô ĐÃ PHỦ của `source_block`, D=OFF, mỗi ca 1 run trên mỗi
@@ -349,6 +351,9 @@ def plan_pilot(
       2. Thừa ô: bỏ dần ô theo thứ tự xáo trộn, chỉ bỏ khi mọi (kênh, kỹ thuật) và (kênh, mục tiêu)
          vẫn còn ít nhất một ô. Thiếu ô: lặp lại ô theo thứ tự xáo trộn, lấy cặp khác.
       3. Mỗi ca lấy cặp có payload chưa dùng và tác vụ chở ít dùng nhất — phủ CT-01…CT-06.
+
+    `channels` lọc SAU khi chọn đủ ca: chạy lại một kênh của pilot (vd K1 sau khi sửa harness) giữ
+    đúng các ca kênh đó của lô đầy đủ.
     """
     block = _technique_block(exp.unit(source_block))
     pilot = exp.raw["pilot"]
@@ -412,6 +417,7 @@ def plan_pilot(
         )
         for (channel, technique, goal), pid, cid in units
         for target in targets
+        if not channels or channel in channels
     ]
     random.Random(f"{seed}:pilot:order").shuffle(specs)
     return specs
@@ -500,7 +506,7 @@ def run_one_attack(spec: AttackRunSpec, ctx: RunContext) -> str:
         if spec.channel == "K1":
             injected = ctx.inject_k1(payload, carrier, seeded.run_id, k=ctx.kb_top_k)
             tool_layer: Any = ctx.tools.registry
-            delivered = injected.delivered
+            delivered = None  # tính sau khi agent chạy, từ kết quả search_kb thật
         else:
             layer = ctx.build_k2_layer(
                 ctx.tools.registry, payload, carrier, spec.channel, seeded.run_id
@@ -544,7 +550,15 @@ def run_one_attack(spec: AttackRunSpec, ctx: RunContext) -> str:
         try:
             with TraceRecorder(ctx.engine, meta) as rec:
                 rec.run.delivered = delivered
-                core.run(carrier["user_query_vi"], session=session, recorder=rec)
+                if injected is not None:
+                    rec.run.delivered_probe = injected.delivered
+                try:
+                    core.run(carrier["user_query_vi"], session=session, recorder=rec)
+                finally:
+                    if injected is not None:
+                        rec.run.delivered = injector_k1.observed_delivered(
+                            rec.steps, injected.doc_ids
+                        )
                 score(
                     rec,
                     ScoreContext(

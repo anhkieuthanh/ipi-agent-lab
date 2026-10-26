@@ -374,7 +374,7 @@ def _real_ctx(engine, monkeypatch):
         carriers_by_id={c["id"]: c for c in carriers},
         core_params={"max_steps": 4, "max_tokens": 128},
         kb_top_k=5,
-        inject_k1=lambda *a, **k: type("I", (), {"delivered": True})(),
+        inject_k1=lambda *a, **k: type("I", (), {"delivered": True, "doc_ids": ["inject::x"]})(),
         build_k2_layer=lambda *a, **k: None,
         cleanup_k1=lambda *a, **k: None,
     )
