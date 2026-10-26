@@ -23,6 +23,8 @@ PILOT (STT-60): `--pilot` thay kế hoạch khối bằng `plan_pilot` — `pilo
     uv run python scripts/run_matrix.py --block B1 --estimate-usd <dự toán>
     # Pilot STT-60: 40 ca × (A2, A3, A1), D=OFF
     uv run python scripts/run_matrix.py --block B1 --pilot --estimate-usd <dự toán>
+    # Chạy lại riêng các ca K1 của pilot (cùng ca với lô đầy đủ), lô pilot- mới
+    uv run python scripts/run_matrix.py --block B1 --pilot --channels K1 --estimate-usd <dự toán>
     # Chỉ xuất lại CSV từ store của một lô
     uv run python scripts/run_matrix.py --block B1 --batch-id attack-B1-... --export-only
 """
@@ -92,7 +94,7 @@ def main() -> int:
     dry.add_argument("--dry-run", action="store_true", help="lô thử, tiền tố dryrun-")
     dry.add_argument("--targets", nargs="+", help="tập con target của khối")
     dry.add_argument("--presets", nargs="+", help="tập con preset của khối")
-    dry.add_argument("--channels", nargs="+", help="tập con kênh")
+    dry.add_argument("--channels", nargs="+", help="tập con kênh (dùng được cả với --pilot)")
     dry.add_argument("--techniques", nargs="+", help="tập con kỹ thuật")
     dry.add_argument("--goals", nargs="+", help="tập con mục tiêu")
     dry.add_argument("--per-cell", type=int, help="số run mỗi ô thay cho n_per_cell")
@@ -102,7 +104,7 @@ def main() -> int:
     narrow = [
         args.targets,
         args.presets,
-        args.channels,
+        None if args.pilot else args.channels,
         args.techniques,
         args.goals,
         args.per_cell,
@@ -130,7 +132,12 @@ def main() -> int:
     try:
         if args.pilot:
             specs = plan_pilot(
-                exp, corpus=corpus, carriers=carriers, seed=seed, source_block=args.block
+                exp,
+                corpus=corpus,
+                carriers=carriers,
+                seed=seed,
+                source_block=args.block,
+                channels=args.channels,
             )
         else:
             specs = plan_block(

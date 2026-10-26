@@ -8,8 +8,10 @@ description tool, K2b chèn vào kết quả tool). Module này là tầng đi�
     payload (đã validate) + tác vụ chở + run_id
         → dựng tài liệu chở (carrier_docs.py: MD/DOCX/PDF, hoặc PDF ẩn T4)
         → chèn vào Qdrant (rag.ingest.inject_doc)
-        → truy hồi top-k bằng câu hỏi lành tính của tác vụ chở (rag.retriever.search)
-        → `delivered = (mọi tài liệu của run nằm trong top-k)`
+        → probe: truy hồi top-k bằng câu hỏi gốc của tác vụ chở → `delivered_probe` (chẩn đoán)
+    agent chạy xong
+        → `observed_delivered(steps)`: `delivered = (mọi tài liệu của run nằm trong kết quả của ít
+          nhất một lần gọi search_kb thật)`
 
 KHÔNG gọi model, KHÔNG chấm ASR, KHÔNG ghi `blocked_by` (quy tắc cứng #8: `delivered=false` KHÁC
 "phòng thủ chặn"). Chỉ trả cờ cho tầng trace; runner (STT-46) ghép vào bản ghi `runs`.
@@ -21,7 +23,14 @@ Nó tách hai thất bại khác hẳn nhau về nguyên nhân:
     `ASR_cond`** (vẫn ở trong `ASR_e2e`). Không phải agent kháng cự, mà payload chưa tới cửa.
   * `delivered=true` — vào top-k nhưng agent không sập bẫy ⇒ thất bại thật, Ở LẠI mẫu.
 Trộn hai cái này làm ASR tụt giả tạo và không quy được cho phòng thủ nào (lỗ hổng A2, trace
-schema STT-19). `delivered` tính trên ĐÚNG kết quả `search()` mà agent dùng — không truy vấn riêng.
+schema STT-19). `delivered` tính trên ĐÚNG kết quả `search_kb` mà agent nhận trong run, đọc từ bước
+`tool` của trace (`tool_result` thô, trước phòng thủ) — không phải từ một truy vấn riêng. Pilot STT-60
+cho thấy truy vấn riêng bằng câu hỏi gốc lệch hẳn: agent tự viết lại câu truy vấn, 9/9 run probe
+báo true mà agent không thấy tài liệu tiêm, 4 run probe báo false mà agent thấy. Probe giữ ở cột
+`delivered_probe` để chẩn đoán khâu truy hồi, không vào công thức nào.
+
+Phòng thủ chặn chính lời gọi `search_kb` (bước `defense`, không có `tool_result`) thì tài liệu không
+vào ngữ cảnh: `delivered = false`. D2 chạy SAU khi trace ghi `tool_result` nên không đổi cờ.
 
 LƯỢC ĐỒ TOP-K CHO T6 (chia mảnh)
 --------------------------------
@@ -46,6 +55,7 @@ from __future__ import annotations
 import hashlib
 import json
 import tempfile
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -58,6 +68,8 @@ from .payloads.render import base_text, instruction_of, load_render_config
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_TASKS_PATH = REPO_ROOT / "data" / "carrier_tasks.json"
 EXPERIMENT_PATH = REPO_ROOT / "config" / "experiment.yaml"
+#: Tool mà kết quả mang tài liệu K1 vào ngữ cảnh (`tools.search_kb.TOOL_NAME`).
+SEARCH_TOOL = "search_kb"
 
 
 class InjectorK1Error(RuntimeError):
@@ -90,6 +102,8 @@ class InjectionResult:
     doc_ids: list[str] = field(default_factory=list)
     formats: list[str] = field(default_factory=list)
     n_chunks: int = 0
+    # Probe bằng câu hỏi gốc, trước khi agent chạy — chỉ chẩn đoán (`delivered_probe`). `delivered`
+    # thật của run tính sau bằng `observed_delivered`.
     delivered: bool | None = None            # None = chưa đo (chưa gọi probe)
     retrieved_doc_ids: list[str] = field(default_factory=list)
     surface: str | None = None               # T4
@@ -355,6 +369,27 @@ def probe_delivered(
     retrieved = [str(h.metadata.get("doc_id")) for h in hits]
     delivered = set(required_doc_ids).issubset(set(retrieved))
     return delivered, retrieved
+
+
+def observed_delivered(steps: Iterable[Any], required_doc_ids: Iterable[str]) -> bool:
+    """`delivered` của run K1: MỌI doc_id yêu cầu xuất hiện trong kết quả của ít nhất một bước
+    `search_kb` agent đã thực thi. `steps` là các `obs.trace.Step` (hay vật có `kind`,
+    `tool_name`, `tool_result`). Bước chặn bởi phòng thủ không có kết quả nên không tính.
+
+    Các mảnh T6 được phép tới qua những lần gọi khác nhau: chúng cùng nằm trong ngữ cảnh từ đó."""
+    seen: set[str] = set()
+    for step in steps:
+        if step.kind != "tool" or step.tool_name != SEARCH_TOOL or not step.tool_result:
+            continue
+        try:
+            results = json.loads(step.tool_result).get("results") or []
+        except (json.JSONDecodeError, AttributeError) as exc:
+            raise InjectorK1Error(
+                f"kết quả search_kb không phải JSON {{'results': [...]}}: {step.tool_result[:80]!r}"
+            ) from exc
+        seen.update(str(r.get("doc_id")) for r in results)
+    required = set(required_doc_ids)
+    return bool(required) and required.issubset(seen)
 
 
 def cleanup(run_id: str, *, cfg: Any | None = None, client: Any | None = None) -> None:

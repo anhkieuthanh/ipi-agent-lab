@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -27,11 +28,11 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 import pandas as pd  # noqa: E402
-from sqlmodel import Session, select  # noqa: E402
 
+from console.tracedata import load_runs  # noqa: E402
 from eval.experiment import load_experiment  # noqa: E402
 from eval.metrics import wilson  # noqa: E402
-from obs.trace import BLOCKED_BY, Step, export_runs, open_store  # noqa: E402
+from obs.trace import BLOCKED_BY  # noqa: E402
 
 PILOT_ROOT = ROOT / "results" / "raw" / "pilot"
 N_REVIEW = 10
@@ -111,8 +112,17 @@ def asr_by_axis(runs: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _seen_injected(run_id: str, steps: pd.DataFrame) -> bool:
+    """Có bước search_kb thực thi nào trả tài liệu tiêm của run không — đối chiếu độc lập với cờ
+    `delivered` (khớp chuỗi `inject::<run_id>`, không đi qua code của harness)."""
+    kb = steps[(steps["kind"] == "tool") & (steps["tool_name"] == "search_kb")]
+    return bool(kb["tool_result"].fillna("").str.contains(f"inject::{run_id}", regex=False).any())
+
+
 def field_check(runs: pd.DataFrame, steps: pd.DataFrame) -> pd.DataFrame:
     n_steps = steps.groupby("run_id").size()
+    steps_by_run = dict(tuple(steps.groupby("run_id")))
+    empty = steps.iloc[0:0]
     rows = []
     for r in runs.itertuples(index=False):
         flags = [f"thiếu:{c}" for c in REQUIRED if pd.isna(getattr(r, c)) or getattr(r, c) == ""]
@@ -122,6 +132,13 @@ def field_check(runs: pd.DataFrame, steps: pd.DataFrame) -> pd.DataFrame:
             flags.append("blocked thiếu blocked_by")
         if r.channel in ("K2a", "K2b") and r.delivered is not True:
             flags.append("K2 mà delivered≠true")
+        if r.channel == "K1":
+            seen = _seen_injected(r.run_id, steps_by_run.get(r.run_id, empty))
+            # T6: thấy một mảnh chưa đủ, nên chỉ cờ chiều delivered=true mà không thấy gì.
+            if bool(r.delivered) and not seen:
+                flags.append("K1 delivered=true mà search_kb không trả tài liệu tiêm")
+            if not bool(r.delivered) and seen and r.technique != "T6":
+                flags.append("K1 delivered=false mà search_kb trả tài liệu tiêm")
         if r.outcome == "success" and r.delivered is False:
             flags.append("success mà delivered=false")
         if r.blocked_by == "defense":
@@ -221,7 +238,8 @@ def dump_trace(run: pd.Series, steps: pd.DataFrame, out: Path) -> None:
         f"- target: {run.target_id} ({run.model_id} → {run.response_model})",
         f"- ô: {run.channel} · {run.technique} · {run.goal} · {run.carrier_task_id}"
         f" · payload {run.payload_id} ({run.lang})",
-        f"- delivered: {run.delivered} · outcome: {run.outcome} · blocked_by: {run.blocked_by}",
+        f"- delivered: {run.delivered} (probe: {run.get('delivered_probe')}) · outcome: {run.outcome}"
+        f" · blocked_by: {run.blocked_by}",
         f"- g1_hit: {run.g1_hit} ({run.g1_channel}) · leak_attempted: {run.leak_attempted}"
         f" · g2_hit: {run.g2_hit} ({run.g2_severity}) · g3_hit: {run.g3_hit}"
         f" · loop_flag: {run.loop_flag}",
@@ -260,14 +278,15 @@ def main() -> int:
         parser.error(f"không có store {store.relative_to(ROOT)}")
     exp = load_experiment()
     pilot = exp.raw["pilot"]
-    engine = open_store(store)
-    runs = export_runs(engine, batch_id=args.batch_id)
-    runs = runs[runs["run_kind"] == "attack"]
-    with Session(engine) as session:
-        steps = pd.DataFrame(
-            [s.model_dump() for s in session.exec(select(Step)).all()],
-            columns=list(Step.model_fields),
-        )
+    # Đọc chế độ chỉ đọc như console: không chạm file bằng chứng của lô.
+    runs = load_runs([store])
+    runs = runs[(runs["batch_id"] == args.batch_id) & (runs["run_kind"] == "attack")].copy()
+    for col in ("delivered", "delivered_probe"):  # SQLite trả 0/1; giữ None cho NULL
+        if col not in runs:
+            runs[col] = None
+        runs[col] = runs[col].map(lambda v: None if v is None else bool(v)).astype(object)
+    with sqlite3.connect(f"file:{store.resolve()}?mode=ro", uri=True) as conn:
+        steps = pd.read_sql_query("SELECT * FROM steps", conn)
     steps = steps[steps["run_id"].isin(runs["run_id"])]
 
     by_target = asr_by_target(runs, pilot)

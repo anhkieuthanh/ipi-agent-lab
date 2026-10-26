@@ -371,3 +371,16 @@ def test_lab_git_commit_bo_qua_file_ngoai_thu_muc_ma_va_file_ignore(tmp_path):
     (tmp_path / "data" / "tickets.db").write_text("x", "utf-8")
     assert lab_git_commit(tmp_path) == clean
     assert uncommitted_changes(tmp_path) == []
+
+
+def test_open_store_them_cot_null_con_thieu_cho_store_cu(tmp_path):
+    # Store cũ: tạo bằng lược đồ hiện tại rồi bỏ cột delivered_probe — như store trước pilot STT-60.
+    path = tmp_path / "old.sqlite"
+    engine = open_store(path)
+    with engine.begin() as conn:
+        conn.exec_driver_sql("ALTER TABLE runs DROP COLUMN delivered_probe")
+    engine.dispose()
+    engine = open_store(path)
+    with engine.connect() as conn:
+        cols = {r[1] for r in conn.exec_driver_sql("PRAGMA table_info(runs)")}
+    assert "delivered_probe" in cols

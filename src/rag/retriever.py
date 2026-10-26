@@ -77,9 +77,9 @@ def is_delivered(
 ) -> bool:
     """Tài liệu nhiễm độc của `run_id` có nằm trong top-k của `query` không.
 
-    Đây là nguồn của trường `delivered` (trace schema STT-19; dùng ở STT-44):
-    `delivered=False` không tính là tấn công thất bại — nó rời khỏi mẫu tính
-    ASR có điều kiện, chứ không rời mẫu ASR đầu-cuối.
+    Probe theo một câu truy vấn cho trước. KHÔNG phải nguồn của trường `delivered`: run tấn công tính
+    `delivered` từ kết quả search_kb thật của agent (`attack.injector_k1.observed_delivered`), vì
+    agent tự viết lại câu truy vấn (pilot STT-60).
 
     **Hai tham số đều bắt buộc theo tên.** Trước đây chúng là tham số vị trí
     `(run_id, query)`, mà cả hai cùng kiểu `str` nên gọi đảo thứ tự vẫn chạy

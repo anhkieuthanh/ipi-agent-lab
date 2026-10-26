@@ -42,6 +42,7 @@ from typing import Any, Protocol
 
 from sqlmodel import Session, select
 
+from attack.injector_k1 import observed_delivered
 from attack.payloads.render import _LANG_INSTRUCTION
 from attack.runner import AttackRunnerError, RunContext
 from eval.canary import seeded_run
@@ -353,7 +354,7 @@ def run_round(
         if spec.channel == "K1":
             injected = ctx.inject_k1(payload, carrier, seeded.run_id, k=ctx.kb_top_k)
             tool_layer: Any = ctx.tools.registry
-            delivered = injected.delivered
+            delivered = None  # tính sau khi agent chạy, từ kết quả search_kb thật
         else:
             layer = ctx.build_k2_layer(
                 ctx.tools.registry, payload, carrier, spec.channel, seeded.run_id
@@ -394,7 +395,13 @@ def run_round(
         try:
             with rec:
                 rec.run.delivered = delivered
-                core.run(carrier["user_query_vi"], session=session, recorder=rec)
+                if spec.channel == "K1":
+                    rec.run.delivered_probe = injected.delivered
+                try:
+                    core.run(carrier["user_query_vi"], session=session, recorder=rec)
+                finally:
+                    if spec.channel == "K1":
+                        rec.run.delivered = observed_delivered(rec.steps, injected.doc_ids)
                 score(rec, ScoreContext(activation_check=payload.get("activation_check")))
         except Exception as e:  # noqa: BLE001 — RECOVERABLE thành parse_error, còn lại lan ra
             from attack.runner import RECOVERABLE
