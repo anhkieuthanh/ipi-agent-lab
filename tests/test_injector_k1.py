@@ -141,6 +141,56 @@ def test_t6_thieu_manh_bao_loi():
         k1.plan_docs(p, "run-6")
 
 
+# ─────────────── Ngữ cảnh tài liệu chở theo tác vụ chở (P2-a) ───────────────
+def _context(carrier_id: str) -> dict:
+    cfg = yaml.safe_load((REPO_ROOT / "config" / "channel_render.yaml").read_text("utf-8"))
+    return cfg["channels"]["K1"]["carrier_context"][carrier_id]
+
+
+def _extracted(tmp_path, payload, run_id, carrier_id) -> list[str]:
+    written = k1.build_and_write(payload, run_id, tmp_path, carrier_id=carrier_id)
+    return [" ".join(read_document(path).split()) for _, path in written]
+
+
+def test_carrier_context_phu_moi_tac_vu_cho_k1():
+    tasks = json.loads(k1.DEFAULT_TASKS_PATH.read_text("utf-8"))["carrier_tasks"]
+    k1_ids = {t["id"] for t in tasks if "K1" in t["injection_channels"]}
+    cfg = yaml.safe_load((REPO_ROOT / "config" / "channel_render.yaml").read_text("utf-8"))
+    ctx = cfg["channels"]["K1"]["carrier_context"]
+    assert k1_ids <= set(ctx)
+    assert all(c["title"].strip() and len(c["body"]) >= 2 for c in ctx.values())
+
+
+@pytest.mark.parametrize("carrier_id", ["CT-01", "CT-04", "CT-06"])
+def test_tai_lieu_hien_thi_mang_tieu_de_va_than_cua_tac_vu_cho(tmp_path, carrier_id):
+    ctx = _context(carrier_id)
+    (text,) = _extracted(tmp_path, _payload(*T1_VISIBLE), "run-c", carrier_id)
+    assert " ".join(ctx["title"].split()) in text
+    assert " ".join(ctx["body"][-1].split()) in text
+    # Payload chèn sau dòng đầu của thân, trước phần còn lại.
+    assert text.index(ctx["body"][0][:30]) < text.index(base_text(_payload(*T1_VISIBLE))[:30])
+
+
+def test_t4_va_t6_cung_dung_ngu_canh_tac_vu_cho(tmp_path):
+    ctx = _context("CT-04")
+    t4 = _extracted(tmp_path / "t4", _payload(*T4_HIDDEN_CSS), "run-t4", "CT-04")
+    t6 = _extracted(tmp_path / "t6", _t6_payload(), "run-t6", "CT-04")
+    title = " ".join(ctx["title"].split())
+    assert all(title in text for text in [*t4, *t6])
+
+
+def test_hai_tac_vu_cho_cho_hai_tai_lieu_khac_nhau():
+    p = _payload(*T1_VISIBLE)
+    a = k1.plan_docs(p, "run-1", carrier_id="CT-01")[0]
+    b = k1.plan_docs(p, "run-1", carrier_id="CT-06")[0]
+    assert a.fmt == b.fmt and a.data != b.data
+
+
+def test_tac_vu_cho_khong_co_ngu_canh_bao_loi_harness():
+    with pytest.raises(InjectorK1Error, match="carrier_context"):
+        k1.plan_docs(_payload(*T1_VISIBLE), "run-1", carrier_id="CT-99")
+
+
 # ─────────────── delivered từ kết quả search_kb thật ───────────────
 def _step(kind="tool", tool="search_kb", doc_ids=(), raw=None):
     content = raw if raw is not None else json.dumps(

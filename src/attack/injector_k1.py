@@ -190,6 +190,7 @@ def _visible_text(payload: dict[str, Any]) -> str:
 def plan_docs(
     payload: dict[str, Any],
     run_id: str,
+    carrier_id: str = "CT-01",
     *,
     render_cfg: dict[str, Any] | None = None,
 ) -> list[DocSpec]:
@@ -205,21 +206,40 @@ def plan_docs(
     seed: str = k1["rotation_seed"]
     code = (payload.get("technique") or {}).get("code")
     pid = payload["id"]
+    carrier_id = carrier_id or "CT-01"
 
     if code == "T4":
-        return [_plan_t4_doc(payload, run_id, k1)]
+        return [_plan_t4_doc(payload, run_id, k1, carrier_id=carrier_id, render_cfg=render_cfg)]
 
     if code == "T6":
-        return _plan_t6_docs(payload, run_id, formats, position, seed)
+        return _plan_t6_docs(
+            payload, run_id, formats, position, seed, carrier_id=carrier_id, render_cfg=render_cfg
+        )
 
     # Hiển thị, một tài liệu.
+    try:
+        ctx = _k1_cfg(render_cfg)["carrier_context"][carrier_id]
+    except KeyError as exc:
+        raise InjectorK1Error(
+            f"thiếu carrier_context cho tác vụ chở '{carrier_id}' trong channel_render.yaml"
+        ) from exc
     text = _visible_text(payload)
     fmt = _rotate_format(pid, formats, seed)
-    data = carrier_docs.build_visible(text, fmt, position=position)
+    data = carrier_docs.build_visible(
+        text, fmt, position=position, title=ctx["title"], body=ctx["body"]
+    )
     return [DocSpec(doc_id=f"inject::{run_id}", fmt=fmt, data=data, probe=text)]
 
 
-def _plan_t4_doc(payload: dict[str, Any], run_id: str, k1: dict[str, Any]) -> DocSpec:
+def _plan_t4_doc(
+    payload: dict[str, Any],
+    run_id: str,
+    k1: dict[str, Any],
+    carrier_id: str = "CT-01",
+    *,
+    render_cfg: dict[str, Any] | None = None,
+) -> DocSpec:
+    carrier_id = carrier_id or "CT-01"
     surface_map: dict[str, str] = k1["t4_surface_by_obfuscation"]
     obfs = payload.get("obfuscation") or []
     surface = next((surface_map[o] for o in obfs if o in surface_map), None)
@@ -231,18 +251,40 @@ def _plan_t4_doc(payload: dict[str, Any], run_id: str, k1: dict[str, Any]) -> Do
     instruction = instruction_of(payload)
     if not (instruction or "").strip():
         raise InjectorK1Error(f"{payload['id']}: T4 cần instruction_<lang> trần để nhúng ẩn")
-    data = carrier_docs.build_hidden_t4(instruction, surface)
+    try:
+        ctx = _k1_cfg(render_cfg)["carrier_context"][carrier_id]
+    except KeyError as exc:
+        raise InjectorK1Error(
+            f"thiếu carrier_context cho tác vụ chở '{carrier_id}' trong channel_render.yaml"
+        ) from exc
+    data = carrier_docs.build_hidden_t4(
+        instruction, surface, title=ctx["title"], body=ctx["body"]
+    )
     return DocSpec(
         doc_id=f"inject::{run_id}", fmt="pdf", data=data, probe=instruction, surface=surface
     )
 
 
 def _plan_t6_docs(
-    payload: dict[str, Any], run_id: str, formats: list[str], position: str, seed: str
+    payload: dict[str, Any],
+    run_id: str,
+    formats: list[str],
+    position: str,
+    seed: str,
+    carrier_id: str = "CT-01",
+    *,
+    render_cfg: dict[str, Any] | None = None,
 ) -> list[DocSpec]:
+    carrier_id = carrier_id or "CT-01"
     frags = payload.get("fragments") or []
     if len(frags) < 2:
         raise InjectorK1Error(f"{payload['id']}: T6 cần ≥2 fragments để chia mảnh")
+    try:
+        ctx = _k1_cfg(render_cfg)["carrier_context"][carrier_id]
+    except KeyError as exc:
+        raise InjectorK1Error(
+            f"thiếu carrier_context cho tác vụ chở '{carrier_id}' trong channel_render.yaml"
+        ) from exc
     specs: list[DocSpec] = []
     for frag in frags:
         fid = frag.get("fragment_id")
@@ -250,7 +292,9 @@ def _plan_t6_docs(
         if not fid or not (text or "").strip():
             raise InjectorK1Error(f"{payload['id']}: fragment thiếu fragment_id hoặc text")
         fmt = _rotate_format(f"{payload['id']}:{fid}", formats, seed)
-        data = carrier_docs.build_visible(text, fmt, position=position)
+        data = carrier_docs.build_visible(
+            text, fmt, position=position, title=ctx["title"], body=ctx["body"]
+        )
         specs.append(DocSpec(doc_id=f"inject::{run_id}::{fid}", fmt=fmt, data=data, probe=text))
     return specs
 
@@ -281,12 +325,14 @@ def build_and_write(
     payload: dict[str, Any],
     run_id: str,
     out_dir: Path | str,
+    carrier_id: str = "CT-01",
     *,
     render_cfg: dict[str, Any] | None = None,
     verify: bool = True,
 ) -> list[tuple[DocSpec, Path]]:
     """Dựng + ghi đĩa mọi tài liệu của payload; parser-gate mỗi file. Trả [(spec, path)]."""
-    specs = plan_docs(payload, run_id, render_cfg=render_cfg)
+    carrier_id = carrier_id or "CT-01"
+    specs = plan_docs(payload, run_id, carrier_id=carrier_id, render_cfg=render_cfg)
     written: list[tuple[DocSpec, Path]] = []
     for spec in specs:
         path = carrier_docs.write_doc(out_dir, spec.doc_id, spec.fmt, spec.data)
@@ -327,7 +373,9 @@ def inject_and_probe(
 
     # Ghi ra thư mục tạm (mặc định) chỉ để đọc lại bằng bộ đọc ingest — tài liệu K1 không cần lưu.
     with _maybe_tempdir(out_dir) as work:
-        written = build_and_write(payload, run_id, work, render_cfg=render_cfg)
+        written = build_and_write(
+            payload, run_id, work, carrier_id=carrier["id"], render_cfg=render_cfg
+        )
         n_chunks = 0
         for spec, path in written:
             content = read_document(path)
