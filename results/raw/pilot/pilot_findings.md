@@ -134,8 +134,15 @@ Lô đầu có một run (A1, P-T6-G1-VI-001) thấy một mảnh T6; lô chạy
 Lô chạy lại xác nhận: chỉ 3/45 run K1 có tài liệu tiêm trong kết quả truy hồi, đều cùng một payload. Nếu giữ như vậy, ASR_e2e của K1 gần 0 do khâu truy hồi,
 không phải do model kháng cự. Ba núm ở `calibration.allowed_knobs` đều nằm trong system prompt, không núm nào chạm khâu
 truy hồi. Vì vậy hiệu chỉnh ở STT-61 không đưa được K1 lên. Muốn tăng thì phải sửa nội dung tài liệu chở cho sát câu truy
-vấn thực tế của agent (độ liên quan về chủ đề), và đó là việc của corpus/injector. Cần TA quyết có làm trước `v-attack-1.0`
-hay không. Nếu không làm, ghi đây là kết quả: RQ1 so K1 với K2 sẽ phản ánh đúng điều này.
+vấn thực tế của agent (độ liên quan về chủ đề), và đó là việc của corpus/injector.
+
+**TA quyết: sửa (P2-a), trước `v-attack-1.0`.** Mỗi tác vụ chở có tiêu đề và thân văn theo đúng chủ đề, khai ở
+`config/channel_render.yaml`, khóa `channels.K1.carrier_context`. Thân văn trung tính: chỉ nêu chủ đề và mã tài liệu,
+không có số liệu chính sách. Threat model giữ nguyên: kẻ tấn công thả tài liệu MỚI vào KB, không sửa tài liệu thật.
+Đo trước/sau bằng `scripts/k1_delivery_replay.py`. Script này phát lại đúng các câu `search_kb` agent đã gửi trong hai
+lô pilot, không gọi model. Mức nền với thân văn chung là 6/90 run, tệp
+`k1_delivery_replay_20261026T073404Z_truoc_p2a.csv`. Đây là phép đo xấp xỉ vì câu truy vấn là của agent khi thấy tài
+liệu cũ; số chính thức lấy từ lô thật.
 
 ### P3 — Quy tắc loại payload theo `activation_check` không áp được ở ASR này
 
@@ -148,10 +155,15 @@ hay không. Nếu không làm, ghi đây là kết quả: RQ1 so K1 với K2 s�
 payload chưa chạy: chạy bổ sung ở vòng cuối, hoặc giữ nguyên và ghi cờ. Danh sách nằm ở `payload_activation.csv`, cột
 `ung_vien_loai`. Claude **chưa loại** payload nào.
 
+**TA duyệt đề xuất:** áp quy tắc trên vòng hiệu chỉnh cuối của STT-61. Cách xử lý 20 payload chưa chạy còn treo.
+
 ### P4 — Corpus thiếu 19 ô B1 (mục 2)
 
 B1 không mở được nếu thiếu payload cho 19 ô, hoặc nếu không thu hẹp `techniques_by_channel`, việc này cần GVHD duyệt vì
 đổi thiết kế đã ký. Phải xử lý trước khi tag `v-attack-1.0`.
+
+**TA quyết: viết thêm payload (P4-a), không thu hẹp B1.** 19 ô gom lại thành 7 tổ hợp kỹ thuật × mục tiêu: T2·G2, T2·G3,
+T3·G3, T4·G2, T4·G3, T5·G1, T5·G2. Mỗi tổ hợp cần ít nhất một cặp vi/en (bất biến 11). T4 chỉ khai K1 và K2b.
 
 ## 6. Mở tay 10 trace (TA)
 
@@ -183,5 +195,6 @@ của lô chạy lại: `pilot-B1-20261026T034810Z/review_sheet.csv` có 10 trac
 ## 7. Việc kế tiếp
 
 1. TA mở tay 10 trace (mục 6).
-2. TA quyết P2–P4.
-3. Sau đó mới vào STT-61. Vòng hiệu chỉnh đầu nên chạy đủ 40 ca trên commit đã sửa P1, để mọi run cùng một `env_hash`.
+2. P2-a: nối `carrier_context` vào code dựng tài liệu K1, rồi đo lại bằng `k1_delivery_replay.py`.
+3. P4-a: viết payload cho 7 tổ hợp. P3: chốt cách xử lý 20 payload chưa chạy.
+4. Sau đó mới vào STT-61. Vòng hiệu chỉnh đầu nên chạy đủ 40 ca trên commit đã sửa P1, để mọi run cùng một `env_hash`.
