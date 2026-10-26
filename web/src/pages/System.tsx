@@ -6,7 +6,6 @@ import {
   ListChecks,
   Lock,
   type LucideIcon,
-  MousePointerClick,
   Shield,
   ShieldCheck,
   Swords,
@@ -15,7 +14,7 @@ import {
 import { useState } from "react";
 
 import { MapLegend, NODES, SystemMap } from "@/components/SystemMap";
-import { Badge, Card, CardHeader, PageHeader } from "@/components/ui";
+import { Badge, Card, PageHeader } from "@/components/ui";
 import { GLOSSARY } from "@/lib/glossary";
 
 type Info = { title: string; codes: string[]; desc: string };
@@ -74,9 +73,32 @@ function SelectedIcon({ id }: { id: string }) {
   const Icon = node?.icon ?? Shield;
   const tile = node ? TILE[node.tone] ?? "bg-brand-50 text-brand-600" : "bg-defense-50 text-defense-600";
   return (
-    <span className={clsx("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl", tile)}>
-      <Icon size={22} />
+    <span className={clsx("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", tile)}>
+      <Icon size={18} />
     </span>
+  );
+}
+
+function ComponentTip({ id }: { id: string }) {
+  const info = INFO[id];
+  if (!info) return null;
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2.5">
+        <SelectedIcon id={id} />
+        <div className="text-[14px] font-semibold text-slate-900">{info.title}</div>
+      </div>
+      {info.codes.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {info.codes.map((c) => (
+            <Badge key={c} tone={codeTone(c)}>
+              {c}
+            </Badge>
+          ))}
+        </div>
+      )}
+      <p className="text-[12.5px] leading-relaxed text-slate-600">{info.desc}</p>
+    </div>
   );
 }
 
@@ -89,50 +111,24 @@ function codeTone(code: string) {
 }
 
 export function SystemPage() {
-  const [selected, setSelected] = useState<string>("llm");
   const [tab, setTab] = useState(GLOSSARY[0].id);
-  const info = INFO[selected];
   const group = GLOSSARY.find((g) => g.id === tab)!;
 
   return (
     <>
-      <PageHeader title="Sơ đồ hệ thống" info="Bấm một thành phần hoặc điểm phòng thủ trên sơ đồ để xem giải thích." />
+      <PageHeader title="Sơ đồ hệ thống" info="Rê chuột lên một thành phần hoặc điểm phòng thủ để xem giải thích." />
 
       <Card>
         <div className="px-4 pb-2 pt-4">
-          <SystemMap selected={selected} onSelect={setSelected} />
+          <SystemMap renderTip={(id) => <ComponentTip id={id} />} />
         </div>
         <div className="border-t border-slate-100 px-5 py-3">
           <MapLegend />
         </div>
       </Card>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <div className="mt-6">
         <Card>
-          <CardHeader title="Thành phần đang chọn" icon={<MousePointerClick size={16} />} />
-          {info ? (
-            <div className="space-y-3 p-5">
-              <div className="flex items-center gap-3">
-                <SelectedIcon id={selected} />
-                <div className="text-[16px] font-semibold text-slate-900">{info.title}</div>
-              </div>
-              {info.codes.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {info.codes.map((c) => (
-                    <Badge key={c} tone={codeTone(c)}>
-                      {c}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-              <p className="text-[13.5px] leading-relaxed text-slate-600">{info.desc}</p>
-            </div>
-          ) : (
-            <p className="p-5 text-[13px] text-slate-500">Bấm một thành phần trên sơ đồ.</p>
-          )}
-        </Card>
-
-        <Card className="xl:col-span-2">
           <div className="flex flex-wrap gap-1 border-b border-slate-100 px-3 pt-3">
             {GLOSSARY.map((g) => {
               const Icon = GROUP_ICON[g.id] ?? ListChecks;
@@ -152,7 +148,7 @@ export function SystemPage() {
               );
             })}
           </div>
-          <div className="grid grid-cols-1 gap-2 p-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 p-4 md:grid-cols-2 xl:grid-cols-3">
             {group.items.map((t) => (
               <div key={t.code} className="flex gap-3 rounded-lg border border-slate-100 p-3 hover:border-slate-200">
                 <Badge tone={codeTone(t.code)} className="h-fit shrink-0 font-mono">
