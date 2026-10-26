@@ -120,6 +120,25 @@ def test_inv12_bad_override(override, channels, needle):
     assert any("[INV12]" in x and needle in x for x in errs), errs
 
 
+def _t4(obfuscation: list[str], channels: list[str]) -> dict:
+    p = _payload()
+    p["technique"] = {"code": "T4", "variant": "none", "template": "<!-- {INSTRUCTION} -->"}
+    p["obfuscation"] = obfuscation
+    p["channels"] = channels
+    return p
+
+
+def test_inv12_t4_k1_obfuscation_khong_co_be_mat():
+    """Vòng 0 STT-61: hidden_html_comment khai K1 làm injector dừng lô giữa chừng."""
+    errs = channel_override_errors(_t4(["hidden_html_comment"], ["K1", "K2b"]))
+    assert any("[INV12]" in x and "t4_surface_by_obfuscation" in x for x in errs), errs
+
+
+def test_inv12_t4_k1_hidden_css_va_t4_chi_k2b_hop_le():
+    assert channel_override_errors(_t4(["hidden_css"], ["K1", "K2b"])) == []
+    assert channel_override_errors(_t4(["hidden_html_comment"], ["K2b"])) == []
+
+
 def test_inv12_flags_k2_channel_over_limit_without_override():
     errs = channel_override_errors(_payload(), cfg=_small_cfg(10))
     assert sum("[INV12]" in x for x in errs) == 2  # K2a và K2b

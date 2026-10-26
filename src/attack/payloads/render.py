@@ -149,9 +149,18 @@ def _add_field(obj: Any, field: str, text: str, tool: str) -> None:
 def channel_override_errors(
     p: dict[str, Any], *, cfg: dict[str, Any] | None = None
 ) -> list[str]:
-    """Bất biến 12 (taxonomy 4.3): channel_override hợp lệ và mọi kênh K2 dựng được."""
+    """Bất biến 12 (taxonomy 4.3): channel_override hợp lệ, mọi kênh K2 dựng được, và payload T4 khai
+    K1 có obfuscation nằm trong `channels.K1.t4_surface_by_obfuscation` (bề mặt K1 giao được)."""
     e: list[str] = []
     channels = p.get("channels") or []
+    if "K1" in channels and (p.get("technique") or {}).get("code") == "T4":
+        surfaces = (cfg or load_render_config())["channels"]["K1"]["t4_surface_by_obfuscation"]
+        obfs = p.get("obfuscation") or []
+        if not any(o in surfaces for o in obfs):
+            e.append(
+                f"[INV12] T4 khai K1 nhưng obfuscation {obfs} không có bề mặt K1 trong "
+                f"t4_surface_by_obfuscation {sorted(surfaces)}"
+            )
     co = p.get("channel_override")
     if co is not None:
         if not isinstance(co, dict):
