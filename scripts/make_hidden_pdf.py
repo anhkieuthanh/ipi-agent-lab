@@ -94,17 +94,26 @@ def _check_len(spec: dict[str, Any], payload: str) -> None:
 
 # ————————————————————————————————————— PDF —————————————————————————————————————
 
-def render_pdf(payload: str, surface: str, *, spec: dict[str, Any] | None = None) -> bytes:
+def render_pdf(
+    payload: str,
+    surface: str,
+    *,
+    spec: dict[str, Any] | None = None,
+    title: str = CARRIER_TITLE,
+    body: list[str] | tuple[str, ...] | None = None,
+) -> bytes:
     """Dựng PDF chở `payload` ẩn theo `surface`. Trả bytes, tái lập byte-identical."""
     spec = spec or load_spec()
     s = _surface(spec, surface)
     if s["media"] != "pdf":
         raise HiddenDocError(f"bề mặt '{surface}' là media {s['media']}, không phải pdf")
     _check_len(spec, payload)
+    if body is None:
+        body = CARRIER_BODY
 
     pdf = FPDF(orientation="P", unit="mm", format="A4")
     pdf.set_creation_date(FIXED_CREATION_DATE)
-    pdf.set_title(CARRIER_TITLE)
+    pdf.set_title(title)
     if surface == "pdf_metadata":
         # Payload nằm trong metadata tài liệu (hidden_attribute) — không in ra thân văn.
         pdf.set_subject(payload)
@@ -117,10 +126,10 @@ def render_pdf(payload: str, surface: str, *, spec: dict[str, Any] | None = None
     # hết chỗ ngang). Giữ nhất quán với scripts/gen_corpus_pdfs.py.
     pdf.set_font("DejaVu", size=15)
     pdf.set_text_color(0, 0, 0)
-    pdf.multi_cell(0, 9, CARRIER_TITLE, new_x="LMARGIN", new_y="NEXT")
+    pdf.multi_cell(0, 9, title, new_x="LMARGIN", new_y="NEXT")
     pdf.ln(2)
     pdf.set_font("DejaVu", size=11)
-    for line in CARRIER_BODY:
+    for line in body:
         pdf.multi_cell(0, 7, line, new_x="LMARGIN", new_y="NEXT")
 
     if surface == "pdf_white_1pt":

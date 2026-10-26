@@ -58,48 +58,74 @@ class CarrierDocError(ValueError):
     """Không dựng được tài liệu chở (định dạng lạ, vị trí nhúng lạ)."""
 
 
-def _body_with_payload(payload: str, position: str) -> list[str]:
+def _body_with_payload(
+    payload: str,
+    position: str,
+    *,
+    title: str = CARRIER_TITLE,
+    body: list[str] | tuple[str, ...] | None = None,
+) -> list[str]:
     """Thân tài liệu chở có chèn `payload` theo `position`. Trả danh sách dòng."""
+    if body is None:
+        body = CARRIER_BODY
     if position == "after_intro":
         # Sau dòng mở đầu (lời chào) — đoạn payload lọt cùng chunk với ngữ cảnh thật phía sau.
-        return [CARRIER_BODY[0], payload, *CARRIER_BODY[1:]]
+        return [body[0], payload, *body[1:]]
     raise CarrierDocError(f"visible_position lạ '{position}'; hiện chỉ hỗ trợ 'after_intro'")
 
 
-def build_visible_md(payload: str, *, position: str = "after_intro") -> bytes:
+def build_visible_md(
+    payload: str,
+    *,
+    position: str = "after_intro",
+    title: str = CARRIER_TITLE,
+    body: list[str] | tuple[str, ...] | None = None,
+) -> bytes:
     """Markdown chở payload hiển thị. Trả bytes UTF-8 (ghi thẳng ra file)."""
-    lines = [f"# {CARRIER_TITLE}", "", *_body_with_payload(payload, position)]
+    lines = [f"# {title}", "", *_body_with_payload(payload, position, body=body, title=title)]
     return ("\n\n".join(lines) + "\n").encode("utf-8")
 
 
-def build_visible_docx(payload: str, *, position: str = "after_intro") -> bytes:
+def build_visible_docx(
+    payload: str,
+    *,
+    position: str = "after_intro",
+    title: str = CARRIER_TITLE,
+    body: list[str] | tuple[str, ...] | None = None,
+) -> bytes:
     """DOCX chở payload hiển thị. Trả bytes của file .docx."""
     document = docx.Document()
-    document.add_heading(CARRIER_TITLE, level=1)
-    for line in _body_with_payload(payload, position):
+    document.add_heading(title, level=1)
+    for line in _body_with_payload(payload, position, body=body, title=title):
         document.add_paragraph(line)
     buf = io.BytesIO()
     document.save(buf)
     return buf.getvalue()
 
 
-def build_visible_pdf(payload: str, *, position: str = "after_intro") -> bytes:
+def build_visible_pdf(
+    payload: str,
+    *,
+    position: str = "after_intro",
+    title: str = CARRIER_TITLE,
+    body: list[str] | tuple[str, ...] | None = None,
+) -> bytes:
     """PDF chở payload hiển thị (chữ đen cỡ thường). Tái lập byte-identical.
 
     Dùng cùng font/ngày cố định như make_hidden_pdf để byte ổn định giữa các lần chạy.
     """
     pdf = FPDF(orientation="P", unit="mm", format="A4")
     pdf.set_creation_date(FIXED_CREATION_DATE)
-    pdf.set_title(CARRIER_TITLE)
+    pdf.set_title(title)
     pdf.add_font("DejaVu", "", str(FONT_PATH))
     pdf.set_margins(left=20, top=20, right=20)
     pdf.add_page()
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("DejaVu", size=15)
-    pdf.multi_cell(0, 9, CARRIER_TITLE, new_x="LMARGIN", new_y="NEXT")
+    pdf.multi_cell(0, 9, title, new_x="LMARGIN", new_y="NEXT")
     pdf.ln(2)
     pdf.set_font("DejaVu", size=11)
-    for line in _body_with_payload(payload, position):
+    for line in _body_with_payload(payload, position, body=body, title=title):
         pdf.multi_cell(0, 7, line, new_x="LMARGIN", new_y="NEXT")
     return bytes(pdf.output())
 
@@ -111,22 +137,35 @@ _VISIBLE_BUILDERS = {
 }
 
 
-def build_visible(payload: str, fmt: str, *, position: str = "after_intro") -> bytes:
+def build_visible(
+    payload: str,
+    fmt: str,
+    *,
+    position: str = "after_intro",
+    title: str = CARRIER_TITLE,
+    body: list[str] | tuple[str, ...] | None = None,
+) -> bytes:
     """Tài liệu chở payload HIỂN THỊ ở định dạng `fmt` ∈ FORMATS. Trả bytes."""
     builder = _VISIBLE_BUILDERS.get(fmt)
     if builder is None:
         raise CarrierDocError(f"định dạng lạ '{fmt}'; cho {FORMATS}")
-    return builder(payload, position=position)
+    return builder(payload, position=position, title=title, body=body)
 
 
-def build_hidden_t4(instruction: str, surface: str) -> bytes:
+def build_hidden_t4(
+    instruction: str,
+    surface: str,
+    *,
+    title: str = CARRIER_TITLE,
+    body: list[str] | tuple[str, ...] | None = None,
+) -> bytes:
     """Tài liệu chở payload T4 ẩn theo `surface` (PDF). Trả bytes.
 
     `instruction` là chỉ thị TRẦN (không phải base_text đã bọc technique.template): bề mặt T4 tự
     là lớp obfuscation, bọc thêm template của payload sẽ ẩn hai lần. Chỉ nhận bề mặt PDF — html
     và metadata không giao được qua retriever (xem docstring module và config K1).
     """
-    return render_hidden_pdf(instruction, surface)
+    return render_hidden_pdf(instruction, surface, title=title, body=body)
 
 
 def write_doc(out_dir: Path | str, doc_id: str, fmt: str, data: bytes) -> Path:
