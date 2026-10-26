@@ -32,7 +32,7 @@ import {
   Users,
   Wrench,
 } from "lucide-react";
-import { useId } from "react";
+import { type ReactNode, useId, useState } from "react";
 
 export type DefenseCode = "D1" | "D2" | "D3" | "D4";
 export type PointStatus = "idle" | "pass" | "transform" | "block";
@@ -188,193 +188,237 @@ export type SystemMapProps = {
   hookStatus?: Partial<Record<DefenseCode, PointStatus>>;
   /** Nút/cạnh đang tô sáng (phát lại run). Rỗng ⇒ không làm mờ phần còn lại. */
   active?: string[];
+  /** Có giá trị ⇒ rê chuột lên thành phần/điểm móc hiện ghi chú nổi với nội dung trả về. */
+  renderTip?: (id: string) => ReactNode;
   className?: string;
 };
 
-export function SystemMap({ selected, onSelect, defenses, onToggle, hookStatus, active = [], className }: SystemMapProps) {
+type Hover = { id: string; cx: number; top: number; bottom: number };
+
+export function SystemMap({
+  selected,
+  onSelect,
+  defenses,
+  onToggle,
+  hookStatus,
+  active = [],
+  renderTip,
+  className,
+}: SystemMapProps) {
   const uid = useId().replace(/:/g, "");
+  const [hover, setHover] = useState<Hover | null>(null);
+  const tip = hover && renderTip ? renderTip(hover.id) : null;
+  const hoverProps = (h: Hover) =>
+    renderTip ? { onMouseEnter: () => setHover(h), onMouseLeave: () => setHover(null) } : {};
   const ref = (name: string) => `url(#${name}-${uid})`;
   const dim = active.length > 0;
   const lit = (id: string) => !dim || active.includes(id);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className={clsx("h-auto w-full select-none", className)} role="img" aria-label="Sơ đồ hệ thống">
-      <defs>
-        {[
-          ["arrow", "#94a3b8"],
-          ["arrow-red", "#e5484d"],
-          ["arrow-blue", "#2a55e0"],
-          ["arrow-violet", "#a78bfa"],
-        ].map(([name, color]) => (
-          <marker key={name} id={`${name}-${uid}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
-            <path d="M0 1 L9 5 L0 9 z" fill={color} />
-          </marker>
-        ))}
-        <filter id={`shadow-${uid}`} x="-10%" y="-20%" width="120%" height="150%">
-          <feDropShadow dx="0" dy="1" stdDeviation="1.6" floodColor="#0f172a" floodOpacity="0.08" />
-        </filter>
-        <filter id={`glow-${uid}`} x="-20%" y="-40%" width="140%" height="180%">
-          <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#2a55e0" floodOpacity="0.35" />
-        </filter>
-      </defs>
+    <div className="relative">
+      <svg viewBox={`0 0 ${W} ${H}`} className={clsx("h-auto w-full select-none", className)} role="img" aria-label="Sơ đồ hệ thống">
+        <defs>
+          {[
+            ["arrow", "#94a3b8"],
+            ["arrow-red", "#e5484d"],
+            ["arrow-blue", "#2a55e0"],
+            ["arrow-violet", "#a78bfa"],
+          ].map(([name, color]) => (
+            <marker key={name} id={`${name}-${uid}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M0 1 L9 5 L0 9 z" fill={color} />
+            </marker>
+          ))}
+          <filter id={`shadow-${uid}`} x="-10%" y="-20%" width="120%" height="150%">
+            <feDropShadow dx="0" dy="1" stdDeviation="1.6" floodColor="#0f172a" floodOpacity="0.08" />
+          </filter>
+          <filter id={`glow-${uid}`} x="-20%" y="-40%" width="140%" height="180%">
+            <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#2a55e0" floodOpacity="0.35" />
+          </filter>
+        </defs>
 
-      {ZONES.map((z) => {
-        const Icon = z.icon;
-        return (
-          <g key={z.id}>
-            <rect
-              x={z.x}
-              y={z.y}
-              width={z.w}
-              height={z.h}
-              rx={16}
-              fill="#f8fafc"
-              stroke="#eef2f6"
-              strokeDasharray={z.id === "z-measure" ? "5 4" : undefined}
-            />
-            <Icon x={z.x + 14} y={z.y + 10} width={14} height={14} color="#94a3b8" strokeWidth={2} />
-            <text x={z.x + 34} y={z.y + 21.5} fontSize={10.5} fontWeight={700} letterSpacing="0.09em" fill="#94a3b8">
-              {z.label.toUpperCase()}
-            </text>
-          </g>
-        );
-      })}
-
-      {EDGES.map((e) => {
-        const on = lit(e.id) && dim;
-        const inject = e.kind === "inject";
-        const measure = e.kind === "measure";
-        const color = inject ? "#e5484d" : on ? "#2a55e0" : measure ? "#c4b5fd" : "#94a3b8";
-        const marker = inject ? ref("arrow-red") : on ? ref("arrow-blue") : measure ? ref("arrow-violet") : ref("arrow");
-        return (
-          <g key={e.id} opacity={lit(e.id) ? 1 : 0.15} style={{ transition: "opacity .3s" }}>
-            <path
-              d={e.d}
-              fill="none"
-              stroke={color}
-              strokeWidth={on ? 2.6 : inject ? 1.8 : 1.5}
-              strokeLinecap="round"
-              strokeDasharray={on ? "9 5" : inject ? "6 5" : measure ? "3 4" : undefined}
-              markerEnd={marker}
-              className={clsx(on && "animate-[dash_1s_linear_infinite]")}
-            />
-            {e.label && (
-              <text
-                x={e.lx}
-                y={e.ly}
-                fontSize={10.5}
-                textAnchor={e.anchor ?? "middle"}
-                fill={inject ? "#c5221f" : on ? "#2a55e0" : "#64748b"}
-                fontWeight={inject ? 700 : 600}
-                {...HALO}
-              >
-                {e.label}
+        {ZONES.map((z) => {
+          const Icon = z.icon;
+          return (
+            <g key={z.id}>
+              <rect
+                x={z.x}
+                y={z.y}
+                width={z.w}
+                height={z.h}
+                rx={16}
+                fill="#f8fafc"
+                stroke="#eef2f6"
+                strokeDasharray={z.id === "z-measure" ? "5 4" : undefined}
+              />
+              <Icon x={z.x + 14} y={z.y + 10} width={14} height={14} color="#94a3b8" strokeWidth={2} />
+              <text x={z.x + 34} y={z.y + 21.5} fontSize={10.5} fontWeight={700} letterSpacing="0.09em" fill="#94a3b8">
+                {z.label.toUpperCase()}
               </text>
-            )}
-          </g>
-        );
-      })}
+            </g>
+          );
+        })}
 
-      {NODES.map((n) => {
-        const t = TONE[n.tone];
-        const Icon = n.icon;
-        const isSel = selected === n.id;
-        const isLit = lit(n.id);
-        const hot = isSel || (dim && isLit);
-        const mono = n.id.includes("_");
-        const tile = n.h >= 60 ? 34 : 30;
-        const cy = n.y + n.h / 2;
-        return (
-          <g
-            key={n.id}
-            onClick={() => onSelect?.(n.id)}
-            className={clsx(onSelect && "cursor-pointer")}
-            opacity={isLit ? 1 : 0.28}
-            style={{ transition: "opacity .3s" }}
-          >
-            <rect
-              x={n.x}
-              y={n.y}
-              width={n.w}
-              height={n.h}
-              rx={12}
-              fill={t.fill}
-              stroke={hot ? "#2a55e0" : t.stroke}
-              strokeWidth={hot ? 2 : 1}
-              filter={hot ? ref("glow") : ref("shadow")}
-            />
-            <rect x={n.x + 10} y={cy - tile / 2} width={tile} height={tile} rx={8} fill={t.tile} />
-            <Icon
-              x={n.x + 10 + (tile - 18) / 2}
-              y={cy - 9}
-              width={18}
-              height={18}
-              color={t.ink}
-              strokeWidth={2}
-            />
-            <text
-              x={n.x + 20 + tile}
-              y={n.sub ? cy - 3 : cy + 5}
-              fontSize={mono ? 12.5 : 13.5}
-              fontWeight={600}
-              fill={t.title}
-              fontFamily={mono ? "JetBrains Mono, monospace" : undefined}
+        {EDGES.map((e) => {
+          const on = lit(e.id) && dim;
+          const inject = e.kind === "inject";
+          const measure = e.kind === "measure";
+          const color = inject ? "#e5484d" : on ? "#2a55e0" : measure ? "#c4b5fd" : "#94a3b8";
+          const marker = inject ? ref("arrow-red") : on ? ref("arrow-blue") : measure ? ref("arrow-violet") : ref("arrow");
+          return (
+            <g key={e.id} opacity={lit(e.id) ? 1 : 0.15} style={{ transition: "opacity .3s" }}>
+              <path
+                d={e.d}
+                fill="none"
+                stroke={color}
+                strokeWidth={on ? 2.6 : inject ? 1.8 : 1.5}
+                strokeLinecap="round"
+                strokeDasharray={on ? "9 5" : inject ? "6 5" : measure ? "3 4" : undefined}
+                markerEnd={marker}
+                className={clsx(on && "animate-[dash_1s_linear_infinite]")}
+              />
+              {e.label && (
+                <text
+                  x={e.lx}
+                  y={e.ly}
+                  fontSize={10.5}
+                  textAnchor={e.anchor ?? "middle"}
+                  fill={inject ? "#c5221f" : on ? "#2a55e0" : "#64748b"}
+                  fontWeight={inject ? 700 : 600}
+                  {...HALO}
+                >
+                  {e.label}
+                </text>
+              )}
+            </g>
+          );
+        })}
+
+        {NODES.map((n) => {
+          const t = TONE[n.tone];
+          const Icon = n.icon;
+          const isSel = selected === n.id || hover?.id === n.id;
+          const isLit = lit(n.id);
+          const hot = isSel || (dim && isLit);
+          const mono = n.id.includes("_");
+          const tile = n.h >= 60 ? 34 : 30;
+          const cy = n.y + n.h / 2;
+          return (
+            <g
+              key={n.id}
+              onClick={() => onSelect?.(n.id)}
+              {...hoverProps({ id: n.id, cx: n.x + n.w / 2, top: n.y, bottom: n.y + n.h })}
+              className={clsx((onSelect || renderTip) && "cursor-pointer")}
+              opacity={isLit ? 1 : 0.28}
+              style={{ transition: "opacity .3s" }}
             >
-              {n.title}
-            </text>
-            {n.sub && (
-              <text x={n.x + 20 + tile} y={cy + 13} fontSize={11} fill="#64748b">
-                {n.sub}
+              <rect
+                x={n.x}
+                y={n.y}
+                width={n.w}
+                height={n.h}
+                rx={12}
+                fill={t.fill}
+                stroke={hot ? "#2a55e0" : t.stroke}
+                strokeWidth={hot ? 2 : 1}
+                filter={hot ? ref("glow") : ref("shadow")}
+              />
+              <rect x={n.x + 10} y={cy - tile / 2} width={tile} height={tile} rx={8} fill={t.tile} />
+              <Icon
+                x={n.x + 10 + (tile - 18) / 2}
+                y={cy - 9}
+                width={18}
+                height={18}
+                color={t.ink}
+                strokeWidth={2}
+              />
+              <text
+                x={n.x + 20 + tile}
+                y={n.sub ? cy - 3 : cy + 5}
+                fontSize={mono ? 12.5 : 13.5}
+                fontWeight={600}
+                fill={t.title}
+                fontFamily={mono ? "JetBrains Mono, monospace" : undefined}
+              >
+                {n.title}
               </text>
-            )}
-          </g>
-        );
-      })}
+              {n.sub && (
+                <text x={n.x + 20 + tile} y={cy + 13} fontSize={11} fill="#64748b">
+                  {n.sub}
+                </text>
+              )}
+            </g>
+          );
+        })}
 
-      {HOOKS.map((h) => {
-        const enabled = defenses ? defenses[h.code] !== false : true;
-        const status = hookStatus?.[h.code];
-        const key = !enabled ? "off" : status ?? "on";
-        const s = HOOK_STYLE[key];
-        const interactive = !!onToggle || !!onSelect;
-        const Icon = enabled ? Shield : ShieldOff;
-        return (
-          <g
-            key={h.id}
-            transform={`translate(${h.x}, ${h.y})`}
-            onClick={(ev) => {
-              ev.stopPropagation();
-              if (onToggle) onToggle(h.code);
-              else onSelect?.(h.code);
-            }}
-            className={clsx(interactive && "cursor-pointer")}
-          >
-            <title>
-              {`${h.code} · ${!enabled ? "tắt" : status ? STATUS_LABEL[status] : "bật"}${onToggle ? " — bấm để " + (enabled ? "tắt" : "bật") : ""}`}
-            </title>
-            {status === "block" && (
-              <circle r={22} fill="#dc2626" opacity={0.18} className="animate-ping" style={{ transformBox: "fill-box", transformOrigin: "center" }} />
-            )}
-            <rect
-              x={-23}
-              y={-11}
-              width={46}
-              height={22}
-              rx={11}
-              fill={s.fill}
-              stroke={selected === h.code ? "#2a55e0" : s.stroke}
-              strokeWidth={selected === h.code ? 2.4 : 1.2}
-              strokeDasharray={enabled ? undefined : "3 2"}
-              filter={ref("shadow")}
-            />
-            <Icon x={-17} y={-6} width={12} height={12} color={s.text} strokeWidth={2.4} />
-            <text x={6} y={4} textAnchor="middle" fontSize={11} fontWeight={700} fill={s.text}>
-              {h.code}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
+        {HOOKS.map((h) => {
+          const enabled = defenses ? defenses[h.code] !== false : true;
+          const status = hookStatus?.[h.code];
+          const key = !enabled ? "off" : status ?? "on";
+          const s = HOOK_STYLE[key];
+          const interactive = !!onToggle || !!onSelect;
+          const Icon = enabled ? Shield : ShieldOff;
+          return (
+            <g
+              key={h.id}
+              transform={`translate(${h.x}, ${h.y})`}
+              onClick={(ev) => {
+                ev.stopPropagation();
+                if (onToggle) onToggle(h.code);
+                else onSelect?.(h.code);
+              }}
+              {...hoverProps({ id: h.code, cx: h.x, top: h.y - 11, bottom: h.y + 11 })}
+              className={clsx(interactive && "cursor-pointer")}
+            >
+              {!renderTip && (
+                <title>
+                  {`${h.code} · ${!enabled ? "tắt" : status ? STATUS_LABEL[status] : "bật"}${onToggle ? " — bấm để " + (enabled ? "tắt" : "bật") : ""}`}
+                </title>
+              )}
+              {status === "block" && (
+                <circle r={22} fill="#dc2626" opacity={0.18} className="animate-ping" style={{ transformBox: "fill-box", transformOrigin: "center" }} />
+              )}
+              <rect
+                x={-23}
+                y={-11}
+                width={46}
+                height={22}
+                rx={11}
+                fill={s.fill}
+                stroke={selected === h.code || hover?.id === h.code ? "#2a55e0" : s.stroke}
+                strokeWidth={selected === h.code || hover?.id === h.code ? 2.4 : 1.2}
+                strokeDasharray={enabled ? undefined : "3 2"}
+                filter={ref("shadow")}
+              />
+              <Icon x={-17} y={-6} width={12} height={12} color={s.text} strokeWidth={2.4} />
+              <text x={6} y={4} textAnchor="middle" fontSize={11} fontWeight={700} fill={s.text}>
+                {h.code}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      {hover && tip && <MapTip hover={hover}>{tip}</MapTip>}
+    </div>
+  );
+}
+
+/** Ghi chú nổi cạnh thành phần đang rê chuột: dưới thẻ nếu thẻ ở nửa trên, trên thẻ nếu ở dưới;
+ *  sát mép trái/phải thì neo lệch để không tràn khỏi sơ đồ. */
+function MapTip({ hover, children }: { hover: Hover; children: ReactNode }) {
+  const below = hover.bottom < H * 0.62;
+  const fx = hover.cx / W;
+  const shiftX = fx < 0.18 ? "-12%" : fx > 0.82 ? "-88%" : "-50%";
+  return (
+    <div
+      className="pointer-events-none absolute z-20 w-72 rounded-xl bg-white p-3.5 text-left shadow-pop ring-1 ring-slate-200"
+      style={{
+        left: `${fx * 100}%`,
+        top: `${((below ? hover.bottom + 8 : hover.top - 8) / H) * 100}%`,
+        transform: `translate(${shiftX}, ${below ? "0" : "-100%"})`,
+      }}
+    >
+      {children}
+    </div>
   );
 }
 
