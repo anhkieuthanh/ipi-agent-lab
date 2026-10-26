@@ -1,0 +1,35 @@
+[
+  {
+    "task": "STT-61",
+    "block": "B1",
+    "pilot": false,
+    "calibration_round": 0,
+    "prompt_variant": "baseline",
+    "prompt_knobs": {
+      "system_prompt_detail": "standard",
+      "external_content_warning": "none",
+      "default_tool_permissions": "on_request"
+    },
+    "prompt_template_sha256": "344f20f77c74282f66e402656e403e31314e028084b92286a1722f5d06dfe01b",
+    "batch_id": "calib-r0-B1-20261026T091819Z",
+    "dry_run": false,
+    "lab_git_commit": "6249bb4fbd17bf4724ebfad0598bc4b86245965c",
+    "env_hash": "17570da256fc02c8d37cfecfce788cd1c3f7e4ad6415708cdc44a95604f00edf",
+    "models": {
+      "A1": "claude-opus-5",
+      "A2": "glm-5.2",
+      "A3": "glm-5.3-flash"
+    },
+    "targets": [
+      "A1",
+      "A2",
+      "A3"
+    ],
+    "n_planned": 243,
+    "estimate_usd": 16.0,
+    "started_at_utc": "20261026T091959Z",
+    "finished_at_utc": "20261026T152039Z",
+    "spent_usd": 4.351575899999999,
+    "budget_status": "ok"
+  }
+]
