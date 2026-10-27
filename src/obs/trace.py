@@ -32,6 +32,7 @@ import json
 import subprocess
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -68,6 +69,10 @@ BLOCKED_BY = ("defense", "model_refusal", "harness")
 RUN_KINDS = ("attack", "benign")
 ATTACKER_MODES = ("blind", "adaptive")
 TARGETS = ("A1", "A2", "A3")
+# Model thử ngoài bộ đo (khối `sandbox` của models.yaml) — chỉ hợp lệ trong lô demo tiền tố
+# `SANDBOX_BATCH_PREFIX`; CHECK `ck_target_id` chặn nó ở mọi lô khác ngay tầng lược đồ.
+SANDBOX_TARGET = "sandbox"
+SANDBOX_BATCH_PREFIX = "demo-sandbox-"
 HARNESSES = ("none", "HN-CC", "HN-OW")
 # attack: success = đạt goal; blocked = bị chặn (xem blocked_by); failed = không đạt, không bị chặn.
 # benign: pass / fail theo mục 12.3; blocked = phòng thủ/model/harness chặn câu lành tính.
@@ -93,7 +98,11 @@ class Run(SQLModel, table=True):
     __tablename__ = "runs"
     __table_args__ = (
         CheckConstraint(_in("run_kind", RUN_KINDS), name="ck_run_kind"),
-        CheckConstraint(_in("target_id", TARGETS), name="ck_target_id"),
+        CheckConstraint(
+            f"{_in('target_id', TARGETS)} OR (target_id = '{SANDBOX_TARGET}' "
+            f"AND batch_id LIKE '{SANDBOX_BATCH_PREFIX}%')",
+            name="ck_target_id",
+        ),
         CheckConstraint(_in("harness", HARNESSES), name="ck_harness"),
         CheckConstraint(_in("attacker_mode", ATTACKER_MODES, nullable=True), name="ck_attacker"),
         CheckConstraint(_in("technique", TECHNIQUES, nullable=True), name="ck_technique"),
@@ -219,6 +228,8 @@ class Step(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_utcnow)
     kind: str
     llm_text: str | None = Field(default=None, sa_column=Column(Text))
+    # Suy luận model trả kèm (reasoning_content / thinking). Chỉ hiển thị; scorer không đọc trường này.
+    llm_reasoning: str | None = Field(default=None, sa_column=Column(Text))
     finish_reason: str | None = None  # của response (bước llm) — tín hiệu từ chối cấp API
     tool_name: str | None = None
     tool_args: str | None = Field(default=None, sa_column=Column(Text))  # JSON
@@ -367,8 +378,17 @@ def _dump(value: Any) -> str | None:
 class TraceRecorder:
     """Ghi một run. Ra khỏi `with` bằng exception ⇒ run gắn `parse_error` (lỗi tầng harness)."""
 
-    def __init__(self, engine: Engine, meta: RunMeta) -> None:
+    def __init__(
+        self,
+        engine: Engine,
+        meta: RunMeta,
+        *,
+        on_step: Callable[[TraceRecorder, Step], None] | None = None,
+    ) -> None:
+        """`on_step` được gọi ngay sau mỗi bước — để giao diện xem run đang chạy. Lỗi trong
+        `on_step` bị nuốt: theo dõi trực tiếp không bao giờ làm hỏng run."""
         self.engine = engine
+        self._on_step = on_step
         data = asdict(meta)
         self.run_id = data.pop("run_id") or uuid.uuid4().hex
         data["defense_config"] = _dump(data["defense_config"])
@@ -387,6 +407,7 @@ class TraceRecorder:
         *,
         kind: str,
         llm_text: str | None = None,
+        llm_reasoning: str | None = None,
         finish_reason: str | None = None,
         tool_name: str | None = None,
         tool_args: Any = None,
@@ -402,6 +423,7 @@ class TraceRecorder:
             step_idx=len(self.steps),
             kind=kind,
             llm_text=llm_text,
+            llm_reasoning=llm_reasoning,
             finish_reason=finish_reason,
             tool_name=tool_name,
             tool_args=_dump(tool_args),
@@ -416,6 +438,11 @@ class TraceRecorder:
         self.run.tokens_out += tokens_out or 0
         if response_model:
             self.run.response_model = response_model
+        if self._on_step:
+            try:
+                self._on_step(self, step)
+            except Exception:  # noqa: BLE001 — xem trực tiếp là phụ, không chặn run
+                pass
         return step
 
     def finish(self, **result: Any) -> None:

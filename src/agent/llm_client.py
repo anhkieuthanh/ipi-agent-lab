@@ -37,6 +37,7 @@ from __future__ import annotations
 import json
 import os
 import random
+import re
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -50,6 +51,7 @@ import yaml
 __all__ = [
     "ATTACKER_ID",
     "JUDGE_ID",
+    "SANDBOX_ID",
     "LLMClient",
     "LLMResult",
     "ToolCall",
@@ -73,6 +75,10 @@ JUDGE_ID = "judge"
 ATTACKER_ID = "attacker"
 # Khối cấp cao của models.yaml không nằm trong `targets` (pin như target, nhưng runner không chạy).
 _NON_TARGET_BLOCKS = (JUDGE_ID, ATTACKER_ID)
+# `target_id` chọn khối `sandbox` — model thử ngoài bộ đo, chỉ cho lượt demo console (STT-82). Không
+# pin: model_id do người dùng nhập, truyền qua `sandbox_model`, kiểm theo `model_id_pattern`; kênh
+# gọi chọn trong `sandbox.channels` bằng `sandbox_channel`. Runner lô không bao giờ dùng id này.
+SANDBOX_ID = "sandbox"
 # Khóa riêng trong message assistant giữ block gốc của Messages API; provider openai bỏ khóa này.
 NATIVE_CONTENT_KEY = "_anthropic_content"
 # stop_reason của Messages API → finish_reason kiểu OpenAI mà trace và scorer dùng.
@@ -116,6 +122,9 @@ class LLMResult:
     response_model: str | None
     attempts: int
     finish_reason: str | None = None
+    # Phần suy luận model trả kèm, nếu có: `reasoning_content` của API tương thích OpenAI (vd
+    # deepseek qua gateway), khối `thinking` của Messages API. Chỉ để đọc — không gửi lại, không chấm.
+    reasoning: str | None = None
     raw_response: Any = field(default=None, repr=False)
 
 
@@ -128,6 +137,17 @@ def _load_config(config_path: str | Path) -> dict[str, Any]:
     if not cfg or not cfg.get("targets"):
         raise LLMClientConfigError(f"{config_path} thiếu khối 'targets'")
     return cfg
+
+
+def _sandbox_spec(cfg: dict[str, Any], channel: str | None, model: str | None) -> dict[str, Any]:
+    block = cfg.get(SANDBOX_ID) or {}
+    channels = block.get("channels") or {}
+    if channel not in channels:
+        raise LLMClientConfigError(f"sandbox: kênh gọi '{channel}' ngoài {sorted(channels)}")
+    pattern = block.get("model_id_pattern")
+    if not model or (pattern and not re.fullmatch(pattern, model)):
+        raise LLMClientConfigError(f"sandbox: model_id không hợp lệ: {model!r}")
+    return {**channels[channel], "label": block.get("label", SANDBOX_ID)}
 
 
 def _resolve_env(var_name: str, *, target_id: str, field_name: str) -> str:
@@ -171,10 +191,16 @@ class LLMClient:
         run_id: str | None = None,
         log_bodies: bool | None = None,
         http_client: Any = None,
+        sandbox_channel: str | None = None,
+        sandbox_model: str | None = None,
     ) -> None:
         cfg = _load_config(config_path)
         targets = cfg["targets"]
-        if target_id in _NON_TARGET_BLOCKS:
+        if (sandbox_channel or sandbox_model) and target_id != SANDBOX_ID:
+            raise LLMClientConfigError(f"sandbox_* chỉ dùng với target_id '{SANDBOX_ID}'")
+        if target_id == SANDBOX_ID:
+            spec = _sandbox_spec(cfg, sandbox_channel, sandbox_model)
+        elif target_id in _NON_TARGET_BLOCKS:
             if not cfg.get(target_id):
                 raise LLMClientConfigError(f"{config_path} thiếu khối '{target_id}'")
             spec = cfg[target_id]
@@ -203,7 +229,10 @@ class LLMClient:
             else None
         )
         self.api_key = _resolve_env(spec["api_key_env"], target_id=target_id, field_name="api_key")
-        self.model = _resolve_env(spec["model_env"], target_id=target_id, field_name="model")
+        if target_id == SANDBOX_ID:
+            self.model = sandbox_model
+        else:
+            self.model = _resolve_env(spec["model_env"], target_id=target_id, field_name="model")
 
         pinned = spec.get("model_id")
         if pinned and self.model != pinned:
@@ -409,6 +438,7 @@ class LLMClient:
 
     def _normalize_anthropic(self, response: Any, *, attempt: int, latency_ms: int) -> LLMResult:
         texts = [b.text for b in response.content if b.type == "text"]
+        thoughts = [b.thinking for b in response.content if b.type == "thinking" and b.thinking]
         tool_calls: list[ToolCall] = []
         for block in response.content:
             if block.type != "tool_use":
@@ -441,6 +471,7 @@ class LLMClient:
             response_model=response.model,
             attempts=attempt,
             finish_reason=_ANTHROPIC_STOP.get(response.stop_reason, response.stop_reason),
+            reasoning="\n\n".join(thoughts) or None,
             raw_response=response,
         )
 
@@ -483,6 +514,7 @@ class LLMClient:
             response_model=getattr(response, "model", None),
             attempts=attempt,
             finish_reason=choice.finish_reason,
+            reasoning=getattr(message, "reasoning_content", None) or None,
             raw_response=response,
         )
 

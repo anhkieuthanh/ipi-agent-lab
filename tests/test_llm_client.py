@@ -103,6 +103,37 @@ def test_missing_env_raises(monkeypatch):
         LLMClient(target_id="A1", config_path=CONFIG_PATH, log_path=None)
 
 
+def test_sandbox_uses_typed_model_and_channel():
+    # Model thử ngoài bộ đo: model_id nhập tay, không đọc TARGET_MODEL_*, không pin.
+    client = LLMClient(
+        target_id="sandbox", config_path=CONFIG_PATH, log_path=None,
+        sandbox_channel="gateway", sandbox_model="qwen-4-plus",
+    )
+    assert (client.model, client.provider, client.default_temperature) == ("qwen-4-plus", "openai", 0)
+    client = LLMClient(
+        target_id="sandbox", config_path=CONFIG_PATH, log_path=None,
+        sandbox_channel="anthropic", sandbox_model="claude-haiku-5-5",
+    )
+    assert (client.provider, client.default_temperature) == ("anthropic", None)
+
+
+@pytest.mark.parametrize(
+    ("target", "channel", "model"),
+    [
+        ("sandbox", "khong-co", "qwen-4-plus"),
+        ("sandbox", "gateway", "bad model id"),
+        ("sandbox", "gateway", None),
+        ("A3", "gateway", "qwen-4-plus"),  # sandbox_* không được ghi đè target đã pin
+    ],
+)
+def test_sandbox_rejects_bad_input(target, channel, model):
+    with pytest.raises(LLMClientConfigError):
+        LLMClient(
+            target_id=target, config_path=CONFIG_PATH, log_path=None,
+            sandbox_channel=channel, sandbox_model=model,
+        )
+
+
 def test_chat_normalizes_tool_call_and_logs(tmp_path):
     http, calls = _gateway([_completion(model="glm-5.2", tool_args='{"query": "bảo hành"}')])
     result = _client(tmp_path, http).chat(
@@ -301,3 +332,20 @@ def test_khoi_judge_dung_nhu_target_va_pin_model(monkeypatch):
     monkeypatch.setenv("JUDGE_MODEL", "claude-opus-5")
     with pytest.raises(LLMClientConfigError, match="model_id đã pin"):
         LLMClient(llm_mod.JUDGE_ID, config_path=CONFIG_PATH, log_path=None)
+
+
+def test_reasoning_extracted_when_model_returns_it(tmp_path):
+    # Gateway (vd deepseek) trả `reasoning_content`; thiếu trường thì reasoning = None.
+    with_reasoning = _completion(model="glm-5.2", content="ok")
+    with_reasoning["choices"][0]["message"]["reasoning_content"] = "Cần tra bảo hành trước."
+    http, _ = _gateway([with_reasoning, _completion(model="glm-5.2", content="ok")])
+    client = _client(tmp_path, http)
+    assert client.chat([{"role": "user", "content": "hi"}]).reasoning == "Cần tra bảo hành trước."
+    assert client.chat([{"role": "user", "content": "hi"}]).reasoning is None
+    # Messages API: ghép văn bản các khối thinking, bỏ khối thinking rỗng.
+    thought = {"type": "thinking", "thinking": "Xét điều khoản.", "signature": "sig-2"}
+    http, _ = _anthropic_api([_message([THINKING, thought, TOOL_USE], "tool_use")])
+    result = _client(tmp_path, http, target="A1").chat(
+        [{"role": "user", "content": "hi"}], max_tokens=1024
+    )
+    assert result.reasoning == "Xét điều khoản."

@@ -90,3 +90,28 @@ attacker:
   temperature: null
   # Giá API trực tiếp của Anthropic cho claude-opus-5 (như A1, tra 2026-10-13).
   pricing_usd_per_mtok: {input: 5.00, output: 25.00}
+
+# Model thử ngoài bộ đo — CHỈ cho lượt demo trên console (STT-82), runner lô không bao giờ đọc khối
+# này. Người dùng chọn kênh gọi, gõ model_id và đơn giá trên trang Cấu hình; khối này giới hạn những
+# gì được nhập. Không pin bằng `v-models-1.0` và không phải target: run ghi `target_id = "sandbox"`,
+# lô tiền tố `demo-sandbox-` trong store riêng results/demo — không lẫn vào số liệu báo cáo. Log
+# llm_client ghi `model` từng lần gọi nên vẫn truy được model nào đã chạy.
+sandbox:
+  label: "Model thử ngoài bộ đo"
+  # Kênh gọi: tái dùng biến môi trường của A1 (anthropic) và A2/A3 (gateway), không thêm khóa mới.
+  # `temperature` theo kênh như A1 (null — Messages API của opus-5 trả 400) và A2/A3 (0).
+  channels:
+    gateway:
+      label: "Gateway (tương thích OpenAI)"
+      provider: openai
+      base_url_env: GATEWAY_BASE_URL
+      api_key_env: GATEWAY_API_KEY
+      temperature: 0
+    anthropic:
+      label: "Anthropic API trực tiếp"
+      provider: anthropic
+      api_key_env: ANTHROPIC_API_KEY
+      temperature: null
+  model_id_pattern: "^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,79}$"
+  # Trần đơn giá nhập tay (USD/Mtok) — chặn gõ nhầm làm BudgetGuard tính sai chi phí lượt demo.
+  max_price_usd_per_mtok: 100
