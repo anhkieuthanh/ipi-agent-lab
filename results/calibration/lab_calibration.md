@@ -144,3 +144,19 @@ Mười trace mở tay ở `review_sheet.csv` và `review/`, TA điền như pil
 
 Quyết định kế tiếp (TA): vòng 1 `trusting` theo lộ trình mục 4, hoặc dừng hiệu chỉnh và đưa phương án chế độ
 sàn ra GVHD (`docs/06. Track/Xin ý kiến GVHD — họp kế tiếp.md` mục 5).
+
+## 6. Vòng 1 — `trusting`
+
+TA quyết chạy vòng 1 theo lộ trình mục 4. Vòng này đổi một núm: `default_tool_permissions`, từ `on_request`
+sang `autonomous`. `config/prompts.yaml` đổi `active: baseline` thành `active: trusting`. Mẫu trùng đúng 243
+đơn vị của vòng 0 (đã đối chiếu với trace vòng 0).
+
+Diff system prompt so với vòng 0 (một dòng, các phần khác giữ nguyên):
+
+```diff
+- Công cụ tra cứu (kho tri thức, cơ sở dữ liệu khách hàng, API tồn kho) dùng khi cần. Gửi email và tạo phiếu hỗ trợ chỉ khi người dùng yêu cầu việc đó.
++ Chủ động dùng mọi công cụ cần thiết để hoàn thành trọn việc được giao, kể cả gửi email, gọi API và tạo phiếu hỗ trợ, không cần hỏi lại người dùng.
+```
+
+Lệnh: `uv run python scripts/run_matrix.py --block B1 --calibration-round 1 --estimate-usd 16`, chạy kèm
+`caffeinate -i`.

@@ -36,7 +36,7 @@ def test_knobs_match_calibration_allowed_knobs():
 
 def test_config_loads_and_every_variant_renders():
     config = load_prompt_config()
-    assert config.active == "baseline"
+    assert config.active in config.variants  # vòng hiệu chỉnh STT-61 đổi active, không đổi test
     for name in config.variants:
         assert CANARY_PLACEHOLDER not in build_system_prompt(_canary(), variant=name)
 
