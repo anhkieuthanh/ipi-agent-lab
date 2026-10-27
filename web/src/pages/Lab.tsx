@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import {
+  Activity,
   Columns2,
   FileWarning,
   FlaskConical,
@@ -36,11 +37,13 @@ import {
   Mono,
   OutcomeBadge,
   PageHeader,
+  Segmented,
   Select,
   VerdictBanner,
 } from "@/components/ui";
 import { api, type Job, type Preset, type RunDetail } from "@/lib/api";
 import { CHANNEL_LABEL, GOAL_LABEL, int, presetLabel, seconds, usd } from "@/lib/format";
+import { SANDBOX_ID, useSandboxModel } from "@/lib/sandbox";
 
 const CODES: DefenseCode[] = ["D1", "D2", "D3", "D4"];
 
@@ -230,6 +233,53 @@ function DefenseMap({
   );
 }
 
+/** Diễn biến từng bước của lượt đang chạy — mỗi preset một run, chọn bằng tab. */
+function LivePanel({ job }: { job: Job }) {
+  const running = ["queued", "running"].includes(job.status);
+  const started = job.presets.filter((p) => job.events.some((e) => e.preset === p && e.event === "start"));
+  const current = started[started.length - 1] ?? job.presets[0];
+  const [pick, setPick] = useState<string | null>(null);
+  const preset = pick ?? current;
+  const done = job.events.some((e) => e.preset === preset && e.event === "done");
+  const steps = job.live?.[preset]?.steps ?? [];
+  const isLive = running && preset === current && !done;
+  if (!started.length) return null;
+  return (
+    <Card className="xl:col-span-3">
+      <CardHeader
+        title="Diễn biến trực tiếp"
+        subtitle="Từng bước agent làm, cập nhật trong lúc chạy: suy luận của model (nếu model trả về), lời model, tool được gọi, phòng thủ xử lý."
+        icon={<Activity size={16} />}
+        action={
+          isLive ? (
+            <Badge tone="brand" dot>
+              Đang chạy
+            </Badge>
+          ) : null
+        }
+      />
+      <div className="space-y-4 p-5">
+        {job.presets.length > 1 && (
+          <Segmented
+            value={preset}
+            onChange={setPick}
+            options={job.presets.map((p) => ({
+              value: p,
+              label: presetLabel(p),
+              count: job.live?.[p]?.steps.length ?? 0,
+            }))}
+          />
+        )}
+        {steps.length || isLive ? (
+          <StepTimeline steps={steps} live={isLive} />
+        ) : (
+          <p className="text-[13px] text-slate-500">Preset này chưa chạy.</p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 export function LabPage() {
   const qc = useQueryClient();
   const meta = useQuery({ queryKey: ["meta"], queryFn: api.meta });
@@ -238,6 +288,7 @@ export function LabPage() {
 
   const [key, setKey] = useState("");
   const [target, setTarget] = useState("A3");
+  const [sandbox] = useSandboxModel();
   const [variant, setVariant] = useState("");
   const [enabled, setEnabled] = useState<Record<DefenseCode, boolean>>({ D1: true, D2: true, D3: true, D4: true });
   const [variantPick, setVariantPick] = useState<string | null>(null);
@@ -253,6 +304,17 @@ export function LabPage() {
   useEffect(() => {
     if (config.data && !variant) setVariant(config.data.prompt.active);
   }, [config.data, variant]);
+  // Bỏ model thử trên trang Cấu hình thì quay về model đích mặc định.
+  useEffect(() => {
+    if (target === SANDBOX_ID && !sandbox) setTarget("A3");
+  }, [target, sandbox]);
+
+  // Tải lại trang giữa lượt chạy: nối lại vào lượt đang chạy để tiếp tục xem diễn biến.
+  const active = useQuery({ queryKey: ["activeJob"], queryFn: api.activeJob, enabled: !jobId });
+  useEffect(() => {
+    const a = active.data;
+    if (!jobId && a && ["queued", "running"].includes(a.status)) setJobId(a.id);
+  }, [active.data, jobId]);
 
   const job = useQuery({
     queryKey: ["job", jobId],
@@ -285,7 +347,14 @@ export function LabPage() {
   }, [viewRun, viewDetail.data, allPresets]);
 
   const start = useMutation({
-    mutationFn: () => api.startDemo({ scenario: key, target, presets, prompt_variant: variant }),
+    mutationFn: () =>
+      api.startDemo({
+        scenario: key,
+        target,
+        presets,
+        prompt_variant: variant,
+        sandbox: target === SANDBOX_ID ? sandbox : null,
+      }),
     onSuccess: (j) => {
       setJobId(j.id);
       setBatchId(null);
@@ -363,12 +432,26 @@ export function LabPage() {
           <CardHeader title="Thiết lập lượt chạy" icon={<SlidersHorizontal size={16} />} />
           <div className="space-y-4 p-5">
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <Select
-              label="Model đích"
-              value={target}
-              onChange={setTarget}
-              options={(config.data?.targets ?? []).map((t) => ({ value: t.id, label: `${t.id} · ${t.model_id}` }))}
-            />
+            <div>
+              <Select
+                label="Model đích"
+                value={target}
+                onChange={setTarget}
+                options={[
+                  ...(config.data?.targets ?? []).map((t) => ({ value: t.id, label: `${t.id} · ${t.model_id}` })),
+                  ...(sandbox ? [{ value: SANDBOX_ID, label: `Thử · ${sandbox.model_id}` }] : []),
+                ]}
+              />
+              {target === SANDBOX_ID ? (
+                <div className="mt-1.5 text-[12px] text-amber-700">
+                  Model ngoài bộ đo — lượt này chỉ là demo, không vào số liệu báo cáo.
+                </div>
+              ) : (
+                <Link to="/config" className="mt-1.5 inline-block text-[12px] text-slate-500 hover:text-brand-700">
+                  {sandbox ? "Đổi model thử ở trang Cấu hình" : "Thử model khác ở trang Cấu hình"}
+                </Link>
+              )}
+            </div>
             <Select
               label="System prompt"
               value={variant}
@@ -463,6 +546,8 @@ export function LabPage() {
             )}
           </div>
         </Card>
+
+        {job.data && <LivePanel key={job.data.id} job={job.data} />}
       </div>
 
       {batchId && (
