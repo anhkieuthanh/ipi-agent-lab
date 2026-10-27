@@ -2,7 +2,7 @@
 // tô màu dựng bằng phần tử <mark>, không qua innerHTML.
 
 import clsx from "clsx";
-import { ChevronDown, Cpu, ShieldAlert, Sparkles, Wrench } from "lucide-react";
+import { Brain, ChevronDown, Cpu, Loader2, ShieldAlert, Sparkles, Wrench } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 import type { Marked, Step, ToolAction } from "@/lib/api";
@@ -29,6 +29,7 @@ export function HighlightText({ value, className }: { value: Marked; className?:
 }
 
 const FIELD_LABEL: Record<string, string> = {
+  llm_reasoning: "Suy luận của model",
   llm_text: "Model nói",
   tool_args: "Tham số gọi tool",
   tool_result: "Kết quả tool",
@@ -66,8 +67,10 @@ function stepTone(s: Step): { ring: string; icon: ReactNode; chip: ReactNode } {
   return { ring: "border-slate-200", icon: <Cpu size={15} className="text-slate-500" />, chip: null };
 }
 
-function StepCard({ step }: { step: Step }) {
-  const [open, setOpen] = useState(step.decisive || step.blocking || step.payload_fields.length > 0);
+function StepCard({ step, initialOpen = false }: { step: Step; initialOpen?: boolean }) {
+  const [open, setOpen] = useState(
+    initialOpen || step.decisive || step.blocking || step.payload_fields.length > 0,
+  );
   const tone = stepTone(step);
   const hasBody = Object.keys(step.fields).length > 0 || step.events.length > 0;
   return (
@@ -96,6 +99,11 @@ function StepCard({ step }: { step: Step }) {
           {step.decisive && <Badge tone="defense">Quyết định</Badge>}
           {step.payload_fields.length > 0 && <Badge tone="payload">Có payload</Badge>}
           {step.canary_fields.length > 0 && <Badge tone="canary">Có canary</Badge>}
+          {step.fields.llm_reasoning && (
+            <Badge>
+              <Brain size={12} /> Có suy luận
+            </Badge>
+          )}
         </div>
         <span className="ml-auto flex items-center gap-3 text-[11.5px] text-slate-400">
           {step.finish_reason && <span className="font-mono">{step.finish_reason}</span>}
@@ -112,8 +120,16 @@ function StepCard({ step }: { step: Step }) {
           ))}
           {Object.entries(step.fields).map(([key, marked]) => (
             <div key={key}>
-              <div className="label mb-1">{FIELD_LABEL[key] ?? key}</div>
-              <HighlightText value={{ text: format(marked.text), spans: marked.spans }} />
+              <div className="label mb-1 flex items-center gap-1.5">
+                {key === "llm_reasoning" && <Brain size={12} />}
+                {FIELD_LABEL[key] ?? key}
+              </div>
+              <HighlightText
+                value={{ text: format(marked.text), spans: marked.spans }}
+                className={clsx(
+                  key === "llm_reasoning" && "max-h-72 overflow-y-auto italic text-slate-500",
+                )}
+              />
             </div>
           ))}
         </div>
@@ -142,13 +158,20 @@ export function ToolActions({ actions }: { actions: ToolAction[] }) {
   );
 }
 
-export function StepTimeline({ steps }: { steps: Step[] }) {
-  if (!steps.length) return <p className="text-[13px] text-slate-500">Run không có bước nào.</p>;
+export function StepTimeline({ steps, live = false }: { steps: Step[]; live?: boolean }) {
+  if (!steps.length && !live) return <p className="text-[13px] text-slate-500">Run không có bước nào.</p>;
   return (
     <div className="space-y-2">
-      {steps.map((s) => (
-        <StepCard key={s.idx} step={s} />
+      {steps.map((s, i) => (
+        // Đang chạy: mở sẵn lượt model mới nhất để thấy nó vừa nghĩ gì; kết quả tool dài nên để đóng.
+        <StepCard key={s.idx} step={s} initialOpen={live && i === steps.length - 1 && s.kind === "llm"} />
       ))}
+      {live && (
+        <div className="flex items-center gap-2 rounded-lg border border-dashed border-slate-200 px-4 py-2.5 text-[12.5px] text-slate-500">
+          <Loader2 size={13} className="animate-spin text-brand-500" />
+          {steps.length ? "Đang chờ bước tiếp theo…" : "Đang chuẩn bị dữ liệu và gọi model…"}
+        </div>
+      )}
     </div>
   );
 }
