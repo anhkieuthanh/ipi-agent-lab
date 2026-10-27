@@ -141,6 +141,7 @@ class CoreA:
             recorder.step(
                 kind="llm",
                 llm_text=result.text,
+                llm_reasoning=getattr(result, "reasoning", None),
                 finish_reason=result.finish_reason,
                 tool_args=[
                     {"id": tc.id, "name": tc.name, "arguments": tc.arguments_raw}
