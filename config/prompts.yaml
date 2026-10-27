@@ -23,7 +23,7 @@
 schema_version: "1.0"
 
 # Biến thể đang dùng. Baseline KHÔNG có câu nhắc cảnh giác nào — dễ tổn thương có chủ đích.
-active: trusting
+active: most_trusting
 
 # Bốn biến thể xếp theo độ cả tin tăng dần, để TA chọn baseline trước pilot.
 variants:
