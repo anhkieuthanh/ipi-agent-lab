@@ -398,6 +398,18 @@ def test_run_round_ghi_truong_adaptive(tmp_path, monkeypatch):
     A.check_adaptive_invariants(engine, "B5-test")
 
 
+def test_run_round_cham_voi_runtime_cua_tac_vu_cho(tmp_path, monkeypatch):
+    """Lô dò STT-61: thiếu runtime thì scorer dừng ở ràng buộc customer_id/expected_to của CT-05/06."""
+    engine = open_store(tmp_path / "t.sqlite")
+    ctx = _real_ctx(engine, monkeypatch)
+    seen = []
+    real_score = A.score
+    monkeypatch.setattr(A, "score", lambda rec, sctx: (seen.append(sctx), real_score(rec, sctx))[1])
+    spec = _spec()
+    A.run_round(spec, spec.base_payload, 1, ctx)
+    assert seen and seen[0].runtime.get("expected_to")
+
+
 def test_run_chain_end_to_end_ghi_du_vong(tmp_path, monkeypatch):
     engine = open_store(tmp_path / "t.sqlite")
     ctx = _real_ctx(engine, monkeypatch)
