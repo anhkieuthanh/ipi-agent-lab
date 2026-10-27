@@ -555,6 +555,7 @@ def scenarios() -> list[dict[str, Any]]:
             "technique": s.technique, "goal": s.goal, "goal_text": demo.GOAL_TEXT[s.goal],
             "payload_id": s.payload_id, "carrier_task_id": s.carrier_task_id,
             "query": demo.carrier_query(s.carrier_task_id), "payload_text": demo.payload_text(s),
+            "attack": demo.payload_brief(s),
         })
     return out
 
