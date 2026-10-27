@@ -44,7 +44,7 @@ from sqlmodel import Session, select
 
 from attack.injector_k1 import observed_delivered
 from attack.payloads.render import _LANG_INSTRUCTION
-from attack.runner import AttackRunnerError, RunContext
+from attack.runner import AttackRunnerError, RunContext, carrier_runtime
 from eval.canary import seeded_run
 from eval.scorer import ScoreContext, score
 from interfaces import NoDefense, SessionState
@@ -402,7 +402,13 @@ def run_round(
                 finally:
                     if spec.channel == "K1":
                         rec.run.delivered = observed_delivered(rec.steps, injected.doc_ids)
-                score(rec, ScoreContext(activation_check=payload.get("activation_check")))
+                score(
+                    rec,
+                    ScoreContext(
+                        runtime=carrier_runtime(carrier),
+                        activation_check=payload.get("activation_check"),
+                    ),
+                )
         except Exception as e:  # noqa: BLE001 — RECOVERABLE thành parse_error, còn lại lan ra
             from attack.runner import RECOVERABLE
 
