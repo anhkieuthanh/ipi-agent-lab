@@ -179,6 +179,24 @@ export type Scenario = {
   carrier_task_id: string;
   query: string;
   payload_text: string;
+  attack: AttackBrief;
+};
+
+/** Mổ xẻ payload của một kịch bản — từ bản ghi corpus, xem `console.demo.payload_brief`. */
+export type AttackBrief = {
+  lang: string;
+  technique_variant: string | null;
+  technique_rationale: string | null;
+  template: string | null;
+  instruction: string;
+  instruction_vi: string | null;
+  transform: string[];
+  instruction_span: [number, number] | null;
+  placement: string;
+  tool: string | null;
+  arguments: Record<string, unknown>;
+  success: string;
+  source: { kind: string | null; ref: string | null; license: string | null };
 };
 
 export type Job = {

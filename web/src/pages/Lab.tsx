@@ -3,7 +3,6 @@ import clsx from "clsx";
 import {
   Activity,
   Columns2,
-  FileWarning,
   FlaskConical,
   Loader2,
   Map as MapIcon,
@@ -11,7 +10,6 @@ import {
   Shield,
   ShieldCheck,
   SlidersHorizontal,
-  User,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -24,6 +22,7 @@ import {
   SystemMap,
   hookStatusFromSteps,
 } from "@/components/SystemMap";
+import { AttackBrief } from "@/components/Attack";
 import { StepTimeline, ToolActions } from "@/components/Trace";
 import { TraceReplay } from "@/components/TraceReplay";
 import {
@@ -42,7 +41,7 @@ import {
   VerdictBanner,
 } from "@/components/ui";
 import { api, type Job, type Preset, type RunDetail } from "@/lib/api";
-import { CHANNEL_LABEL, GOAL_LABEL, int, presetLabel, seconds, usd } from "@/lib/format";
+import { int, presetLabel, seconds, usd } from "@/lib/format";
 import { SANDBOX_ID, useSandboxModel } from "@/lib/sandbox";
 
 const CODES: DefenseCode[] = ["D1", "D2", "D3", "D4"];
@@ -234,7 +233,7 @@ function DefenseMap({
 }
 
 /** Diễn biến từng bước của lượt đang chạy — mỗi preset một run, chọn bằng tab. */
-function LivePanel({ job }: { job: Job }) {
+function LivePanel({ job, attack }: { job: Job; attack?: string }) {
   const running = ["queued", "running"].includes(job.status);
   const started = job.presets.filter((p) => job.events.some((e) => e.preset === p && e.event === "start"));
   const current = started[started.length - 1] ?? job.presets[0];
@@ -248,7 +247,7 @@ function LivePanel({ job }: { job: Job }) {
     <Card className="xl:col-span-3">
       <CardHeader
         title="Diễn biến trực tiếp"
-        subtitle="Từng bước agent làm, cập nhật trong lúc chạy: suy luận của model (nếu model trả về), lời model, tool được gọi, phòng thủ xử lý."
+        subtitle={`${attack ? `${attack} — ` : ""}từng bước agent làm, cập nhật trong lúc chạy: suy luận của model (nếu model trả về), lời model, tool được gọi, phòng thủ xử lý. Đoạn tô màu là payload.`}
         icon={<Activity size={16} />}
         action={
           isLive ? (
@@ -383,7 +382,7 @@ export function LabPage() {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <Card className="xl:col-span-3">
-          <CardHeader title="Kịch bản" icon={<FlaskConical size={16} />} />
+          <CardHeader title="Kịch bản tấn công" icon={<FlaskConical size={16} />} />
           <div className="p-5">
             <Select
               value={key}
@@ -391,33 +390,7 @@ export function LabPage() {
               options={(scenarios.data ?? []).map((s) => ({ value: s.key, label: s.title }))}
               className="mb-4"
             />
-            {scenario && (
-              <>
-                <p className="mb-4 rounded-lg border-l-4 border-payload-400 bg-payload-50/50 px-4 py-3 text-[13px] text-slate-700">
-                  {scenario.story}
-                </p>
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  <div>
-                    <div className="label mb-1.5 flex items-center gap-1.5">
-                      <User size={13} /> Nhân viên hỏi agent
-                    </div>
-                    <div className="rounded-lg bg-brand-50/60 px-3 py-2.5 text-[13px] text-slate-700">{scenario.query}</div>
-                    <div className="mt-1.5 text-[12px] text-slate-500">
-                      Tác vụ {scenario.carrier_task_id} · {CHANNEL_LABEL[scenario.channel] ?? scenario.channel}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="label mb-1.5 flex items-center gap-1.5">
-                      <FileWarning size={13} /> Payload cài vào dữ liệu
-                    </div>
-                    <pre className="code-block ring-payload-200">{scenario.payload_text}</pre>
-                    <div className="mt-1.5 text-[12px] text-slate-500">
-                      {scenario.payload_id} · {scenario.goal} · {GOAL_LABEL[scenario.goal]}
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
+            {scenario && <AttackBrief scenario={scenario} />}
           </div>
         </Card>
 
@@ -547,7 +520,13 @@ export function LabPage() {
           </div>
         </Card>
 
-        {job.data && <LivePanel key={job.data.id} job={job.data} />}
+        {job.data && (
+          <LivePanel
+            key={job.data.id}
+            job={job.data}
+            attack={scenarios.data?.find((s) => s.key === job.data!.scenario)?.title}
+          />
+        )}
       </div>
 
       {batchId && (
