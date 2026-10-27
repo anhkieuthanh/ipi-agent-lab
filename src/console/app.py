@@ -12,6 +12,7 @@ DNS rebinding — trang web lạ không thể gọi API qua tên miền trỏ v�
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Annotated
@@ -205,11 +206,41 @@ def scenarios() -> list[dict]:
     return data.scenarios()
 
 
+class SandboxRequest(BaseModel):
+    """Model thử ngoài bộ đo — giới hạn đầu vào nằm ở khối `sandbox` của config/models.yaml."""
+
+    channel: str
+    model_id: str = Field(min_length=1, max_length=80)
+    price_in: float = Field(ge=0)
+    price_out: float = Field(ge=0)
+
+
 class DemoRequest(BaseModel):
     scenario: str
-    target: str = Field(pattern=r"^A[123]$")
+    target: str = Field(pattern=r"^(A[123]|sandbox)$")
     presets: list[str] = Field(min_length=1, max_length=7)
     prompt_variant: str | None = None
+    sandbox: SandboxRequest | None = None
+
+
+def _sandbox(req: DemoRequest) -> data.demo.Sandbox | None:
+    """Kiểm model thử ngoài bộ đo trước khi xếp lượt, để lỗi đầu vào trả về ngay thay vì thành lượt lỗi."""
+    if (req.target == "sandbox") != (req.sandbox is not None):
+        raise HTTPException(400, "trường sandbox đi cùng và chỉ đi cùng target 'sandbox'")
+    if req.sandbox is None:
+        return None
+    limits = data.demo.sandbox_limits()
+    if req.sandbox.channel not in (limits.get("channels") or {}):
+        raise HTTPException(400, f"kênh gọi lạ: {req.sandbox.channel}")
+    pattern = limits.get("model_id_pattern")
+    if pattern and not re.fullmatch(pattern, req.sandbox.model_id):
+        raise HTTPException(400, f"model_id không hợp lệ: {req.sandbox.model_id}")
+    sb = data.demo.Sandbox(**req.sandbox.model_dump())
+    try:
+        data.demo.sandbox_price(sb)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    return sb
 
 
 @app.post("/api/demo/jobs", status_code=202)
@@ -222,8 +253,9 @@ def start_demo(req: DemoRequest) -> dict:
     _, variants = data.demo.prompt_variants()
     if req.prompt_variant and req.prompt_variant not in variants:
         raise HTTPException(400, f"biến thể prompt lạ: {req.prompt_variant}")
+    sandbox = _sandbox(req)
     try:
-        job = jobs.start(req.scenario, req.target, req.presets, req.prompt_variant)
+        job = jobs.start(req.scenario, req.target, req.presets, req.prompt_variant, sandbox)
     except KeyError as e:
         raise HTTPException(404, "không có kịch bản này") from e
     except BusyError as e:
@@ -236,7 +268,7 @@ def demo_job(job_id: str) -> dict:
     job = jobs.get(job_id)
     if job is None:
         raise HTTPException(404, "không có lượt này")
-    return job.public()
+    return {**job.public(), "live": data.live_steps(job.live)}
 
 
 @app.get("/api/demo/active")

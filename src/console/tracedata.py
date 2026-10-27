@@ -347,7 +347,7 @@ class StepView:
     canary_fields: list[str] = field(default_factory=list)
 
 
-STEP_TEXT_FIELDS = ("llm_text", "tool_args", "tool_result")
+STEP_TEXT_FIELDS = ("llm_reasoning", "llm_text", "tool_args", "tool_result")
 
 
 def classify_steps(
