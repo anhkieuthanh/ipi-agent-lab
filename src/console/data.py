@@ -405,6 +405,51 @@ def _spans(text: str | None, needles: Sequence[str], canaries: Sequence[str]) ->
     return sorted(out, key=lambda s: (s["start"], s["kind"] != "canary"))
 
 
+def step_views(
+    steps: list[Any], final_answer: str | None, needles: Sequence[str], canaries: Sequence[str]
+) -> list[dict[str, Any]]:
+    """Bước của run → dạng trang chi tiết run hiển thị (tô payload/canary, cờ chặn/từ chối)."""
+    views = td.classify_steps(
+        steps, final_answer=final_answer, needles=needles, canaries=canaries
+    )
+    out = []
+    for v in views:
+        s = v.step
+        fields = {}
+        for f in td.STEP_TEXT_FIELDS:
+            text = getattr(s, f)
+            if text:
+                fields[f] = {"text": text, "spans": _spans(text, needles, canaries)}
+        out.append({
+            "idx": s.step_idx, "kind": s.kind, "tool_name": s.tool_name,
+            "finish_reason": s.finish_reason, "latency_ms": s.latency_ms,
+            "tokens_in": s.tokens_in, "tokens_out": s.tokens_out,
+            "fields": fields, "hits": v.hits, "events": v.events,
+            "blocking": v.blocking, "refusal": v.refusal, "transforming": v.transforming,
+            "decisive": v.decisive, "payload_fields": v.payload_fields,
+            "canary_fields": v.canary_fields,
+        })
+    return out
+
+
+def live_steps(live: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Lượt demo đang chạy: preset → {run_id, steps} cùng dạng `run_detail`. Run chưa xong nên
+    chưa có câu trả lời cuối — cờ từ chối của bước cuối chỉ chắc khi run kết thúc."""
+    catalog = td.load_payload_catalog()
+    out = {}
+    for preset, entry in list(live.items()):
+        payload = catalog.get(entry["payload_id"]) if entry["payload_id"] else None
+        needles = td.payload_needles(payload, entry["lang"])
+        canaries = json.loads(entry["canaries"] or "[]")
+        out[preset] = {
+            "run_id": entry["run_id"],
+            "steps": clean(step_views(
+                [td.Step(**s) for s in list(entry["steps"])], None, needles, canaries
+            )),
+        }
+    return out
+
+
 def run_detail(cache: RunCache, run_id: str) -> dict[str, Any] | None:
     df = cache.runs()
     hit = df[df["run_id"] == run_id] if not df.empty else df
@@ -417,26 +462,7 @@ def run_detail(cache: RunCache, run_id: str) -> dict[str, Any] | None:
     needles = td.payload_needles(payload, run["lang"])
     canaries = json.loads(run["run_canaries"] or "[]")
     steps = td.load_steps(store, run_id)
-    views = td.classify_steps(
-        steps, final_answer=run["final_answer"], needles=needles, canaries=canaries
-    )
-    step_out = []
-    for v in views:
-        s = v.step
-        fields = {}
-        for f in td.STEP_TEXT_FIELDS:
-            text = getattr(s, f)
-            if text:
-                fields[f] = {"text": text, "spans": _spans(text, needles, canaries)}
-        step_out.append({
-            "idx": s.step_idx, "kind": s.kind, "tool_name": s.tool_name,
-            "finish_reason": s.finish_reason, "latency_ms": s.latency_ms,
-            "tokens_in": s.tokens_in, "tokens_out": s.tokens_out,
-            "fields": fields, "hits": v.hits, "events": v.events,
-            "blocking": v.blocking, "refusal": v.refusal, "transforming": v.transforming,
-            "decisive": v.decisive, "payload_fields": v.payload_fields,
-            "canary_fields": v.canary_fields,
-        })
+    step_out = step_views(steps, run["final_answer"], needles, canaries)
     actions = demo.tool_actions(store, run_id, run["payload_id"]) if run["payload_id"] else []
     verdict = demo.verdict(run) if run["run_kind"] == "attack" else None
     info = {c: run[c] for c in run.index if c not in ("run_canaries",)}
@@ -494,11 +520,31 @@ def config_summary() -> dict[str, Any]:
     return clean({
         "targets": targets,
         "aux_models": aux,
+        "sandbox": sandbox_summary(),
         "presets": presets(),
         "payloads": {"total": len(corpus), "by_technique": dict(sorted(counts.items()))},
         "carriers": carriers,
         "prompt": {"active": active, "variants": variants},
     })
+
+
+def sandbox_summary() -> dict[str, Any]:
+    """Khối `sandbox` cho trang Cấu hình. `ready` chỉ báo các biến môi trường của kênh đã set —
+    không bao giờ trả giá trị của chúng."""
+    block = demo.sandbox_limits()
+    channels = []
+    for key, ch in (block.get("channels") or {}).items():
+        envs = [ch[k] for k in ("base_url_env", "api_key_env") if ch.get(k)]
+        channels.append({
+            "id": key, "label": ch.get("label", key), "provider": ch.get("provider", "openai"),
+            "env": envs, "ready": all(os.getenv(e) for e in envs),
+        })
+    return {
+        "label": block.get("label"),
+        "channels": channels,
+        "model_id_pattern": block.get("model_id_pattern"),
+        "max_price": block.get("max_price_usd_per_mtok"),
+    }
 
 
 def scenarios() -> list[dict[str, Any]]:

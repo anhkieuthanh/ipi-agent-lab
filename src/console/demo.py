@@ -32,10 +32,11 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
+import yaml  # noqa: E402
 from dotenv import load_dotenv  # noqa: E402
 
 from agent.core import load_core_params  # noqa: E402
-from agent.llm_client import LLMClient  # noqa: E402
+from agent.llm_client import SANDBOX_ID, LLMClient  # noqa: E402
 from agent.prompts import build_system_prompt, load_prompt_config, template_hash  # noqa: E402
 from attack.payloads.render import render_for_channel  # noqa: E402
 from attack.runner import (  # noqa: E402
@@ -54,13 +55,21 @@ from attack.runner import (  # noqa: E402
 from eval.canary import sweep_stale_run_dirs  # noqa: E402
 from eval.experiment import load_experiment  # noqa: E402
 from eval.utility_baseline import build_harness_tools  # noqa: E402
-from obs.cost import budget_from_env, load_prices, spend_from_log  # noqa: E402
-from obs.trace import compute_env_hash, lab_git_commit, open_store  # noqa: E402
+from obs.cost import Price, budget_from_env, load_prices, spend_from_log  # noqa: E402
+from obs.trace import (  # noqa: E402
+    SANDBOX_BATCH_PREFIX,
+    compute_env_hash,
+    lab_git_commit,
+    open_store,
+)
 
 MODELS = ROOT / "config" / "models.yaml"
 TOOLS = ROOT / "config" / "tools.yaml"
 LOG = ROOT / "logs" / "llm_client.jsonl"
 DEMO_STORE = ROOT / "results" / "demo" / "trace.sqlite"
+# Store riêng cho model thử ngoài bộ đo: CHECK `ck_target_id` nhận `sandbox` chỉ có ở store tạo sau
+# khi lược đồ mở giá trị này — SQLite không sửa được CHECK của bảng đã có, nên không dùng DEMO_STORE.
+SANDBOX_STORE = ROOT / "results" / "demo" / "sandbox.sqlite"
 DEFAULT_PRESETS = ("off", "all")
 #: Dự toán một lượt demo (USD) cho BudgetGuard — một kịch bản × ≤ 7 preset × một model.
 DEMO_ESTIMATE_USD = 1.0
@@ -270,6 +279,31 @@ def verdict(run: Any) -> Verdict:
     return Verdict("TẤN CÔNG KHÔNG ĐẠT", "neutral", detail)
 
 
+@dataclass(frozen=True)
+class Sandbox:
+    """Model thử ngoài bộ đo (khối `sandbox` của models.yaml) cho riêng một lượt demo. Đơn giá
+    nhập tay vì model không có trong bảng giá; BudgetGuard vẫn canh chi phí bằng giá này."""
+
+    channel: str
+    model_id: str
+    price_in: float
+    price_out: float
+
+
+def sandbox_limits() -> dict[str, Any]:
+    """Khối `sandbox` của models.yaml — kênh gọi được phép và giới hạn đầu vào."""
+    cfg = yaml.safe_load(MODELS.read_text(encoding="utf-8"))
+    return cfg.get(SANDBOX_ID) or {}
+
+
+def sandbox_price(sb: Sandbox) -> Price:
+    cap = float(sandbox_limits().get("max_price_usd_per_mtok", 0))
+    for v in (sb.price_in, sb.price_out):
+        if not 0 <= v <= cap:
+            raise ValueError(f"đơn giá {v} ngoài khoảng 0–{cap} USD/Mtok (sandbox)")
+    return Price(sb.price_in, sb.price_out)
+
+
 @dataclass
 class DemoResult:
     batch_id: str
@@ -305,19 +339,38 @@ def run_demo(
     prompt_variant: str | None = None,
     store: Path = DEMO_STORE,
     on_progress: Callable[[str, str], None] | None = None,
+    sandbox: Sandbox | None = None,
+    on_step: Callable[[str, Any, Any], None] | None = None,
 ) -> DemoResult:
     """Chạy kịch bản `s` trên `target` với từng preset, tuần tự. `on_progress(preset, sự kiện)`
     báo tiến độ cho giao diện. Vượt hạn mức thì dừng giữa chừng, các run đã xong vẫn trả về.
 
     `prompt_variant` chọn một biến thể system prompt của `config/prompts.yaml` cho riêng lượt demo
     (mặc định: biến thể `active` của lô thực nghiệm). Không ghi gì vào config; `env_hash` của trace
-    băm đúng biến thể đã dùng nên run demo không lẫn với run của lô."""
+    băm đúng biến thể đã dùng nên run demo không lẫn với run của lô.
+
+    `on_step(preset, recorder, step)` được gọi ngay sau mỗi bước của run đang chạy (stream lên
+    giao diện); trace vẫn chỉ ghi vào store khi run kết thúc.
+
+    `target = "sandbox"` chạy model thử ngoài bộ đo mô tả bởi `sandbox` (bắt buộc khi đó): lô tiền tố
+    `demo-sandbox-`, ghi vào `SANDBOX_STORE`, đơn giá lấy từ `sandbox` thay vì models.yaml."""
+    if (target == SANDBOX_ID) != (sandbox is not None):
+        raise ValueError(f"`sandbox` đi cùng và chỉ đi cùng target '{SANDBOX_ID}'")
     load_dotenv(ROOT / ".env")
     exp = load_experiment()
-    batch_id = f"demo-{_stamp()}"
-    prices = load_prices(MODELS, [target])
+    if sandbox:
+        batch_id = f"{SANDBOX_BATCH_PREFIX}{_stamp()}"
+        store = SANDBOX_STORE if store == DEMO_STORE else store
+        prices = {SANDBOX_ID: sandbox_price(sandbox)}
+        model = LLMClient(
+            target, config_path=MODELS, log_path=LOG, run_id=batch_id,
+            sandbox_channel=sandbox.channel, sandbox_model=sandbox.model_id,
+        )
+    else:
+        batch_id = f"demo-{_stamp()}"
+        prices = load_prices(MODELS, [target])
+        model = LLMClient(target, config_path=MODELS, log_path=LOG, run_id=batch_id)
     guard = budget_from_env(DEMO_ESTIMATE_USD)
-    model = LLMClient(target, config_path=MODELS, log_path=LOG, run_id=batch_id)
     commit = lab_git_commit()
     sweep_stale_run_dirs()
     store.parent.mkdir(parents=True, exist_ok=True)
@@ -337,6 +390,9 @@ def run_demo(
         defenses=build_defenses(presets),
         system_prompt=partial(build_system_prompt, variant=prompt_variant),
     )
+    current: dict[str, str] = {}
+    if on_step:
+        ctx.on_step = lambda rec, step: on_step(current["preset"], rec, step)
     snapshots = {snapshot_json(d): d for d in ctx.defenses.values()}
     by_preset = dict(zip(dict.fromkeys(presets), snapshots, strict=True))
 
@@ -344,6 +400,7 @@ def run_demo(
     status = "ok"
     spent = 0.0
     for preset, snap in by_preset.items():
+        current["preset"] = preset
         if on_progress:
             on_progress(preset, "start")
         spec = AttackRunSpec(
