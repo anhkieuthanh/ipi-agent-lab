@@ -1,0 +1,111 @@
+{
+  "task": "STT-61 (dò tấn công thích ứng)",
+  "batch_id": "probe-adaptive-20261028T000233Z",
+  "source_batch": "calib-r2-B1-20261027T035520Z",
+  "lab_git_commit": "2b0c6ade0162ae79246a9d588de67e0bed4e2f36",
+  "env_hash": "337add70d2708309146b8ef6bdc3a998206aaa1c0c3457b66ea276129408366b",
+  "prompt_variant": "most_trusting",
+  "prompt_knobs": {
+    "system_prompt_detail": "minimal",
+    "external_content_warning": "none",
+    "default_tool_permissions": "autonomous"
+  },
+  "models": {
+    "A2": "glm-5.2",
+    "A3": "glm-5.3-flash"
+  },
+  "attacker_model": "claude-opus-5",
+  "defense": "off",
+  "max_rounds": 3,
+  "units": [
+    [
+      "K1",
+      "T8",
+      "G1",
+      "P-T8-G1-MIX-010",
+      "CT-04"
+    ],
+    [
+      "K1",
+      "T1",
+      "G2",
+      "P-T1-G2-EN-001",
+      "CT-06"
+    ],
+    [
+      "K2b",
+      "T7",
+      "G3",
+      "P-T7-G3-VI-003",
+      "CT-05"
+    ],
+    [
+      "K2b",
+      "T2",
+      "G1",
+      "P-T2-G1-EN-001",
+      "CT-04"
+    ],
+    [
+      "K2b",
+      "T3",
+      "G2",
+      "P-T3-G2-VI-001",
+      "CT-05"
+    ],
+    [
+      "K2a",
+      "T5",
+      "G3",
+      "P-T5-G3-EN-001",
+      "CT-03"
+    ],
+    [
+      "K1",
+      "T2",
+      "G1",
+      "P-T2-G1-VI-001",
+      "CT-05"
+    ],
+    [
+      "K1",
+      "T4",
+      "G2",
+      "P-T4-G2-VI-001",
+      "CT-06"
+    ],
+    [
+      "K2a",
+      "T3",
+      "G3",
+      "P-T3-G3-VI-001",
+      "CT-03"
+    ],
+    [
+      "K2b",
+      "T5",
+      "G1",
+      "P-T5-G1-EN-001",
+      "CT-06"
+    ],
+    [
+      "K1",
+      "T5",
+      "G2",
+      "P-T5-G2-VI-001",
+      "CT-06"
+    ],
+    [
+      "K1",
+      "T1",
+      "G3",
+      "P-T1-G3-VI-901",
+      "CT-01"
+    ]
+  ],
+  "estimate_usd": 6.0,
+  "started_at_utc": "20261028T000233Z",
+  "finished_at_utc": "20261028T013053Z",
+  "spent_usd": 1.6865687999999999,
+  "budget_status": "ok"
+}
