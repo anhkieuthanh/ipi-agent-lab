@@ -33,6 +33,7 @@ adaptive tốn tới ~3× số ô so với nhánh blind. Theo hai quy tắc vậ
 from __future__ import annotations
 
 import copy
+import dataclasses
 import re
 import uuid
 from collections.abc import Callable, Sequence
@@ -43,7 +44,15 @@ from typing import Any, Protocol
 from sqlmodel import Session, select
 
 from attack.injector_k1 import observed_delivered
-from attack.payloads.render import _LANG_INSTRUCTION
+from attack.payloads.render import (
+    _LANG_INSTRUCTION,
+    K2_CHANNELS,
+    ChannelRenderError,
+    base_text,
+    instruction_of,
+    load_render_config,
+    render_for_channel,
+)
 from attack.runner import AttackRunnerError, RunContext, carrier_runtime
 from eval.canary import seeded_run
 from eval.scorer import ScoreContext, score
@@ -55,6 +64,7 @@ __all__ = [
     "STOP_GOAL",
     "STOP_EXHAUSTED",
     "STOP_REFUSAL_WALL",
+    "STOP_RENDER_ERROR",
     "Observation",
     "ProposeContext",
     "AdaptiveAttacker",
@@ -64,6 +74,7 @@ __all__ = [
     "RoundResult",
     "ChainResult",
     "defense_brief",
+    "instruction_budget",
     "rewrite_instruction",
     "run_round",
     "run_chain",
@@ -76,6 +87,7 @@ GOAL_HIT_FIELD = {"G1": "g1_hit", "G2": "g2_hit", "G3": "g3_hit"}
 STOP_GOAL = "goal"  # một vòng đạt mục tiêu
 STOP_EXHAUSTED = "exhausted"  # hết ba vòng, không đạt
 STOP_REFUSAL_WALL = "refusal_wall"  # model_refusal hai vòng liên tiếp (quy tắc cứng #8)
+STOP_RENDER_ERROR = "render_error"  # bản viết lại không dựng được trên kênh, kể cả sau một lần viết lại
 
 _PLACEHOLDER_RE = re.compile(r"\{[^{}]+\}")
 # Khóa cấu hình công khai nhưng ồn ào / không phải tham số hành vi — lược khỏi brief đưa vào prompt
@@ -109,7 +121,9 @@ class ProposeContext:
     """Thứ DUY NHẤT hàm viết lại được thấy. Cố ý KHÔNG chứa `Run`, `blocked_by`, hay `TraceRecorder`.
 
     `defense_brief` là đặc tả công khai của preset đang bật (NL3). `observations` là PH1 của các
-    vòng TRƯỚC, cũ → mới; rỗng ở vòng đầu.
+    vòng TRƯỚC, cũ → mới; rỗng ở vòng đầu. `max_instruction_chars` là ngân sách độ dài câu chỉ thị
+    trên kênh của chuỗi (None = kênh không giới hạn). `render_feedback` chỉ có ở lần viết lại thứ
+    hai của cùng vòng: lý do bản trước không dựng được trên kênh — ràng buộc kênh, không phải trace.
     """
 
     round_idx: int
@@ -117,6 +131,8 @@ class ProposeContext:
     base_payload: dict[str, Any]
     observations: tuple[Observation, ...]
     defense_brief: str
+    max_instruction_chars: int | None = None
+    render_feedback: str | None = None
 
 
 class AdaptiveAttacker(Protocol):
@@ -133,16 +149,25 @@ class AdaptiveAttacker(Protocol):
 class ScriptedAttacker:
     """Trả payload theo kịch bản định sẵn — cho test, không gọi mạng.
 
-    `payloads` là danh sách payload theo vòng; vòng `i` trả `payloads[i]`. Ghi lại mọi
+    `payloads` là danh sách payload theo vòng; vòng `i` trả `payloads[i]`. `retry_payloads[vòng]` là
+    bản trả ở lần viết lại thứ hai của vòng đó (khi có `render_feedback`). Ghi lại mọi
     `ProposeContext` nhận được vào `seen` để test kiểm ranh giới PH1 (không có blocked_by).
     """
 
-    def __init__(self, payloads: Sequence[dict[str, Any]]) -> None:
+    def __init__(
+        self,
+        payloads: Sequence[dict[str, Any]],
+        *,
+        retry_payloads: dict[int, dict[str, Any]] | None = None,
+    ) -> None:
         self._payloads = list(payloads)
+        self._retry = dict(retry_payloads or {})
         self.seen: list[ProposeContext] = []
 
     def propose(self, ctx: ProposeContext) -> dict[str, Any]:
         self.seen.append(ctx)
+        if ctx.render_feedback is not None and ctx.round_idx in self._retry:
+            return copy.deepcopy(self._retry[ctx.round_idx])
         i = ctx.round_idx - 1
         if i >= len(self._payloads):
             raise AttackRunnerError(f"ScriptedAttacker hết payload ở vòng {ctx.round_idx}")
@@ -166,7 +191,8 @@ class LLMAdaptiveAttacker:
             block = (yaml.safe_load(Path(DEFAULT_PROMPTS_PATH).read_text("utf-8")) or {}).get(
                 "attacker_adaptive"
             )
-            if not block or not block.get("system") or not block.get("user_prefix"):
+            required = ("system", "user_prefix", "length_rule", "retry_feedback")
+            if not block or not all(block.get(k) for k in required):
                 raise AttackRunnerError("config/prompts.yaml thiếu khối 'attacker_adaptive' hợp lệ")
             prompt = block
         self.prompt = prompt
@@ -190,6 +216,11 @@ class LLMAdaptiveAttacker:
             f"=== Quan sát vòng trước (mức người ngoài) ===\n{_observation_brief(ctx.observations[-1])}\n\n"
             f"=== Câu chỉ thị cần viết lại ===\n{orig}"
         )
+        if ctx.max_instruction_chars is not None and self.prompt.get("length_rule"):
+            rule = self.prompt["length_rule"].format(max_chars=ctx.max_instruction_chars)
+            user += f"\n\n=== Giới hạn kênh ===\n{rule}"
+        if ctx.render_feedback is not None and self.prompt.get("retry_feedback"):
+            user += "\n\n" + self.prompt["retry_feedback"].format(reason=ctx.render_feedback)
         res = self.client.chat(
             messages=[
                 {"role": "system", "content": self.prompt["system"]},
@@ -219,6 +250,35 @@ def rewrite_instruction(payload: dict[str, Any], new_text: str) -> dict[str, Any
     gb[field_] = new_text
     out["goal_binding"] = gb
     return out
+
+
+def instruction_budget(
+    payload: dict[str, Any], channel: str, *, cfg: dict[str, Any] | None = None
+) -> int | None:
+    """Số ký tự tối đa của `instruction_<lang>` để payload còn dựng được trên `channel`.
+
+    = `max_payload_chars` của kênh trừ phần khung kỹ thuật (chuỗi gốc bỏ câu chỉ thị). None khi
+    kênh không giới hạn (K1) hoặc payload có `channel_override` cho kênh — khi đó câu chỉ thị viết
+    lại không đi vào chuỗi kênh nên không có ngân sách để báo.
+    """
+    if channel not in K2_CHANNELS or channel in (payload.get("channel_override") or {}):
+        return None
+    cfg = cfg or load_render_config()
+    frame = len(base_text(payload)) - len(instruction_of(payload) or "")
+    return cfg["channels"][channel]["max_payload_chars"] - frame
+
+
+def _render_problem(
+    payload: dict[str, Any], channel: str, cfg: dict[str, Any] | None = None
+) -> str | None:
+    """Lý do payload KHÔNG dựng được trên kênh K2 (độ dài, kênh…); None nếu dựng được hoặc K1."""
+    if channel not in K2_CHANNELS:
+        return None
+    try:
+        render_for_channel(payload, channel, cfg=cfg)
+    except ChannelRenderError as exc:
+        return str(exc)
+    return None
 
 
 def _observation_brief(obs: Observation) -> str:
@@ -496,10 +556,16 @@ def run_chain(
 
     Ba điều kiện dừng (mục 2.3): (1) một vòng đạt mục tiêu; (2) hết `max_rounds`; (3) `model_refusal`
     hai vòng liên tiếp ⇒ `refusal_wall` (quy tắc cứng #8 — không gộp "model từ chối" vào ASR).
+
+    Trên K2a/K2b, kẻ tấn công được báo ngân sách độ dài câu chỉ thị. Bản viết lại vẫn không dựng
+    được trên kênh thì được viết lại đúng một lần nữa kèm lý do; lần hai vẫn hỏng thì dừng chuỗi
+    `render_error`, vòng đó không chạy và không ghi trace. Payload gốc không dựng được là lỗi
+    corpus, không phải lỗi kẻ tấn công — ném `ChannelRenderError` như trước.
     """
     if spec.goal not in GOAL_HIT_FIELD:
         raise AttackRunnerError(f"mục tiêu chuỗi lạ: {spec.goal}")
     brief = defense_brief(_defense_of(spec.defense_config, ctx).config_snapshot())
+    budget = instruction_budget(spec.base_payload, spec.channel)
     rounds: list[RoundResult] = []
     observations: list[Observation] = []
     consecutive_refusal = 0
@@ -511,8 +577,17 @@ def run_chain(
             base_payload=copy.deepcopy(spec.base_payload),
             observations=tuple(observations),
             defense_brief=brief,
+            max_instruction_chars=budget,
         )
         payload = attacker.propose(pctx)
+        problem = _render_problem(payload, spec.channel)
+        if problem is not None and payload != spec.base_payload:
+            payload = attacker.propose(dataclasses.replace(pctx, render_feedback=problem))
+            problem = _render_problem(payload, spec.channel)
+            if problem is not None and payload != spec.base_payload:
+                return ChainResult(
+                    spec.chain_id, spec, rounds, success=False, stop_reason=STOP_RENDER_ERROR
+                )
         rr = run_round(spec, payload, round_idx, ctx, hit_fetcher=hit_fetcher)
         rounds.append(rr)
 
