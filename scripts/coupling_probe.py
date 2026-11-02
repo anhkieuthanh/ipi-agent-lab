@@ -81,16 +81,21 @@ def main() -> int:
     parser.add_argument("--repeats", type=int, default=3, help="số lần lặp mỗi (payload, target)")
     parser.add_argument("--estimate-usd", type=float)
     parser.add_argument("--plan-only", action="store_true")
+    parser.add_argument("--payloads", default=str(PAYLOADS), help="file payload dò")
     args = parser.parse_args()
 
     load_dotenv(ROOT / ".env")
     exp = load_experiment()
-    payloads, report = load_payloads(PAYLOADS)
+    payloads, report = load_payloads(args.payloads)
     if not report.all_ok:
         print("payload dò sai schema:", report.errors_by_id)
         return 2
     corpus = {p["id"]: p for p in payloads}
     off = snapshot_json(build_defense("off"))
+
+    def _carrier(p):  # carrier ghim ở only_carriers, hoặc bảng cứng cho file cũ
+        only = p.get("only_carriers")
+        return only[0] if only else PAYLOAD_CARRIER[p["id"]]
 
     specs = [
         AttackRunSpec(
@@ -101,7 +106,7 @@ def main() -> int:
             goal=p["goal"],
             attacker_mode="blind",
             defense_config=off,
-            carrier_task_id=PAYLOAD_CARRIER[p["id"]],
+            carrier_task_id=_carrier(p),
             payload_id=p["id"],
         )
         for p in payloads
@@ -110,7 +115,7 @@ def main() -> int:
     ]
     print(f"{len(payloads)} payload × {len(TARGETS)} target × {args.repeats} lặp = {len(specs)} run")
     for p in payloads:
-        print(f"  {p['id']} {p['channels'][0]}·{p['goal']} → {PAYLOAD_CARRIER[p['id']]}")
+        print(f"  {p['id']} {p['channels'][0]}·{p['goal']} → {_carrier(p)}")
     if args.plan_only:
         return 0
 
@@ -155,7 +160,8 @@ def main() -> int:
         "models": {t: m.model for t, m in models.items()},
         "defense": "off",
         "repeats": args.repeats,
-        "payload_carrier": PAYLOAD_CARRIER,
+        "payload_carrier": {p["id"]: _carrier(p) for p in payloads},
+        "payloads_file": args.payloads,
         "estimate_usd": args.estimate_usd,
         "started_at_utc": _stamp(),
     }
