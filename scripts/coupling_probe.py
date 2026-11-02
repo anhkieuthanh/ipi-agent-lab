@@ -82,9 +82,11 @@ def main() -> int:
     parser.add_argument("--estimate-usd", type=float)
     parser.add_argument("--plan-only", action="store_true")
     parser.add_argument("--payloads", default=str(PAYLOADS), help="file payload dò")
+    parser.add_argument("--targets", nargs="+", help="tập con target (mặc định A2 A3)")
     args = parser.parse_args()
 
     load_dotenv(ROOT / ".env")
+    TG = tuple(args.targets) if args.targets else TARGETS
     exp = load_experiment()
     payloads, report = load_payloads(args.payloads)
     if not report.all_ok:
@@ -110,10 +112,10 @@ def main() -> int:
             payload_id=p["id"],
         )
         for p in payloads
-        for t in TARGETS
+        for t in TG
         for r in range(args.repeats)
     ]
-    print(f"{len(payloads)} payload × {len(TARGETS)} target × {args.repeats} lặp = {len(specs)} run")
+    print(f"{len(payloads)} payload × {len(TG)} target × {args.repeats} lặp = {len(specs)} run")
     for p in payloads:
         print(f"  {p['id']} {p['channels'][0]}·{p['goal']} → {_carrier(p)}")
     if args.plan_only:
@@ -131,9 +133,9 @@ def main() -> int:
     batch_dir = PROBE_DIR / batch_id
     batch_dir.mkdir(parents=True, exist_ok=True)
     engine = open_store(batch_dir / "trace.sqlite")
-    prices = load_prices(MODELS, list(TARGETS))
+    prices = load_prices(MODELS, list(TG))
     guard = budget_from_env(args.estimate_usd)
-    models = {t: LLMClient(t, config_path=MODELS, log_path=LOG, run_id=batch_id) for t in TARGETS}
+    models = {t: LLMClient(t, config_path=MODELS, log_path=LOG, run_id=batch_id) for t in TG}
     swept = sweep_stale_run_dirs()
     if swept:
         print(f"Đã dọn {len(swept)} thư mục run cũ còn sót.")
@@ -202,7 +204,7 @@ def main() -> int:
     import sqlite3
 
     con = sqlite3.connect(batch_dir / "trace.sqlite")
-    for t in TARGETS:
+    for t in TG:
         n, s = con.execute(
             "SELECT COUNT(*), SUM(outcome='success') FROM runs WHERE target_id=? AND parse_error=0",
             (t,),
