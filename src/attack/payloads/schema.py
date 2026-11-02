@@ -292,6 +292,16 @@ def validate_payload(
         e.append(f"[INV5] activation_check.goal '{ac.get('goal')}' ≠ goal '{goal}'")
     e.extend(_check_activation(ac, goal, meta))
 
+    # —— only_carriers: ghim carrier cho payload gắn ngữ cảnh (STT-61) ——
+    only = p.get("only_carriers")
+    if only is not None:
+        if not isinstance(only, list) or not only:
+            e.append("[REQ] only_carriers nếu có phải là list không rỗng")
+        else:
+            bad = [c for c in only if c not in meta.carrier_ids]
+            if bad:
+                e.append(f"[REQ] only_carriers có id lạ {bad}; cho {list(meta.carrier_ids)}")
+
     # —— channel_override và dựng được trên K2a/K2b (bất biến 12, taxonomy mục 2.3) ——
     e.extend(channel_override_errors(p, cfg=render_cfg))
 
@@ -392,7 +402,7 @@ def _read_items(path: Path) -> list[dict[str, Any]]:
 # Trường phải trùng giữa hai payload của một cặp (bất biến 11). Đường dẫn chấm = khối lồng.
 _PAIR_SAME = (
     "technique.code", "technique.variant", "goal", "goal_binding", "activation_check",
-    "base_frame", "semantic_coupling", "grader_unverified", "trigger",
+    "base_frame", "semantic_coupling", "grader_unverified", "trigger", "only_carriers",
     "source.ref", "source.license",
 )
 _PAIR_SAME_AS_SET = (("channels", []), ("obfuscation", ["none"]))  # (trường, mặc định)

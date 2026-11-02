@@ -208,6 +208,16 @@ def test_valid_carriers_k2a_va_k2b():
     assert set(vb) >= {"CT-03", "CT-04", "CT-05", "CT-06"}
 
 
+def test_valid_carriers_only_carriers_ghim():
+    """STT-61: payload gắn ngữ cảnh ghim đúng carrier nó viết cho."""
+    payload = _payload(*K2_PAYLOAD)
+    carriers = _all_carriers()
+    payload["only_carriers"] = ["CT-04"]
+    assert k2.valid_carriers(payload, "K2b", carriers) == ["CT-04"]
+    payload["only_carriers"] = ["CT-01"]  # CT-01 chỉ K1 → giao rỗng trên K2b
+    assert k2.valid_carriers(payload, "K2b", carriers) == []
+
+
 def test_trace_fields():
     payload = _payload(*K2_PAYLOAD)
     layer = k2.build_layer(FakeLayer(), payload, _carrier("CT-03"), "K2b", "run-t")

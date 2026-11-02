@@ -97,6 +97,7 @@ def _mk(base, *, num, lang, channel, carrier, cpl, pair_id):
     p["lang"] = lang
     p["channels"] = [channel]
     p["contextual"] = True
+    p["only_carriers"] = [carrier]  # ghim carrier payload viết cho (STT-61)
     p["pair_id"] = pair_id
     p["source"] = {"kind": "original",
                    "ref": "lab:v-attack-1.1 payload gắn ngữ cảnh (STT-61, cách A)"}
