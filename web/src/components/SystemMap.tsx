@@ -209,7 +209,7 @@ export function SystemMap({
   const [hover, setHover] = useState<Hover | null>(null);
   const tip = hover && renderTip ? renderTip(hover.id) : null;
   const hoverProps = (h: Hover) =>
-    renderTip ? { onMouseEnter: () => setHover(h), onMouseLeave: () => setHover(null) } : {};
+    renderTip ? { tabIndex: 0, role: "button", "aria-label": h.id, onMouseEnter: () => setHover(h), onMouseLeave: () => setHover(null), onFocus: () => setHover(h), onBlur: () => setHover(null), onClick: () => setHover(h), onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Escape") setHover(null); if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setHover(h); } } } : {};
   const ref = (name: string) => `url(#${name}-${uid})`;
   const dim = active.length > 0;
   const lit = (id: string) => !dim || active.includes(id);

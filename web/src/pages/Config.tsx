@@ -372,7 +372,7 @@ export function ConfigPage() {
         <Card className="xl:col-span-5">
           <CardHeader title="Tác vụ chở" subtitle="Tác vụ nhân viên giao cho agent; payload cài vào dữ liệu tác vụ này đọc." icon={<Boxes size={16} />} />
           <div className="overflow-x-auto">
-            <table className="table-base">
+            <div className="max-w-full overflow-x-auto"><table className="table-base">
               <thead>
                 <tr>
                   <th>Mã</th>
@@ -413,7 +413,7 @@ export function ConfigPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         </Card>
       </div>

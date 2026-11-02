@@ -12,19 +12,21 @@ import { Badge } from "./ui";
 
 export function HighlightText({ value, className }: { value: Marked; className?: string }) {
   const { text, spans } = value;
+  // API offsets count Unicode code points (Python), not UTF-16 code units.
+  const chars = Array.from(text);
   const parts: ReactNode[] = [];
   let cursor = 0;
   for (const [i, s] of [...spans].sort((a, b) => a.start - b.start).entries()) {
     if (s.start < cursor) continue; // chồng lấn: đoạn trước thắng
-    if (s.start > cursor) parts.push(text.slice(cursor, s.start));
+    if (s.start > cursor) parts.push(chars.slice(cursor, s.start).join(""));
     parts.push(
       <mark key={i} className={`hl-${s.kind}`}>
-        {text.slice(s.start, s.end)}
+        {chars.slice(s.start, s.end).join("")}
       </mark>,
     );
     cursor = s.end;
   }
-  if (cursor < text.length) parts.push(text.slice(cursor));
+  if (cursor < chars.length) parts.push(chars.slice(cursor).join(""));
   return <pre className={clsx("code-block", className)}>{parts}</pre>;
 }
 
@@ -125,7 +127,7 @@ function StepCard({ step, initialOpen = false }: { step: Step; initialOpen?: boo
                 {FIELD_LABEL[key] ?? key}
               </div>
               <HighlightText
-                value={{ text: format(marked.text), spans: marked.spans }}
+                value={{ text: marked.spans.length ? marked.text : format(marked.text), spans: marked.spans }}
                 className={clsx(
                   key === "llm_reasoning" && "max-h-72 overflow-y-auto italic text-slate-500",
                 )}

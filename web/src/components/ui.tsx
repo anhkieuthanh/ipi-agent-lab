@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { AlertTriangle, HelpCircle, Inbox, Loader2 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 
 import type { Verdict } from "@/lib/api";
 import { BLOCKED_LABEL, OUTCOME_LABEL } from "@/lib/format";
@@ -39,12 +39,19 @@ export function CardHeader({
 }
 
 export function InfoDot({ children }: { children: ReactNode }) {
+  const id = useId();
+  const [open, setOpen] = useState(false);
   return (
-    <span className="group relative inline-flex">
-      <HelpCircle size={15} className="cursor-help text-slate-400 hover:text-slate-600" />
-      <span className="pointer-events-none absolute left-1/2 top-6 z-30 hidden w-64 -translate-x-1/2 rounded-lg bg-ink-900 px-3 py-2 text-[12px] leading-relaxed text-slate-100 shadow-pop group-hover:block">
+    <span className="group relative inline-flex" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button type="button" aria-label="Thông tin chi tiết" aria-describedby={open ? id : undefined}
+        aria-expanded={open} className="rounded focus-visible:outline focus-visible:outline-2"
+        onFocus={() => setOpen(true)} onBlur={() => setOpen(false)}
+        onClick={() => setOpen(true)} onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}>
+        <HelpCircle size={15} className="text-slate-400 hover:text-slate-600" />
+      </button>
+      {open && <span id={id} role="tooltip" className="fixed left-4 right-4 top-40 z-30 w-auto sm:absolute sm:left-0 sm:right-auto sm:top-6 sm:w-56 rounded-lg bg-ink-900 px-3 py-2 text-left text-[12px] font-normal leading-relaxed text-slate-100 shadow-pop">
         {children}
-      </span>
+      </span>}
     </span>
   );
 }
@@ -59,12 +66,12 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
-      <h1 className="flex items-center gap-2 text-[20px] font-semibold tracking-tight text-slate-900">
+    <div className="page-heading">
+      <h1 className="page-title">
         {title}
         {info && <InfoDot>{info}</InfoDot>}
       </h1>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && <div className="page-actions">{actions}</div>}
     </div>
   );
 }
@@ -193,13 +200,13 @@ export function Segmented<T extends string>({
   options: { value: T; label: string; count?: number }[];
 }) {
   return (
-    <div className="inline-flex rounded-lg bg-slate-100 p-1">
+    <div className="inline-flex max-w-full flex-wrap gap-1 rounded-md bg-slate-100 p-1">
       {options.map((o) => (
         <button
           key={o.value}
           onClick={() => onChange(o.value)}
           className={clsx(
-            "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium transition",
+            "inline-flex items-center gap-1.5 whitespace-nowrap rounded px-3 py-1.5 text-[13px] font-medium transition",
             value === o.value ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800",
           )}
         >
@@ -290,7 +297,8 @@ export function ErrorBox({ error }: { error: unknown }) {
       <AlertTriangle size={16} className="mt-0.5 shrink-0" />
       <div>
         <div className="font-semibold">Không tải được dữ liệu</div>
-        <div className="mt-0.5">{msg}</div>
+        <div className="mt-0.5 break-words">{msg}</div>
+        <button className="mt-2 underline" onClick={() => window.location.reload()}>Thử lại</button>
       </div>
     </div>
   );
@@ -369,16 +377,10 @@ export function OutcomeBadge({ outcome, blockedBy }: { outcome: string | null; b
 }
 
 export function VerdictBanner({ verdict }: { verdict: Verdict }) {
-  const styles = {
-    attack: "from-attack-600 to-attack-500",
-    defense: "from-defense-600 to-defense-500",
-    refusal: "from-refusal-600 to-refusal-500",
-    neutral: "from-slate-600 to-slate-500",
-  }[verdict.tone];
   return (
-    <div className={clsx("rounded-xl bg-gradient-to-br p-4 text-white shadow-card", styles)}>
-      <div className="text-[15px] font-semibold tracking-wide">{verdict.label}</div>
-      <div className="mt-1 text-[13px] text-white/85">{verdict.detail}</div>
+    <div className="verdict-banner" data-tone={verdict.tone}>
+      <div className="text-[14px] font-semibold text-slate-900">{verdict.label}</div>
+      <div className="mt-1 text-[13px] leading-relaxed text-slate-600">{verdict.detail}</div>
     </div>
   );
 }

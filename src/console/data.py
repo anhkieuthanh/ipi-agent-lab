@@ -157,7 +157,11 @@ def _manifest(store_path: Path, batch_id: str) -> dict[str, Any] | None:
         sessions = json.loads(path.read_text(encoding="utf-8"))
     except ValueError:
         return None
-    sessions = [s for s in sessions if s.get("batch_id") == batch_id]
+    if isinstance(sessions, dict):
+        sessions = [sessions]
+    if not isinstance(sessions, list):
+        return None
+    sessions = [s for s in sessions if isinstance(s, dict) and s.get("batch_id") == batch_id]
     if not sessions:
         return None
     last = sessions[-1]

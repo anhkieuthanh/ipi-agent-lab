@@ -53,14 +53,14 @@ run từng bước (payload và canary tô màu), phòng thí nghiệm tấn cô
 ```bash
 make up             # hạ tầng lab: Qdrant, MailHog, canary listener
 make console-build  # build giao diện vào web/dist (cần Node ≥ 20)
-make console        # API + giao diện ở một cổng — http://localhost:8600
+make console        # API + giao diện ở một cổng — http://localhost:8610
 ```
 
 `make console` chỉ nghe `127.0.0.1` và từ chối mọi Host ngoài localhost (chặn DNS rebinding). Chỉ
 ĐỌC trace store; lần ghi duy nhất là lượt demo trực tiếp ở trang "Phòng thí nghiệm" (bật khi
 `DEMO_LIVE=1`, `make console` đã bật sẵn), đi đúng đường `run_one_attack` của lô thật và canh chi
 phí như lô thực nghiệm. Run demo ghi `results/demo/` (không theo Git), không trộn với lô thực
-nghiệm. Phát triển giao diện: `make console-dev` (Vite 5173 + API 8600).
+nghiệm. Phát triển giao diện: `make console-dev` (Vite 5180 + API 8610).
 
 Số liệu (ASR, DSR, USR, FRR, Wilson, tô màu bước) lấy từ cùng hàm mà scorer dùng
 (`src/console/tracedata.py`, `src/eval/metrics.py`) — console không tính lại theo cách riêng. Lớp

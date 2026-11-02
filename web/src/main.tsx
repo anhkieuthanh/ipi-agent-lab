@@ -18,7 +18,7 @@ import { RunsPage } from "@/pages/Runs";
 import { SystemPage } from "@/pages/System";
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 15_000, refetchOnWindowFocus: false, retry: 1 } },
+  defaultOptions: { queries: { staleTime: 15_000, refetchOnWindowFocus: true, retry: 1 } },
 });
 
 const router = createBrowserRouter([

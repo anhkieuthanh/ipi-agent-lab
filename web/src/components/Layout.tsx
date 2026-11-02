@@ -1,221 +1,101 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
-import {
-  Activity,
-  Crosshair,
-  FlaskConical,
-  Gauge,
-  Layers,
-  ListTree,
-  Network,
-  Route,
-  Settings2,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
-import type { ReactNode } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { ArrowUpRight, ChevronDown, Monitor, PanelTop, RefreshCw, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { api } from "@/lib/api";
-import { allGatesPass } from "@/pages/Process";
 import { SCOPE_LABEL, type ScopeKind, useScope } from "@/lib/scope";
 
-type NavItem = { to: string; label: string; icon: ReactNode; scoped?: boolean };
-
-const NAV: { group: string; items: NavItem[] }[] = [
-  {
-    group: "Giám sát",
-    items: [
-      { to: "/system", label: "Sơ đồ hệ thống", icon: <Network size={17} /> },
-      { to: "/", label: "Tổng quan", icon: <Gauge size={17} />, scoped: true },
-      { to: "/batches", label: "Lô thực nghiệm", icon: <Layers size={17} /> },
-    ],
-  },
-  {
-    group: "Phân tích",
-    items: [
-      { to: "/attack", label: "Tấn công", icon: <Crosshair size={17} />, scoped: true },
-      { to: "/defense", label: "Phòng thủ", icon: <ShieldCheck size={17} />, scoped: true },
-      { to: "/runs", label: "Điều tra run", icon: <ListTree size={17} />, scoped: true },
-    ],
-  },
-  {
-    group: "Thực hành",
-    items: [{ to: "/lab", label: "Phòng thí nghiệm", icon: <FlaskConical size={17} /> }],
-  },
-  {
-    group: "Hệ thống",
-    items: [
-      { to: "/config", label: "Cấu hình", icon: <Settings2 size={17} /> },
-      { to: "/process", label: "Quy trình", icon: <Route size={17} /> },
-    ],
-  },
+const GROUPS = [
+  { label: "Tổng quan", paths: ["/"], items: [] },
+  { label: "Thực nghiệm", paths: ["/batches", "/lab"], items: [{ to: "/batches", label: "Lô thực nghiệm" }, { to: "/lab", label: "Phòng thí nghiệm" }] },
+  { label: "Phân tích", paths: ["/attack", "/defense", "/runs"], items: [{ to: "/attack", label: "Tấn công" }, { to: "/defense", label: "Phòng thủ" }, { to: "/runs", label: "Điều tra run" }] },
+  { label: "Hệ thống", paths: ["/system", "/config", "/process"], items: [{ to: "/system", label: "Sơ đồ hệ thống" }, { to: "/config", label: "Cấu hình" }, { to: "/process", label: "Quy trình" }] },
 ];
-
-const TITLES: Record<string, string> = {
-  "/": "Tổng quan",
-  "/system": "Sơ đồ hệ thống",
-  "/batches": "Lô thực nghiệm",
-  "/attack": "Phân tích tấn công",
-  "/defense": "Phân tích phòng thủ",
-  "/runs": "Điều tra run",
-  "/lab": "Phòng thí nghiệm tấn công",
-  "/config": "Cấu hình",
-  "/process": "Quy trình",
-};
-
-function Sidebar() {
-  const { search } = useScope();
-  const meta = useQuery({ queryKey: ["meta"], queryFn: api.meta, staleTime: 60_000 });
-  // Cổng chỉ có nghĩa trước ma trận: qua hết thì ẩn "Quy trình" khỏi menu (URL vẫn mở được).
-  const gates = useQuery({ queryKey: ["gates"], queryFn: api.gates, staleTime: 60_000 });
-  const hide = allGatesPass(gates.data) ? new Set(["/process"]) : new Set<string>();
-  return (
-    <aside className="fixed inset-y-0 left-0 z-20 flex w-[248px] flex-col bg-ink-950 text-slate-300">
-      <div className="flex h-16 items-center gap-3 border-b border-white/5 px-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 shadow-lg shadow-brand-900/40">
-          <ShieldCheck size={19} className="text-white" />
-        </div>
-        <div className="leading-tight">
-          <div className="text-[14.5px] font-semibold text-white">IPI Guard</div>
-          <div className="text-[11.5px] text-slate-400">Console đánh giá agent</div>
-        </div>
-      </div>
-
-      <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
-        {NAV.map((g) => (
-          <div key={g.group}>
-            <div className="px-3 pb-2 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              {g.group}
-            </div>
-            <div className="space-y-0.5">
-              {g.items.filter((it) => !hide.has(it.to)).map((it) => (
-                <NavLink
-                  key={it.to}
-                  to={{ pathname: it.to, search: it.scoped ? search : "" }}
-                  end={it.to === "/"}
-                  className={({ isActive }) =>
-                    clsx(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-[13.5px] font-medium transition",
-                      isActive
-                        ? "bg-white/10 text-white shadow-inner"
-                        : "text-slate-400 hover:bg-white/5 hover:text-slate-100",
-                    )
-                  }
-                >
-                  {it.icon}
-                  {it.label}
-                </NavLink>
-              ))}
-            </div>
-          </div>
-        ))}
-      </nav>
-
-      <div className="border-t border-white/5 px-5 py-4 text-[11.5px] text-slate-500">
-        <div className="flex items-center justify-between">
-          <span>Bộ model</span>
-          <span className="font-mono text-slate-300">{meta.data?.model_tag ?? "—"}</span>
-        </div>
-        <div className="mt-1 flex items-center justify-between">
-          <span>Bộ payload</span>
-          <span className="font-mono text-slate-300">{meta.data?.attack_tag ?? "—"}</span>
-        </div>
-        <div className="mt-1 flex items-center justify-between">
-          <span>Commit</span>
-          <span className="max-w-[120px] truncate font-mono text-slate-300" title={meta.data?.lab_commit ?? ""}>
-            {meta.data?.lab_commit?.split("-g").pop() ?? "—"}
-          </span>
-        </div>
-      </div>
-    </aside>
-  );
-}
+const SCOPED = ["/", "/attack", "/defense", "/runs"];
 
 function ScopePicker() {
   const { kind, batch, setScope } = useScope();
-  const batches = useQuery({ queryKey: ["batches"], queryFn: () => api.batches() });
+  const batches = useQuery({ queryKey: ["batches"], queryFn: () => api.batches(), refetchInterval: 15_000 });
   const list = (batches.data ?? []).filter((b) => kind === "all" || b.kind === kind);
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-[12.5px] text-slate-500">Phạm vi</span>
-      <select
-        className="input h-8 text-[13px]"
-        value={kind}
-        onChange={(e) => setScope({ kind: e.target.value as ScopeKind })}
-      >
-        {(Object.keys(SCOPE_LABEL) as ScopeKind[]).map((k) => (
-          <option key={k} value={k}>
-            {SCOPE_LABEL[k]}
-          </option>
-        ))}
+    <div className="scope-picker">
+      <span className="context-label">Phạm vi dữ liệu</span>
+      <select aria-label="Loại phạm vi" className="input" value={kind} onChange={(e) => setScope({ kind: e.target.value as ScopeKind })}>
+        {(Object.keys(SCOPE_LABEL) as ScopeKind[]).map((k) => <option key={k} value={k}>{SCOPE_LABEL[k]}</option>)}
       </select>
-      <select
-        className="input h-8 max-w-[260px] text-[13px]"
-        value={batch}
-        onChange={(e) => setScope({ batch: e.target.value })}
-      >
-        <option value="">Tất cả lô ({list.length})</option>
-        {list.map((b) => (
-          <option key={b.batch_id} value={b.batch_id}>
-            {b.batch_id}
-          </option>
-        ))}
+      <select aria-label="Lô dữ liệu" className="input scope-batch" value={batch} onChange={(e) => setScope({ batch: e.target.value })} disabled={batches.isLoading || !!batches.error}>
+        <option value="">{batches.isLoading ? "Đang tải lô…" : batches.error ? "Không tải được lô" : `Tất cả lô (${list.length})`}</option>
+        {list.map((b) => <option key={b.batch_id} value={b.batch_id}>{b.batch_id}</option>)}
       </select>
     </div>
   );
 }
 
-function Topbar() {
-  const loc = useLocation();
-  const meta = useQuery({ queryKey: ["meta"], queryFn: api.meta, staleTime: 60_000 });
-  const root = "/" + (loc.pathname.split("/")[1] ?? "");
-  const title = TITLES[root] ?? "IPI Guard";
-  const scoped = ["/", "/attack", "/defense", "/runs"].includes(root) && !loc.pathname.startsWith("/runs/");
-  return (
-    <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b border-slate-200 bg-white/85 px-8 backdrop-blur">
-      <div className="flex items-center gap-2 text-[13px] text-slate-500">
-        <span>IPI Guard</span>
-        <span className="text-slate-300">/</span>
-        <span className="font-medium text-slate-900">{title}</span>
-      </div>
-      <div className="flex items-center gap-4">
-        {scoped && <ScopePicker />}
-        <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[12px]">
-          {meta.data?.live_demo ? (
-            <>
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-defense-500 opacity-60" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-defense-500" />
-              </span>
-              <span className="font-medium text-slate-700">Chạy trực tiếp</span>
-            </>
-          ) : (
-            <>
-              <Activity size={13} className="text-slate-400" />
-              <span className="text-slate-500">Chỉ xem</span>
-            </>
-          )}
-        </div>
-        <div className="hidden items-center gap-1.5 text-[12px] text-slate-500 xl:flex">
-          <Sparkles size={13} />
-          Prompt <span className="font-mono text-slate-700">{meta.data?.prompt_active ?? "—"}</span>
-        </div>
-      </div>
-    </header>
-  );
-}
-
 export function Layout() {
+  const loc = useLocation();
+  const { search, kind, batch } = useScope();
+  const root = "/" + (loc.pathname.split("/")[1] ?? "");
+  const group = GROUPS.find((g) => g.paths.includes(root)) ?? GROUPS[0];
+  const scoped = SCOPED.includes(root) && !loc.pathname.startsWith("/runs/");
+  const qc = useQueryClient();
+  const meta = useQuery({ queryKey: ["meta"], queryFn: api.meta, staleTime: 60_000 });
+  const [presenting, setPresenting] = useState(() => sessionStorage.getItem("ipi-presentation") === "true");
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState(false);
+  const [updated, setUpdated] = useState<Date | null>(null);
+  useEffect(() => { sessionStorage.setItem("ipi-presentation", String(presenting)); }, [presenting]);
+  useEffect(() => {
+    const exit = (e: KeyboardEvent) => { if (e.key === "Escape") setPresenting(false); };
+    window.addEventListener("keydown", exit);
+    return () => window.removeEventListener("keydown", exit);
+  }, []);
+  const href = (to: string) => ({ pathname: to, search: SCOPED.includes(to) ? search : "" });
+  async function refresh() {
+    setRefreshing(true); setRefreshError(false);
+    try {
+      await qc.refetchQueries({ type: "active" }, { throwOnError: true });
+      setUpdated(new Date());
+    } catch { setRefreshError(true); }
+    finally { setRefreshing(false); }
+  }
   return (
-    <div className="min-h-screen">
-      <Sidebar />
-      <div className="pl-[248px]">
-        <Topbar />
-        <main className="mx-auto max-w-[1440px] px-8 py-7">
-          <Outlet />
-        </main>
+    <div className={clsx("app-shell", presenting && "presentation-mode")}>
+      <a href="#main-content" className="skip-link">Đến nội dung chính</a>
+      <header className="app-header">
+        <Link to={href("/")} className="wordmark" aria-label="IPI Guard — Tổng quan">
+          <ShieldCheck size={23} strokeWidth={1.6} />
+          <span>IPI Guard<span className="wordmark-caption">Agent Security Lab</span></span>
+        </Link>
+        {!presenting && <nav className="primary-nav" aria-label="Điều hướng chính">
+          {GROUPS.map((g) => <Link key={g.label} to={href(g.paths[0])} className={clsx("primary-link", group === g && "is-active")} aria-current={group === g ? "page" : undefined}>{g.label}</Link>)}
+        </nav>}
+        <button className="presentation-toggle" onClick={() => setPresenting(!presenting)} aria-pressed={presenting}>
+          {presenting ? <PanelTop size={16} /> : <Monitor size={16} />}
+          {presenting ? "Về làm việc" : "Trình bày"}
+        </button>
+      </header>
+
+      {!presenting && group.items.length > 0 && <nav className="secondary-nav" aria-label={group.label}>
+        {group.items.map((it) => <NavLink key={it.to} to={href(it.to)} className={({ isActive }) => clsx("secondary-link", isActive && "is-active")}>{it.label}</NavLink>)}
+      </nav>}
+
+      <div className="workspace-context">
+        {presenting ? <div className="presentation-context"><span className="context-label">Đánh giá an toàn AI Agent</span><span>{scoped ? batch || SCOPE_LABEL[kind] : loc.pathname.startsWith("/runs/") ? "Chi tiết run" : group.label}</span></div> : scoped ? <ScopePicker /> : <span className="context-label">{group.label} <ChevronDown size={12} /></span>}
+        <div className="workspace-status">
+          <span className="connection-state"><span className={clsx("status-dot", meta.error && "is-error")} />{meta.error ? "Mất kết nối" : meta.isLoading ? "Đang kết nối" : meta.data?.live_demo ? "Cho phép chạy trực tiếp" : "Chỉ xem"}</span>
+          {!presenting && <button className="refresh-button" disabled={refreshing} onClick={refresh} aria-label="Làm mới dữ liệu"><RefreshCw size={14} className={refreshing ? "animate-spin" : ""} /></button>}
+          {!presenting && <span className="update-status" role="status">{refreshError ? "Cập nhật thất bại" : refreshing ? "Đang cập nhật…" : updated ? `Làm mới ${updated.toLocaleTimeString("vi-VN")}` : "Giám sát · 15 giây/lần"}</span>}
+        </div>
       </div>
+
+      <main id="main-content" tabIndex={-1} className="workspace-main"><Outlet /></main>
+      <footer className="app-footer">
+        <span>IPI Guard <span className="footer-divider">/</span> Đánh giá an toàn agent RAG + MCP</span>
+        {!presenting && <Link to="/config" className="footer-config">{meta.data?.model_tag ?? "Bộ model"} <span className="footer-divider">·</span> {meta.data?.attack_tag ?? "Bộ payload"}<ArrowUpRight size={12} /></Link>}
+        {presenting && <span>Nhấn Esc để trở về làm việc</span>}
+      </footer>
     </div>
   );
 }

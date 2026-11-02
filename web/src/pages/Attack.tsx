@@ -48,7 +48,7 @@ function Heatmap({ rows, dims }: { rows: AsrRow[]; dims: [string, string] }) {
   const at = (rk: string, ck: string) => rows.find((x) => String(x[r]) === rk && String(x[c]) === ck);
   return (
     <div className="overflow-x-auto px-5 py-5">
-      <table className="border-separate border-spacing-1.5">
+      <div className="max-w-full overflow-x-auto"><table className="border-separate border-spacing-1.5">
         <thead>
           <tr>
             <th />
@@ -95,7 +95,7 @@ function Heatmap({ rows, dims }: { rows: AsrRow[]; dims: [string, string] }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
       <div className="mt-4 flex items-center gap-3 text-[12px] text-slate-500">
         <span>ASR</span>
         <div className="h-2 w-40 rounded-full" style={{ background: "linear-gradient(90deg, rgba(229,72,77,.08), rgba(229,72,77,.9))" }} />
@@ -143,7 +143,7 @@ export function AttackPage() {
           )}
           <Card>
             <CardHeader title="Bảng chi tiết" icon={<Table2 size={16} />} />
-            <table className="table-base">
+            <div className="max-w-full overflow-x-auto"><table className="table-base">
               <thead>
                 <tr>
                   {dims.map((d) => (
@@ -187,7 +187,7 @@ export function AttackPage() {
                     </tr>
                   ))}
               </tbody>
-            </table>
+            </table></div>
           </Card>
         </div>
       )}

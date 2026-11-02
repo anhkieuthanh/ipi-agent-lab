@@ -95,7 +95,7 @@ function ResultColumn({
   if (q.error || !q.data) return <ErrorBox error={q.error ?? "lỗi"} />;
   const d: RunDetail = q.data;
   const run = d.run;
-  const spontaneous = d.verdict?.tone === "attack" && !d.tool_actions.some((a) => a.follows_payload);
+  const spontaneous = d.run.goal === "G2" && d.verdict?.tone === "attack" && !d.tool_actions.some((a) => a.follows_payload);
   const codes = codesOf(presets, String(run.preset));
   return (
     <Card className={clsx("flex flex-col", showing && "ring-2 ring-brand-500")}>
@@ -109,7 +109,7 @@ function ResultColumn({
       <div className="space-y-3 p-4">
         {d.verdict && <VerdictBanner verdict={d.verdict} />}
         {spontaneous && (
-          <Callout tone="warn">Scorer chấm thành công nhưng agent không gọi tool payload đòi (VT-16).</Callout>
+          <Callout tone="warn">Scorer chấm đạt G2 nhưng chưa thấy tool khớp gợi ý payload. Cần đối chiếu trace trước khi kết luận nguyên nhân.</Callout>
         )}
         <div className="grid grid-cols-3 gap-2 text-center">
           {[
@@ -167,6 +167,7 @@ function Results({
 }) {
   const q = useQuery({ queryKey: ["runs", "demo-batch", batchId], queryFn: () => api.runs({ batch: [batchId], limit: 10 }) });
   if (q.isLoading) return <Loading />;
+  if (q.error) return <ErrorBox error={q.error} />;
   const items = q.data?.items ?? [];
   if (!items.length) return null;
   return (
@@ -361,7 +362,8 @@ export function LabPage() {
     },
   });
 
-  if (scenarios.isLoading || config.isLoading) return <Loading />;
+  if (scenarios.isLoading || config.isLoading || meta.isLoading) return <Loading />;
+  if (scenarios.error || config.error || meta.error) return <ErrorBox error={scenarios.error ?? config.error ?? meta.error} />;
   const live = meta.data?.live_demo;
   const running = job.data && ["queued", "running"].includes(job.data.status);
 
@@ -475,13 +477,15 @@ export function LabPage() {
             <Button
               variant="primary"
               className="w-full lg:ml-auto lg:flex lg:w-[320px]"
-              disabled={!live || !presets.length || !!running || start.isPending}
+              disabled={!live || !scenario || !presets.length || !!running || active.isFetching || !!active.error || !!job.error || start.isPending}
               onClick={() => start.mutate()}
               icon={running || start.isPending ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
             >
               {running ? "Đang chạy…" : "Chạy tấn công"}
             </Button>
             {start.error && <ErrorBox error={start.error} />}
+            {active.error && <ErrorBox error={active.error} />}
+            {job.error && <Callout tone="warn" title="Mất kết nối cập nhật tiến độ">Dữ liệu bên dưới có thể đã cũ. Hệ thống đang thử kết nối lại.</Callout>}
 
             {job.data && (
               <div className="rounded-lg bg-slate-50 p-3">

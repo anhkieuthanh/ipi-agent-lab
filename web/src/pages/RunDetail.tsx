@@ -31,7 +31,7 @@ export function RunDetailPage() {
   const d = q.data!;
   const run = d.run;
   const attack = run.run_kind === "attack";
-  const spontaneous = d.verdict?.tone === "attack" && !d.tool_actions.some((a) => a.follows_payload);
+  const spontaneous = d.run.goal === "G2" && d.verdict?.tone === "attack" && !d.tool_actions.some((a) => a.follows_payload);
 
   return (
     <>
@@ -53,9 +53,9 @@ export function RunDetailPage() {
           {d.verdict && <VerdictBanner verdict={d.verdict} />}
 
           {spontaneous && (
-            <Callout tone="warn" title="Thành công nhưng không do payload">
-              Scorer chấm đạt mục tiêu, nhưng agent không gọi tool mà payload yêu cầu. Vi phạm có thể do hành vi tự
-              phát của agent (Việc treo VT-16), không phải tấn công tiêm nhiễm thành công.
+            <Callout tone="warn" title="Cần đối chiếu hành động với payload">
+              Scorer chấm đạt G2 nhưng chưa tìm thấy lời gọi tool khớp gợi ý từ payload.
+              Đây là dấu hiệu cần kiểm tra trace, chưa đủ để kết luận hành vi có do payload hay không.
             </Callout>
           )}
 

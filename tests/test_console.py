@@ -72,7 +72,7 @@ def test_meta(client):
 
 def test_chi_phuc_vu_localhost(client):
     assert client.get("/api/meta", headers={"host": "evil.example"}).status_code == 403
-    assert client.get("/api/meta", headers={"host": "127.0.0.1:8600"}).status_code == 200
+    assert client.get("/api/meta", headers={"host": "127.0.0.1:8610"}).status_code == 200
 
 
 def test_phan_loai_lo(client):
@@ -300,3 +300,27 @@ def test_asset_tools_va_ma_tran(client):
     assert all(c["allowed_tools"] for c in d["carriers"])
     # search_kb có ở mọi tác vụ chở (tool đọc nền).
     assert all("search_kb" in c["allowed_tools"] for c in d["carriers"])
+
+
+@pytest.mark.parametrize("manifest", [
+    {"task": "probe", "summary": {}},
+    ["invalid-entry", None, {"batch_id": "other"}],
+    "probe-summary",
+])
+def test_manifest_probe_does_not_break_overview(client, tmp_path, manifest):
+    import json
+
+    (tmp_path / "manifest.json").write_text(json.dumps(manifest))
+    assert client.get("/api/batches").status_code == 200
+    assert client.get("/api/overview").status_code == 200
+
+
+def test_manifest_single_session_and_resumed_cost(tmp_path):
+    import json
+
+    path = tmp_path / "manifest.json"
+    session = {"batch_id": "batch", "spent_usd": 0.25, "task": "matrix"}
+    path.write_text(json.dumps(session))
+    assert data._manifest(tmp_path / "trace.sqlite", "batch")["spent_usd"] == 0.25
+    path.write_text(json.dumps([session, "invalid", {**session, "spent_usd": 0.5}]))
+    assert data._manifest(tmp_path / "trace.sqlite", "batch")["spent_usd"] == 0.75
