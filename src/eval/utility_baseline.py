@@ -408,6 +408,8 @@ def review_shortlist(
             return "judge_vs_keyword"
         return "judge_dat_du_kien_truot" if r["judge_pass"] else "judge_truot_du_kien_dung"
 
+    if review.empty:  # không run nào bất đồng: apply trên khung rỗng trả DataFrame, không phải Series
+        return pd.DataFrame(columns=["chon_vi"])
     review = review.assign(chon_vi=review.apply(direction, axis=1))
     rows = []
     for d, k in quota.items():

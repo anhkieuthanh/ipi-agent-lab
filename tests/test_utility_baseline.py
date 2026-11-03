@@ -30,6 +30,7 @@ from eval.utility_baseline import (
     rejudge_runs,
     rescore_table,
     review_candidates,
+    review_shortlist,
     run_one,
     run_table,
 )
@@ -443,3 +444,10 @@ def test_rejudge_run_co_rang_buoc_runtime(ctx, tmp_path):
         log_path=log,
     )
     assert n == 1 and load_rejudge(log)[rid]["judge_pass"] is True
+
+
+def test_review_shortlist_khung_rong_khi_khong_run_bat_dong():
+    """Lô mọi run đồng thuận: không có ứng viên soát tay, không được nổ ở bước rút gọn."""
+    empty = pd.DataFrame(columns=["review_priority", "judge_pass", "benign_query_id"])
+    out = review_shortlist(empty, {}, {})
+    assert out.empty and "chon_vi" in out.columns
