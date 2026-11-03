@@ -1,0 +1,34 @@
+[
+  {
+    "task": "STT-37",
+    "batch_id": "dryrun-usr-baseline-20261103T062013Z",
+    "dry_run": true,
+    "lab_git_commit": "af0ba017be938aa3b55636f86ebe72463ec0e824",
+    "env_hash": "c142e1401feb49b0d3d4e81a6fe6dc23a1a0426529988a78923f21e67303d121",
+    "judge_model": "claude-sonnet-5-5",
+    "judge_prompt_hash": "96a1742b2f6202a2c78c8e7bf71f4875378cc3af680a545be97b4542ce73651a",
+    "models": {
+      "A1": "claude-opus-5",
+      "A2": "glm-5.2",
+      "A3": "deepseek-v4.1-flash-1017"
+    },
+    "targets": [
+      "A1",
+      "A2",
+      "A3"
+    ],
+    "repeats": 3,
+    "query_ids": [
+      "BQ-U3-001",
+      "BQ-U2-011",
+      "BQ-U3-006",
+      "BQ-U3-010"
+    ],
+    "n_planned": 36,
+    "estimate_usd": 3.0,
+    "started_at_utc": "20261103T062014Z",
+    "finished_at_utc": "20261103T063403Z",
+    "spent_usd": 1.3429990000000003,
+    "budget_status": "ok"
+  }
+]

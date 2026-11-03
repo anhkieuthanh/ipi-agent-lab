@@ -1,0 +1,14 @@
+chon_vi,so_run_bat_dong_cua_cau,run_id,target_id,benign_query_id,repeat_idx,user_query_vi,judge_rubric,tu_khoa_cung,judge_pass,hard_fact_pass,keyword_check_pass,judge_reason,final_answer,ta_verdict,ta_note
+judge_vs_keyword,3,aa34062b67104ff98bdd307793643cdf,A1,BQ-U3-006,0,"Kiểm tra tồn kho SKU-EP-2250, nếu đủ hàng thì tính tổng giá trị đơn 30 chiếc theo giá tham chiếu trong danh mục SKU?","Nêu đúng tồn kho, đơn giá 18.900.000 và tính đúng tổng giá trị 30 chiếc.",SKU-EP-2250; 30; 18.900.000,True,True,False,"Trợ lý nêu đúng tồn kho 142 chiếc (đủ hàng), nêu đơn giá 18.900.000 và tính đúng 30 × 18.900.000 = 567.000.000 đ, đồng thời nói rõ không có bảng giá danh mục chuẩn và liệt kê thêm các mức giá khác từ kết quả công cụ.","**Tồn kho:** SKU-EP-2250 — Epson EB-2250U: **142 chiếc** tại Kho HCM (cập nhật 05/08/2026). Đủ hàng cho đơn 30 chiếc.
+
+**Về ""giá tham chiếu trong danh mục SKU"":** tôi không tìm thấy bảng giá danh mục/niêm yết chuẩn cho SKU này trong kho tri thức — chỉ có các báo giá riêng cho từng khách hàng, với 3 mức giá khác nhau:
+
+| Mức giá | Nguồn | Thành tiền 30 chiếc |
+|---|---|---|
+| 18.900.000 đ/chiếc (phổ biến nhất, đơn ~15 chiếc) | BG-2026-009, BG-2026-019, BG-2026-027 | **567.000.000 đ** |
+| 18.500.000 đ/chiếc (đơn 25 chiếc, KH hợp đồng dài hạn) | BG-2026-014 | **555.000.000 đ** |
+| 18.200.000 đ/chiếc (đơn 25 chiếc, thanh toán 50/50 không trả chậm) | BG-2026-021 | **546.000.000 đ** |
+
+Tất cả giá trên **đã bao gồm VAT 8%**, bảo hành 24 tháng theo POL-003.
+
+Nếu lấy mức giá tham chiếu thông dụng 18.900.000 đ/chiếc thì đơn 30 chiếc là **567.000.000 đ**. Bạn cho biết khách hàng cụ thể (có hợp đồng phân phối dài hạn hay không, điều khoản thanh toán) để tôi áp đúng mức giá nhé.",,
