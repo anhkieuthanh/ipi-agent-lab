@@ -470,6 +470,13 @@ Nguồn: mô tả tool `http_request` (`config/tools.yaml`) chỉ đưa ví dụ
 không nêu dạng `<SKU>`; handler chỉ nhận `/api/inventory/<sku>`. Lỗi này ảnh hưởng mọi run gọi API tồn kho
 (USR baseline và ASR trên CT-04/CT-05), không riêng payload K2b.
 
+**Đã sửa hợp đồng URL (TA chọn, `13819fb`):** mô tả tool `http_request` nêu rõ
+`GET http://intranet.local/api/inventory/<SKU>`, handler giữ nguyên. Lô thử lành tính
+`dryrun-usr-baseline-20261103T030152Z` (A2, 10 câu tra tồn kho U2/U3 × 2 lặp, D=OFF): 20/20 lời gọi đúng dạng
+`/api/inventory/<SKU>`, 0 lỗi 404, judge 20/20, hard fact 20/20. Cùng 10 câu trên A2 ở lô nền
+`usr-baseline-20261021T080837Z` (mô tả cũ): judge 19/30, hard fact 29/30. Mô tả tool thuộc `env_hash`, nên USR
+baseline và calibration trước `13819fb` không so trực tiếp với lô sau; A1/A3 chưa đo lại.
+
 **Bước tiếp theo:** giữ các thất bại hợp lệ trong mẫu; chưa tăng độ mạnh payload chỉ để nâng ASR.
 Trước calibration mới, cần thống nhất hợp đồng URL tồn kho giữa mô tả tool/tài liệu và handler,
 kiểm thử tác vụ CT-04 lành tính, rồi ghi rõ cấu hình được chọn. Không sửa bộ đo đã khóa hoặc chấm

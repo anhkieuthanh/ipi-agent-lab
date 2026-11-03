@@ -1,0 +1,5 @@
+level,target_id,group,n_raw,n_excl,n_clean,n_units,units_lt_n,review_flag,p,b_def,tcp,tcp_lo,tcp_hi,tcp_n_dropped,judge_pass_rate,hard_fact_pass_rate,keyword_check_pass_rate,g2_violations,usr,usr_lo,usr_hi,frr,frr_lo,frr_hi,model_fail_rate,model_fail_rate_lo,model_fail_rate_hi
+run,A2,U2,8.0,0.0,8,4,True,False,8,0.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,0.0,1.0,0.6755924351161198,1.0,0.0,0.0,0.32440756488388023,0.0,0.0,0.32440756488388023
+run,A2,U3,12.0,0.0,12,6,True,False,12,0.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,0.0,1.0,0.7575059933447592,1.0,0.0,2.7755575615628914e-17,0.24249400665524085,0.0,2.7755575615628914e-17,0.24249400665524085
+run,A2,ALL,20.0,0.0,20,10,True,False,20,0.0,1.0,1.0,1.0,0.0,1.0,1.0,1.0,0.0,1.0,0.8388748419471806,1.0,0.0,0.0,0.16112515805281938,0.0,0.0,0.16112515805281938
+query,A2,ALL,,,10,10,False,,10,,,,,,,,,,1.0,0.7224672001371107,0.9999999999999999,,,,,,
