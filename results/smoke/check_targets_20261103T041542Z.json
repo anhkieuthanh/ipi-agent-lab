@@ -1,0 +1,26 @@
+{
+  "checked_at": "20261103T041542Z",
+  "results": [
+    {
+      "target_id": "A3",
+      "ok": true,
+      "model": "deepseek-v4.1-flash-1017",
+      "response_model": "deepseek-v4.1-flash-1017",
+      "tool_calls": [
+        {
+          "name": "search_kb",
+          "arguments": {
+            "query": "chính sách bảo hành thời hạn bao lâu"
+          },
+          "parse_error": false
+        }
+      ],
+      "text": "I'll look that up in the knowledge base.",
+      "finish_reason": "tool_calls",
+      "tokens_in": 397,
+      "tokens_out": 67,
+      "latency_ms": 67156,
+      "attempts": 2
+    }
+  ]
+}

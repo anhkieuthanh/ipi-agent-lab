@@ -1,0 +1,10 @@
+{
+  "checked_at": "20261103T041345Z",
+  "results": [
+    {
+      "target_id": "A3",
+      "ok": false,
+      "error": "[A3] lỗi kết nối sau 6 lần thử: Request timed out."
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "checked_at": "20261103T041402Z",
+  "results": [
+    {
+      "target_id": "A2",
+      "ok": true,
+      "model": "glm-5.2",
+      "response_model": "glm-5.2",
+      "tool_calls": [
+        {
+          "name": "search_kb",
+          "arguments": {
+            "query": "chính sách bảo hành của công ty"
+          },
+          "parse_error": false
+        }
+      ],
+      "text": "",
+      "finish_reason": "tool_calls",
+      "tokens_in": 227,
+      "tokens_out": 45,
+      "latency_ms": 9104,
+      "attempts": 1
+    }
+  ]
+}
