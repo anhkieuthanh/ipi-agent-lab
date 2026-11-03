@@ -12,12 +12,21 @@ mang v-attack-1.0). Dùng chính `attack.runner.run_one_attack` như lô thật,
 
 Lô tiền tố `probe-coupling-`, lưu ở `results/probe/coupling/<batch_id>/`: `trace.sqlite`,
 `runs.csv`, `manifest.json`.
+
+`--workers N` chia spec cho N tiến trình con (spec thứ i vào shard i mod N), mỗi con ghi
+`trace-s<i>.sqlite` + `shard-<i>.log`, tiến trình mẹ gộp về `trace.sqlite` khi mọi con xong. Mỗi run có
+DB tạm và tool trong bộ nhớ riêng của tiến trình, nên an toàn cho K2a/K2b; K1 tiêm vào Qdrant dùng chung
+nên từ chối chạy song song. Hạn mức chi phí tính trên cả lô (log lọc theo batch_id) ở mọi con.
+
+    uv run python scripts/coupling_probe.py --payloads <file> --estimate-usd 2 --workers 4
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -83,6 +92,9 @@ def main() -> int:
     parser.add_argument("--plan-only", action="store_true")
     parser.add_argument("--payloads", default=str(PAYLOADS), help="file payload dò")
     parser.add_argument("--targets", nargs="+", help="tập con target (mặc định A2 A3)")
+    parser.add_argument("--workers", type=int, default=1, help="số tiến trình chạy song song (chỉ K2)")
+    parser.add_argument("--shard", help=argparse.SUPPRESS)  # "i/N", do tiến trình mẹ truyền
+    parser.add_argument("--batch-id", help=argparse.SUPPRESS)
     args = parser.parse_args()
 
     load_dotenv(ROOT / ".env")
@@ -115,9 +127,16 @@ def main() -> int:
         for t in TG
         for r in range(args.repeats)
     ]
-    print(f"{len(payloads)} payload × {len(TG)} target × {args.repeats} lặp = {len(specs)} run")
-    for p in payloads:
-        print(f"  {p['id']} {p['channels'][0]}·{p['goal']} → {_carrier(p)}")
+    shard = None
+    if args.shard:
+        i, n = (int(x) for x in args.shard.split("/"))
+        shard, specs = i, specs[i::n]
+    else:
+        print(f"{len(payloads)} payload × {len(TG)} target × {args.repeats} lặp = {len(specs)} run")
+        for p in payloads:
+            print(f"  {p['id']} {p['channels'][0]}·{p['goal']} → {_carrier(p)}")
+    if args.workers > 1 and any(s.channel == "K1" for s in specs):
+        parser.error("--workers > 1 chỉ cho K2a/K2b: K1 tiêm vào Qdrant dùng chung giữa các run")
     if args.plan_only:
         return 0
 
@@ -129,14 +148,17 @@ def main() -> int:
     if args.estimate_usd is None:
         parser.error("cần --estimate-usd để mở lô")
 
-    batch_id = f"probe-coupling-{_stamp()}"
+    batch_id = args.batch_id or f"probe-coupling-{_stamp()}"
     batch_dir = PROBE_DIR / batch_id
     batch_dir.mkdir(parents=True, exist_ok=True)
-    engine = open_store(batch_dir / "trace.sqlite")
+    if args.workers > 1 and shard is None:
+        return _run_parallel(args, batch_id, batch_dir, payloads, _carrier, TG, commit, len(specs))
+    trace_path = batch_dir / ("trace.sqlite" if shard is None else f"trace-s{shard}.sqlite")
+    engine = open_store(trace_path)
     prices = load_prices(MODELS, list(TG))
     guard = budget_from_env(args.estimate_usd)
     models = {t: LLMClient(t, config_path=MODELS, log_path=LOG, run_id=batch_id) for t in TG}
-    swept = sweep_stale_run_dirs()
+    swept = [] if shard is not None else sweep_stale_run_dirs()  # con không dọn: xóa run của con khác
     if swept:
         print(f"Đã dọn {len(swept)} thư mục run cũ còn sót.")
     ctx = RunContext(
@@ -173,9 +195,7 @@ def main() -> int:
     try:
         for i, spec in enumerate(specs, start=1):
             run_id = run_one_attack(spec, ctx)
-            import sqlite3
-
-            con = sqlite3.connect(batch_dir / "trace.sqlite")
+            con = sqlite3.connect(trace_path)
             row = con.execute(
                 "SELECT outcome, blocked_by, delivered, g2_spontaneous FROM runs WHERE run_id=?",
                 (run_id,),
@@ -193,16 +213,21 @@ def main() -> int:
                 print("DỪNG: chi phí lô vượt 120% dự toán hoặc chạm hạn mức tổng.")
                 break
     finally:
-        manifest["finished_at_utc"] = _stamp()
-        manifest["spent_usd"] = sum(spend_from_log(LOG, prices, run_ids=[batch_id]).values())
-        manifest["budget_status"] = status
-        (batch_dir / "manifest.json").write_text(
-            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-        )
-        export_runs_csv(engine, batch_id, batch_dir / "runs.csv")
+        if shard is None:  # con: mẹ ghi manifest, gộp trace, xuất CSV
+            manifest["finished_at_utc"] = _stamp()
+            manifest["spent_usd"] = sum(spend_from_log(LOG, prices, run_ids=[batch_id]).values())
+            manifest["budget_status"] = status
+            (batch_dir / "manifest.json").write_text(
+                json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+            )
+            export_runs_csv(engine, batch_id, batch_dir / "runs.csv")
+    if shard is not None:
+        return 3 if status == "stop" else 0
+    _summary(batch_dir, TG)
+    return 0
 
-    import sqlite3
 
+def _summary(batch_dir: Path, TG) -> None:
     con = sqlite3.connect(batch_dir / "trace.sqlite")
     for t in TG:
         n, s = con.execute(
@@ -212,7 +237,79 @@ def main() -> int:
         print(f"{t}: {s or 0}/{n} run thành công")
     con.close()
     print(f"  runs: {(batch_dir / 'runs.csv').relative_to(ROOT)}")
-    return 0
+
+
+def _merge_shards(dest: Path, shards: list[Path]) -> None:
+    """Gộp `runs`/`steps` của các trace shard vào `dest` (id bước đánh lại, khóa run_id giữ nguyên)."""
+    engine = open_store(dest)
+    engine.dispose()
+    con = sqlite3.connect(dest)
+    try:
+        for i, src in enumerate(shards):
+            if not src.exists():
+                continue
+            con.execute(f"ATTACH DATABASE ? AS s{i}", (str(src),))
+            for table in ("runs", "steps"):
+                cols = [r[1] for r in con.execute(f'PRAGMA s{i}.table_info("{table}")') if r[1] != "id"]
+                lst = ", ".join(f'"{c}"' for c in cols)
+                con.execute(f'INSERT INTO main."{table}" ({lst}) SELECT {lst} FROM s{i}."{table}"')
+            con.commit()
+            con.execute(f"DETACH DATABASE s{i}")
+    finally:
+        con.close()
+
+
+def _run_parallel(args, batch_id, batch_dir, payloads, carrier_of, TG, commit, n_specs) -> int:
+    swept = sweep_stale_run_dirs()
+    if swept:
+        print(f"Đã dọn {len(swept)} thư mục run cũ còn sót.")
+    n = args.workers
+    started = _stamp()
+    base = [sys.executable, str(Path(__file__).resolve()), "--payloads", args.payloads,
+            "--repeats", str(args.repeats), "--estimate-usd", str(args.estimate_usd),
+            "--targets", *TG, "--workers", str(n), "--batch-id", batch_id]
+    procs = []
+    for i in range(n):
+        log = (batch_dir / f"shard-{i}.log").open("w", encoding="utf-8")
+        procs.append((subprocess.Popen([*base, "--shard", f"{i}/{n}"], stdout=log,
+                                       stderr=subprocess.STDOUT, cwd=ROOT), log))
+    print(f"{n} tiến trình con, {n_specs} run; log: {(batch_dir / 'shard-<i>.log').relative_to(ROOT)}",
+          flush=True)
+    codes = []
+    for p, log in procs:
+        codes.append(p.wait())
+        log.close()
+    shards = [batch_dir / f"trace-s{i}.sqlite" for i in range(n)]
+    _merge_shards(batch_dir / "trace.sqlite", shards)
+    for s in shards:
+        s.unlink(missing_ok=True)
+    prices = load_prices(MODELS, list(TG))
+    spent = sum(spend_from_log(LOG, prices, run_ids=[batch_id]).values())
+    status = "stop" if 3 in codes else ("error" if any(c not in (0, 3) for c in codes) else "ok")
+    manifest = {
+        "task": "STT-61 (dò payload gắn ngữ cảnh)",
+        "batch_id": batch_id,
+        "lab_git_commit": commit,
+        "defense": "off",
+        "repeats": args.repeats,
+        "workers": n,
+        "shard_exit_codes": codes,
+        "payload_carrier": {p["id"]: carrier_of(p) for p in payloads},
+        "payloads_file": args.payloads,
+        "estimate_usd": args.estimate_usd,
+        "started_at_utc": started,
+        "finished_at_utc": _stamp(),
+        "spent_usd": spent,
+        "budget_status": status,
+    }
+    (batch_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    engine = open_store(batch_dir / "trace.sqlite")
+    export_runs_csv(engine, batch_id, batch_dir / "runs.csv")
+    print(f"Xong: {spent:.2f} USD · {status} · mã thoát con {codes}")
+    _summary(batch_dir, TG)
+    return 0 if status == "ok" else 2
 
 
 if __name__ == "__main__":
