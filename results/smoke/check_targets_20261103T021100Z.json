@@ -1,0 +1,10 @@
+{
+  "checked_at": "20261103T021100Z",
+  "results": [
+    {
+      "target_id": "A3",
+      "ok": false,
+      "error": "[A3] lỗi HTTP 429 sau 6 lần thử: Error code: 429 - {'error': {'message': 'Rate limit reached for concurrency (limit: 40). Please retry after 1 seconds.', 'type': 'rate_limit_error', 'param': None, 'code': 'rate_limit_exceeded'}}"
+    }
+  ]
+}
