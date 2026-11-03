@@ -1,0 +1,28 @@
+:root {
+  --color-paper: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-ink: #17283e;
+  --color-muted: #657184;
+  --color-rule: #e1e5eb;
+  --color-accent: #203c60;
+  --color-accent-soft: #edf2f7;
+  --color-focus: #345e8e;
+  --color-danger: #b33a3f;
+  --color-success: #27704b;
+  --font-body: "Be Vietnam Pro", system-ui, sans-serif;
+  --font-display: var(--font-body);
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --space-xs: .5rem;
+  --space-sm: .75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --text-sm: .8125rem;
+  --text-body: .875rem;
+  --text-title: 1.75rem;
+  --radius-card: 6px;
+  --radius-input: 4px;
+  --dur-short: 150ms;
+  --ease-out: ease-out;
+}

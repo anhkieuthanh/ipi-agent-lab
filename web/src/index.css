@@ -197,3 +197,61 @@ body { background: var(--color-paper); color: var(--color-ink); font-family: var
   .presentation-mode .overview-chart { height: 260px; }
   .presentation-mode .recharts-text, .presentation-mode .recharts-legend-wrapper { font-size: 13px !important; }
 }
+
+/* UI UX Pro Max refinement: legible data, recoverable filtering and clear targets. */
+:root { --text-sm: .875rem; --text-body: .9375rem; }
+.wordmark-caption { font-size: 11px; letter-spacing: 0; }
+.primary-link { font-size: 14px; }
+.context-label, .scope-picker .input { font-size: 13px; }
+.scope-picker .input { height: 38px; }
+.scope-batch { max-width: 360px; }
+.workspace-status, .update-status { font-size: 12px; }
+.presentation-toggle { min-height: 38px; }
+.refresh-button { min-width: 32px; min-height: 32px; align-items: center; justify-content: center; }
+.app-footer { font-size: 12px; }
+.label { font-size: 12px; font-weight: 500; text-transform: none; letter-spacing: 0; }
+.table-base thead th { font-size: 12px; font-weight: 500; text-transform: none; letter-spacing: 0; white-space: nowrap; }
+.card h2 { font-size: 16px; font-weight: 500; }
+.card > div:first-child { min-width: 0; }
+.page-heading { margin-bottom: 24px; }
+.page-title { font-size: 28px; }
+.metric-label { font-size: 14px; line-height: 1.6; }
+.metric-detail { font-size: 13px; }
+.metric-value.is-unmeasured { color: var(--color-muted); font-size: 28px; font-weight: 400; letter-spacing: -.5px; }
+.overview-intro { font-size: 15px; line-height: 1.8; overflow-wrap: anywhere; }
+.measurement-note { font-size: 12px; }
+.selected-scope { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin: 16px 48px 0; color: var(--color-muted); font-size: 12px; }
+.selected-scope code { color: var(--color-ink); font-size: 12px; overflow-wrap: anywhere; min-width: 0; }
+.selected-scope button, .filter-clear, .table-toggle { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 6px 10px; color: var(--color-accent); border: 1px solid var(--color-rule); border-radius: var(--radius-input); background: var(--color-surface); font-size: 13px; white-space: nowrap; }
+.selected-scope button:hover, .filter-clear:hover, .table-toggle:hover { background: var(--color-accent-soft); }
+.result-summary { padding: 12px 20px; border-bottom: 1px solid var(--color-rule); color: var(--color-muted); font-size: 13px; }
+.batch-search-bar { display: flex; align-items: end; flex-wrap: wrap; justify-content: space-between; gap: 16px; margin-bottom: 16px; font-size: 13px; color: var(--color-muted); }
+.batch-search-bar label { display: grid; gap: 8px; width: min(100%, 360px); }
+.batch-search-bar .input { width: 100%; }
+.chart-reading-note { border-top: 1px solid var(--color-rule); padding: 12px 20px; font-size: 12px; line-height: 1.7; color: var(--color-muted); }
+.chart-reading-note strong { font-weight: 500; color: var(--color-ink); }
+.sample-size { display: block; margin-top: 4px; font-size: 12px; color: var(--color-muted); white-space: nowrap; }
+button, a, select, summary { touch-action: manipulation; }
+button:not(:disabled), select:not(:disabled), summary { cursor: pointer; }
+button:active:not(:disabled) { filter: brightness(.97); }
+button:disabled { cursor: not-allowed; }
+button, a, select { transition: background-color var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out), border-color var(--dur-short) var(--ease-out); }
+.presentation-mode .metric-value.is-unmeasured { font-size: 32px; }
+.presentation-mode .chart-reading-note { font-size: 13px; }
+@media (max-width: 1023px) { .selected-scope { margin-left: 24px; margin-right: 24px; } }
+@media (max-width: 767px) {
+  .selected-scope { margin-left: 24px; margin-right: 24px; }
+  .presentation-toggle, .primary-link, .secondary-link { min-height: 44px; }
+  .refresh-button { min-width: 44px; min-height: 44px; }
+  .scope-picker .input, .input, .filter-clear, .table-toggle { min-height: 44px; }
+  .scope-batch { flex-basis: 100%; }
+  .card > div:first-child { flex-wrap: wrap; }
+  .table-toggle { font-size: 12px; }
+  .page-title { font-size: 25px; }
+  .metric-value.is-unmeasured { font-size: 26px; }
+  .chart-reading-note { padding-left: 16px; padding-right: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { button, a, select { transition: none; } }
+/* Secondary data remains readable against the light workbench surface. */
+.text-slate-400 { color: var(--color-muted); }
+.text-\[11px\], .text-\[11\.5px\] { font-size: 12px; }

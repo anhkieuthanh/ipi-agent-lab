@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, Layers } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
-import { Badge, Card, Empty, ErrorBox, Loading, Mono, PageHeader, RateBar, Segmented } from "@/components/ui";
+import { Badge, Card, Empty, ErrorBox, Loading, PageHeader, RateBar, Segmented } from "@/components/ui";
 import { api, type Batch } from "@/lib/api";
 import { CHANNEL_LABEL, GOAL_LABEL, KIND_LABEL, int, kilo, pct, presetLabel, usd, when } from "@/lib/format";
 import { KindIcon } from "@/lib/icons";
@@ -40,13 +40,16 @@ function Result({ b }: { b: Batch }) {
 }
 
 export function BatchesPage() {
-  const [filter, setFilter] = useState<Filter>("all");
+  const [sp, setSp] = useSearchParams();
+  const filter = (["all", "experiment", "dryrun", "demo"].includes(sp.get("type") ?? "") ? sp.get("type") : "all") as Filter;
+  const [search, setSearch] = useState("");
+  const setFilter = (value: Filter) => { const n = new URLSearchParams(sp); if (value === "all") n.delete("type"); else n.set("type", value); setSp(n, { replace: true }); };
   const q = useQuery({ queryKey: ["batches"], refetchInterval: 15_000, queryFn: () => api.batches() });
   if (q.isLoading) return <Loading />;
   if (q.error) return <ErrorBox error={q.error} />;
   const all = q.data!;
   const count = (k: Filter) => (k === "all" ? all.length : all.filter((b) => b.kind === k).length);
-  const rows = filter === "all" ? all : all.filter((b) => b.kind === filter);
+  const rows = all.filter((b) => (filter === "all" || b.kind === filter) && `${b.batch_id} ${b.targets.join(" ")}`.toLowerCase().includes(search.trim().toLowerCase()));
 
   return (
     <>
@@ -65,9 +68,10 @@ export function BatchesPage() {
           />
         }
       />
+      <div className="batch-search-bar"><label><span>Tìm lô hoặc model</span><input className="input" type="search" placeholder="Nhập mã lô, A1, A2…" value={search} onChange={(e) => setSearch(e.target.value)} /></label><span role="status">{int(rows.length)} lô</span></div>
       <Card>
         {rows.length === 0 ? (
-          <Empty title="Không có lô nào" icon={<Layers size={20} />} />
+          <Empty title="Không có lô phù hợp" icon={<Layers size={20} />} action={search ? <button className="filter-clear" onClick={() => setSearch("")}>Xóa tìm kiếm</button> : undefined}>Thử tìm bằng mã lô hoặc đổi bộ lọc.</Empty>
         ) : (
           <div className="max-w-full overflow-x-auto"><table className="table-base">
             <thead>
@@ -87,8 +91,8 @@ export function BatchesPage() {
               {rows.map((b) => (
                 <tr key={b.batch_id} className="group hover:bg-slate-50/70">
                   <td className="max-w-[260px]">
-                    <Mono className="block truncate font-medium text-slate-800">{b.batch_id}</Mono>
-                    <div className="mt-0.5 truncate text-[12px] text-slate-400">{b.store}</div>
+                    <Link to={{ pathname: "/runs", search: `?batch=${encodeURIComponent(b.batch_id)}&scope=${b.kind}` }} title={b.batch_id} className="block truncate font-mono text-[12px] font-medium text-brand-600 hover:underline">{b.batch_id}</Link>
+                    <div title={b.store} className="mt-0.5 max-w-[240px] truncate text-[12px] text-slate-500">{b.store}</div>
                   </td>
                   <td>
                     <Badge tone={b.kind === "experiment" ? "brand" : b.kind === "demo" ? "payload" : "neutral"}>
@@ -150,7 +154,7 @@ export function BatchesPage() {
                   <td className="w-8 pr-4">
                     <Link
                       to={{ pathname: "/runs", search: `?batch=${encodeURIComponent(b.batch_id)}&scope=${b.kind}` }}
-                      className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                      aria-label={`Xem run của lô ${b.batch_id}`} className="flex h-9 w-9 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                       title="Xem các run"
                     >
                       <ChevronRight size={16} />
