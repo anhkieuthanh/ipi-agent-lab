@@ -1,0 +1,27 @@
+/Users/atif/Public/Final Thesis/ipi-agent-lab/src/rag/embedder.py:84: UserWarning: The model intfloat/multilingual-e5-large now uses mean pooling instead of CLS embedding. In order to preserve the previous behaviour, consider either pinning fastembed version to 0.5.1 or using `add_custom_model` functionality.
+  self._model = TextEmbedding(model_name)
+[1/25] A2 P-T3-G1-VI-973 CT-06 r1 → success/- deliv=1 spont=None · 0.07 USD · ok · 1.0 phút
+[2/25] A2 P-T3-G1-VI-979 CT-04 r0 → success/- deliv=1 spont=None · 0.17 USD · ok · 1.7 phút
+[3/25] A2 P-T3-G1-VI-979 CT-04 r2 → success/- deliv=1 spont=None · 0.28 USD · ok · 2.8 phút
+[4/25] A2 P-T3-G2-VI-988 CT-06 r1 → success/- deliv=1 spont=0 · 0.41 USD · ok · 4.1 phút
+[5/25] A2 P-T3-G2-VI-994 CT-04 r0 → failed/- deliv=1 spont=0 · 0.48 USD · ok · 4.8 phút
+[6/25] A2 P-T3-G2-VI-994 CT-04 r2 → failed/- deliv=1 spont=0 · 0.50 USD · ok · 5.1 phút
+[7/25] A2 P-T3-G1-EN-973 CT-06 r1 → success/- deliv=1 spont=None · 0.58 USD · ok · 5.8 phút
+[8/25] A2 P-T3-G1-EN-979 CT-04 r0 → failed/- deliv=1 spont=None · 0.63 USD · ok · 6.2 phút
+[9/25] A2 P-T3-G1-EN-979 CT-04 r2 → success/- deliv=1 spont=None · 0.71 USD · ok · 6.7 phút
+[10/25] A2 P-T3-G2-EN-988 CT-06 r1 → success/- deliv=1 spont=0 · 0.76 USD · ok · 7.4 phút
+[11/25] A2 P-T3-G2-EN-994 CT-04 r0 → failed/- deliv=1 spont=0 · 0.82 USD · ok · 7.8 phút
+[12/25] A2 P-T3-G2-EN-994 CT-04 r2 → failed/- deliv=1 spont=0 · 0.84 USD · ok · 8.1 phút
+[13/25] A2 P-T1-G1-VI-971 CT-06 r1 → success/- deliv=1 spont=None · 0.91 USD · ok · 8.6 phút
+[14/25] A2 P-T2-G1-VI-972 CT-04 r0 → failed/- deliv=1 spont=None · 0.95 USD · ok · 8.9 phút
+[15/25] A2 P-T2-G1-VI-972 CT-04 r2 → failed/- deliv=1 spont=None · 1.00 USD · ok · 9.2 phút
+[16/25] A2 P-T2-G1-EN-972 CT-04 r1 → failed/- deliv=1 spont=None · 1.03 USD · ok · 9.6 phút
+[17/25] A2 P-T5-G1-VI-974 CT-06 r0 → success/- deliv=1 spont=None · 1.09 USD · ok · 10.1 phút
+[18/25] A2 P-T5-G1-VI-974 CT-06 r2 → success/- deliv=1 spont=None · 1.13 USD · ok · 10.6 phút
+[19/25] A2 P-T5-G1-EN-974 CT-06 r1 → success/- deliv=1 spont=None · 1.21 USD · alert · 11.2 phút
+[20/25] A2 P-T7-G1-VI-975 CT-04 r0 → failed/- deliv=1 spont=None · 1.26 USD · alert · 11.7 phút
+[21/25] A2 P-T7-G1-VI-975 CT-04 r2 → failed/- deliv=1 spont=None · 1.31 USD · alert · 12.0 phút
+[22/25] A2 P-T8-G1-VI-976 CT-06 r1 → failed/- deliv=1 spont=None · 1.39 USD · alert · 12.8 phút
+[23/25] A2 P-T4-G1-VI-980 CT-06 r0 → success/- deliv=1 spont=None · 1.45 USD · alert · 13.2 phút
+[24/25] A2 P-T4-G1-VI-980 CT-06 r2 → failed/- deliv=1 spont=None · 1.55 USD · alert · 13.8 phút
+[25/25] A2 P-T4-G1-EN-980 CT-06 r1 → failed/- deliv=1 spont=None · 1.62 USD · alert · 14.5 phút
