@@ -207,7 +207,7 @@ function DefenseMap({
   return (
     <Card className="xl:col-span-3">
       <CardHeader
-        title={view ? `Phát lại run · ${presetLabel(view.preset)}` : "Phòng thủ trên sơ đồ"}
+        title={view ? `Phát lại run · ${presetLabel(view.preset)}` : "2. Phòng thủ"}
         icon={<ShieldCheck size={16} />}
         action={
           view ? (
@@ -370,7 +370,7 @@ export function LabPage() {
   return (
     <>
       <PageHeader
-        title="Phòng thí nghiệm tấn công"
+        title="Thí nghiệm"
         info="Chọn kịch bản, chạy trên model thật, so trực tiếp khi tắt và bật phòng thủ. Mỗi lượt gọi API thật, có canh ngân sách."
       />
 
@@ -384,15 +384,16 @@ export function LabPage() {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <Card className="xl:col-span-3">
-          <CardHeader title="Kịch bản tấn công" icon={<FlaskConical size={16} />} />
+          <CardHeader title="1. Kịch bản" icon={<FlaskConical size={16} />} />
           <div className="p-5">
             <Select
               value={key}
               onChange={setKey}
               options={(scenarios.data ?? []).map((s) => ({ value: s.key, label: s.title }))}
+              label="Kịch bản"
               className="mb-4"
             />
-            {scenario && <AttackBrief scenario={scenario} />}
+            {scenario && <details className="detail-disclosure"><summary>Nội dung kịch bản</summary><div><AttackBrief scenario={scenario} /></div></details>}
           </div>
         </Card>
 
@@ -404,7 +405,7 @@ export function LabPage() {
         />
 
         <Card className="xl:col-span-3">
-          <CardHeader title="Thiết lập lượt chạy" icon={<SlidersHorizontal size={16} />} />
+          <CardHeader title="3. Thiết lập" icon={<SlidersHorizontal size={16} />} />
           <div className="space-y-4 p-5">
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <div>
@@ -474,6 +475,7 @@ export function LabPage() {
               </label>
             </div>
             </div>
+            <div className="run-summary"><span>{target}</span><span>{chosen ? presetLabel(chosen) : "Chưa chọn cấu hình"}</span><span>{compareOff && chosen !== "off" ? "2 lượt · so sánh bật/tắt" : "1 lượt chạy"}</span></div>
             <Button
               variant="primary"
               className="w-full lg:ml-auto lg:flex lg:w-[320px]"
@@ -481,7 +483,7 @@ export function LabPage() {
               onClick={() => start.mutate()}
               icon={running || start.isPending ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
             >
-              {running ? "Đang chạy…" : "Chạy tấn công"}
+              {running ? "Đang chạy…" : "Chạy thí nghiệm"}
             </Button>
             {start.error && <ErrorBox error={start.error} />}
             {active.error && <ErrorBox error={active.error} />}

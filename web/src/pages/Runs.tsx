@@ -42,7 +42,7 @@ export function RunsPage() {
   return (
     <>
       <PageHeader
-        title="Điều tra run"
+        title="Lượt chạy"
         info="Bấm một run để xem từng bước, payload và canary tô màu, tool agent đã gọi."
       />
 

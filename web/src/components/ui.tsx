@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
-import { AlertTriangle, HelpCircle, Inbox, Loader2 } from "lucide-react";
+import { AlertTriangle, HelpCircle, Inbox, Loader2, PanelsTopLeft } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 
 import type { Verdict } from "@/lib/api";
@@ -22,19 +22,13 @@ export function CardHeader({
   icon?: ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
-      <div className="flex min-w-0 items-start gap-3">
-        {icon && (
-          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-            {icon}
-          </div>
-        )}
-        <div className="min-w-0">
-          <h2 className="text-[15px] font-semibold text-slate-900">{title}</h2>
-          {subtitle && <p className="mt-0.5 text-[13px] text-slate-500">{subtitle}</p>}
-        </div>
+    <div className="block-header">
+      <div className="block-heading">
+        <span className="block-icon" aria-hidden="true">{icon ?? <PanelsTopLeft size={22} />}</span>
+        <h2>{title}</h2>
+        {subtitle && <details className="block-description"><summary>Chi tiết</summary><div>{subtitle}</div></details>}
       </div>
-      {action && <div className="shrink-0">{action}</div>}
+      {action && <div className="block-action">{action}</div>}
     </div>
   );
 }
@@ -392,11 +386,11 @@ export function VerdictBanner({ verdict }: { verdict: Verdict }) {
 
 export function KeyValue({ items }: { items: [string, ReactNode][] }) {
   return (
-    <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
+    <dl className="key-value-grid">
       {items.map(([k, v]) => (
         <div key={k} className="min-w-0">
           <dt className="label">{k}</dt>
-          <dd className="mt-1 truncate text-[13.5px] text-slate-800">{v ?? "—"}</dd>
+          <dd className="mt-1 break-words text-[13px] text-slate-800">{v ?? "—"}</dd>
         </div>
       ))}
     </dl>

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, FileWarning, Info, Mail, Map as MapIcon, Target, Wrench } from "lucide-react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
-import { StepTimeline, ToolActions, TraceLegend } from "@/components/Trace";
+import { TraceInspector, ToolActions, TraceLegend } from "@/components/Trace";
 import { HighlightText } from "@/components/Trace";
 import { TraceReplay } from "@/components/TraceReplay";
 import {
@@ -36,14 +36,14 @@ export function RunDetailPage() {
   return (
     <>
       <PageHeader
-        title="Chi tiết run"
+        title="Chi tiết lượt chạy"
         info={<Mono>{run.run_id}</Mono>}
         actions={
           <Link
             to={`/runs${sp.toString() ? `?${sp}` : ""}`}
             className="inline-flex h-9 items-center gap-2 rounded-lg px-3 text-[13.5px] font-medium text-slate-600 ring-1 ring-inset ring-slate-300 hover:bg-slate-50"
           >
-            <ArrowLeft size={15} /> Danh sách run
+            <ArrowLeft size={15} /> Lượt chạy
           </Link>
         }
       />
@@ -59,8 +59,19 @@ export function RunDetailPage() {
             </Callout>
           )}
 
+          <Card>
+            <CardHeader
+              title="Diễn biến"
+              subtitle={<TraceLegend />}
+            />
+            <div className="p-4">
+              <TraceInspector steps={d.steps} />
+            </div>
+          </Card>
+
           {attack && d.payload_text && (
             <Card>
+              <details className="detail-disclosure"><summary>Payload</summary>
               <CardHeader
                 title="Payload kẻ tấn công cài vào dữ liệu"
                 subtitle={String(run.payload_id)}
@@ -73,26 +84,18 @@ export function RunDetailPage() {
                   {run.channel ? CHANNEL_LABEL[String(run.channel)] ?? String(run.channel) : "dữ liệu"} mà agent đọc.
                 </p>
               </div>
+              </details>
             </Card>
           )}
 
           <Card>
-            <CardHeader title="Phát lại trên sơ đồ" icon={<MapIcon size={16} className="text-slate-500" />} />
+            <details className="detail-disclosure"><summary>Phát lại trên sơ đồ</summary>
+            <CardHeader title="Phát lại" icon={<MapIcon size={16} className="text-slate-500" />} />
             <TraceReplay
               detail={d}
               codes={config.data?.presets.find((p) => p.name === String(run.preset))?.codes ?? []}
             />
-          </Card>
-
-          <Card>
-            <CardHeader
-              title="Agent đã làm gì — từng bước"
-              
-              action={<TraceLegend />}
-            />
-            <div className="p-4">
-              <StepTimeline steps={d.steps} />
-            </div>
+            </details>
           </Card>
 
           {d.final_answer && (
@@ -107,7 +110,7 @@ export function RunDetailPage() {
 
         <div className="space-y-6">
           <Card>
-            <CardHeader title="Thông tin run" icon={<Info size={16} className="text-slate-500" />} />
+            <CardHeader title="Thông tin" icon={<Info size={16} className="text-slate-500" />} />
             <div className="p-5">
               <KeyValue
                 items={[

@@ -119,7 +119,7 @@ export function SystemPage() {
 
   return (
     <>
-      <PageHeader title="Sơ đồ hệ thống" info="Rê chuột lên một thành phần hoặc điểm phòng thủ để xem giải thích." />
+      <PageHeader title="Hệ thống" info="Rê chuột lên một thành phần hoặc điểm phòng thủ để xem giải thích." />
 
       <Card>
         <div className="px-4 pb-2 pt-4">

@@ -180,6 +180,31 @@ export function StepTimeline({ steps, live = false }: { steps: Step[]; live?: bo
   );
 }
 
+/** Compact investigation: select a step to inspect its evidence. */
+export function TraceInspector({ steps }: { steps: Step[] }) {
+  const decisive = steps.find((s) => s.decisive);
+  const [selected, setSelected] = useState<number | null>(null);
+  const step = steps.find((s) => s.idx === selected) ?? decisive ?? steps[0];
+  if (!step) return <p className="p-5 text-sm text-slate-500">Chưa có bước nào.</p>;
+  return <div className="trace-inspector">
+    <div className="trace-step-list">
+      {decisive && <button className="filter-clear mb-3" onClick={() => setSelected(decisive.idx)}>Bước quyết định</button>}
+      <div role="group" aria-label="Các bước thực thi">
+        {steps.map((s) => <button key={s.idx} className={clsx("trace-step", s.idx === step.idx && "is-selected")} aria-pressed={s.idx === step.idx} onClick={() => setSelected(s.idx)}>
+          <span className="trace-step-icon" aria-hidden="true">{stepTone(s).icon}</span>
+          <span><span className="trace-step-name">{s.tool_name ?? (s.kind === "defense" ? "Phòng thủ" : "Model")}</span><span className="trace-step-meta">Bước {s.idx}{s.decisive ? " · Quyết định" : s.blocking ? " · Chặn" : s.refusal ? " · Từ chối" : ""}</span></span>
+        </button>)}
+      </div>
+    </div>
+    <div className="trace-evidence" aria-live="polite">
+      <div className="mb-4 flex flex-wrap items-center gap-2"><Badge>Bước {step.idx}</Badge>{stepTone(step).chip}{step.decisive && <Badge tone="defense">Quyết định</Badge>}</div>
+      {step.events.map((event, i) => <p key={i} className="mb-3 text-sm text-slate-600">{event}</p>)}
+      {Object.entries(step.fields).map(([key, marked]) => <div key={key} className="mb-4"><h3 className="label mb-2">{FIELD_LABEL[key] ?? key}</h3><HighlightText value={{ text: marked.spans.length ? marked.text : format(marked.text), spans: marked.spans }} /></div>)}
+      {!Object.keys(step.fields).length && !step.events.length && <p className="text-sm text-slate-500">Không có nội dung chi tiết.</p>}
+    </div>
+  </div>;
+}
+
 export function TraceLegend() {
   return (
     <div className="flex flex-wrap items-center gap-3 text-[12px] text-slate-500">

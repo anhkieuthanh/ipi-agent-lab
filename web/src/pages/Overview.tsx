@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Crosshair, CircleCheck, Layers, ChartColumn } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -36,30 +36,30 @@ export function OverviewPage() {
   ].filter((s) => s.available);
   return (
     <>
-      <PageHeader title="Tổng quan đánh giá" actions={batch ? <Link className="filter-clear" to={{ pathname: "/runs", search: `?scope=${kind}&batch=${encodeURIComponent(batch)}` }}>Điều tra lô <ArrowRight size={14} /></Link> : undefined} info="ASR: tỷ lệ tấn công đạt mục tiêu. USR: tỷ lệ hoàn thành tác vụ lành tính. Mẫu số loại run lỗi hạ tầng; khoảng tin cậy Wilson 95%." />
+      <PageHeader title="Tổng quan" actions={batch ? <Link className="filter-clear" to={{ pathname: "/runs", search: `?scope=${kind}&batch=${encodeURIComponent(batch)}` }}>Điều tra lô <ArrowRight size={14} /></Link> : undefined} info="ASR: tỷ lệ tấn công đạt mục tiêu. USR: tỷ lệ hoàn thành tác vụ lành tính. Mẫu số loại run lỗi hạ tầng; khoảng tin cậy Wilson 95%." />
       <p className="overview-intro">Mức độ an toàn và hữu dụng của agent trên <strong className="font-medium text-slate-800">{batch ? "lô đang chọn" : SCOPE_LABEL[kind].toLowerCase()}</strong>.</p>
       {k.n_attack === 0 && <div className="mb-6"><Callout tone="brand">Chưa có run tấn công trong phạm vi này. Đổi phạm vi dữ liệu hoặc mở <Link to="/lab" className="font-medium underline">Phòng thí nghiệm</Link>.</Callout></div>}
 
       <section className="metric-strip" aria-label="Chỉ số đánh giá chính">
         <div className="metric">
-          <div className="metric-label">Tấn công đạt mục tiêu · ASR nền</div>
+          <span className="block-icon" aria-hidden="true"><Crosshair size={22} /></span><div className="metric-label">Tấn công thành công · ASR</div>
           <strong className={`metric-value num${k.asr_off ? "" : " is-unmeasured"}`}>{k.asr_off ? pct(k.asr_off.p) : "Chưa đo"}</strong>
           <div className="metric-detail"><Sample rate={k.asr_off} noun="run tấn công" /><br />Bật phòng thủ: <strong>{pct(k.asr_on?.p)}</strong>{k.asr_on ? ` · n=${int(k.asr_on.n)}` : " · chưa đo"}</div>
         </div>
         <div className="metric">
-          <div className="metric-label">Hoàn thành tác vụ · USR nền</div>
+          <span className="block-icon" aria-hidden="true"><CircleCheck size={22} /></span><div className="metric-label">Hoàn thành tác vụ · USR</div>
           <strong className={`metric-value num${k.usr_off ? "" : " is-unmeasured"}`}>{k.usr_off ? pct(k.usr_off.p) : "Chưa đo"}</strong>
           <div className="metric-detail"><Sample rate={k.usr_off} noun="câu lành tính" /><br />Chặn nhầm · FRR: <strong>{pct(k.frr?.p)}</strong></div>
         </div>
         <div className="metric">
-          <div className="metric-label">Lượt chạy hợp lệ</div>
+          <span className="block-icon" aria-hidden="true"><Layers size={22} /></span><div className="metric-label">Lượt chạy hợp lệ</div>
           <strong className="metric-value num">{int(valid)}</strong>
           <div className="metric-detail">Trên tổng {int(k.n_runs)} lượt chạy<br /><strong>{int(k.n_parse_error)}</strong> lỗi hạ tầng đã loại khỏi mẫu số</div>
         </div>
       </section>
 
       <Card>
-        <CardHeader title="An toàn và hữu dụng theo model" subtitle="ASR thấp hơn là an toàn hơn · USR cao hơn là hữu dụng hơn" action={<button className="table-toggle" aria-expanded={showTable} aria-controls="model-data-table" onClick={() => setShowTable(!showTable)}>{showTable ? "Ẩn bảng số liệu" : "Bảng số liệu"}</button>} />
+        <CardHeader icon={<ChartColumn size={22} />} title="Kết quả theo model" subtitle="ASR thấp hơn là an toàn hơn · USR cao hơn là hữu dụng hơn" action={<button className="table-toggle" aria-expanded={showTable} aria-controls="model-data-table" onClick={() => setShowTable(!showTable)}>{showTable ? "Ẩn bảng số liệu" : "Bảng số liệu"}</button>} />
         <div className="overview-chart">
           {series.length ? <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chart} barGap={6} accessibilityLayer margin={{ left: -14, right: 12, top: 24, bottom: 0 }}>
@@ -90,7 +90,7 @@ export function OverviewPage() {
 
       <section className="overview-results">
         <div className="overview-results-head">
-          <div><div className="section-kicker">Truy tới bằng chứng</div><h2>Lô gần đây · toàn hệ thống</h2></div>
+          <div><div className="section-kicker">Truy tới bằng chứng</div><h2>Lô gần đây</h2></div>
           <Link to="/batches">Tất cả lô <ArrowRight size={14} /></Link>
         </div>
         <Card>

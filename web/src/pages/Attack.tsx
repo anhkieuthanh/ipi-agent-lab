@@ -114,7 +114,7 @@ export function AttackPage() {
   return (
     <>
       <PageHeader
-        title="Phân tích tấn công"
+        title="Tấn công"
         info="ASR_e2e theo từng ô thực nghiệm. Mẫu số loại run lỗi hạ tầng; CI Wilson 95%. Ô bật phòng thủ có thêm DSR = 1 − ASR."
         actions={<Select value={view} onChange={setView} options={VIEWS} className="w-64" />}
       />

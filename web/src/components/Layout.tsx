@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
-import { ArrowUpRight, ChevronDown, Monitor, PanelTop, RefreshCw, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, Monitor, PanelTop, RefreshCw, ShieldCheck, LayoutDashboard, Layers, FlaskConical, Crosshair, Shield, ListTree, Network, Settings2, ListChecks, Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
@@ -10,9 +10,11 @@ import { SCOPE_LABEL, type ScopeKind, useScope } from "@/lib/scope";
 const GROUPS = [
   { label: "Tổng quan", paths: ["/"], items: [] },
   { label: "Thực nghiệm", paths: ["/batches", "/lab"], items: [{ to: "/batches", label: "Lô thực nghiệm" }, { to: "/lab", label: "Phòng thí nghiệm" }] },
-  { label: "Phân tích", paths: ["/attack", "/defense", "/runs"], items: [{ to: "/attack", label: "Tấn công" }, { to: "/defense", label: "Phòng thủ" }, { to: "/runs", label: "Điều tra run" }] },
+  { label: "Phân tích", paths: ["/attack", "/defense", "/runs"], items: [{ to: "/attack", label: "Tấn công" }, { to: "/defense", label: "Phòng thủ" }, { to: "/runs", label: "Lượt chạy" }] },
   { label: "Hệ thống", paths: ["/system", "/config", "/process"], items: [{ to: "/system", label: "Sơ đồ hệ thống" }, { to: "/config", label: "Cấu hình" }, { to: "/process", label: "Quy trình" }] },
 ];
+const NAV_ICONS = [LayoutDashboard, Layers, Crosshair, Network];
+const ITEM_ICONS = [Layers, FlaskConical, Crosshair, Shield, ListTree, Network, Settings2, ListChecks];
 const SCOPED = ["/", "/attack", "/defense", "/runs"];
 
 function ScopePicker() {
@@ -42,12 +44,14 @@ export function Layout() {
   const qc = useQueryClient();
   const meta = useQuery({ queryKey: ["meta"], queryFn: api.meta, staleTime: 60_000 });
   const [presenting, setPresenting] = useState(() => sessionStorage.getItem("ipi-presentation") === "true");
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => { setMenuOpen(false); }, [loc.pathname]);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState(false);
   const [updated, setUpdated] = useState<Date | null>(null);
   useEffect(() => { sessionStorage.setItem("ipi-presentation", String(presenting)); }, [presenting]);
   useEffect(() => {
-    const exit = (e: KeyboardEvent) => { if (e.key === "Escape") setPresenting(false); };
+    const exit = (e: KeyboardEvent) => { if (e.key === "Escape") { setPresenting(false); setMenuOpen(false); } };
     window.addEventListener("keydown", exit);
     return () => window.removeEventListener("keydown", exit);
   }, []);
@@ -66,30 +70,34 @@ export function Layout() {
   return (
     <div className={clsx("app-shell", presenting && "presentation-mode")}>
       <a href="#main-content" className="skip-link">Đến nội dung chính</a>
+      {!presenting && <aside className={clsx("app-sidebar", menuOpen && "is-open")} id="workspace-navigation">
+        <Link to={href("/")} className="wordmark"><span className="brand-mark"><ShieldCheck size={22} /></span><span>IPI Guard<span className="wordmark-caption">Security workspace</span></span></Link>
+        <nav aria-label="Điều hướng chính" className="sidebar-nav">
+          {GROUPS.map((g, gi) => {
+            const Icon = NAV_ICONS[gi];
+            return <div className="nav-group" key={g.label}>
+              {g.items.length ? <div className="nav-group-label">{g.label}</div> : <NavLink end to={href("/")} className={({ isActive }) => clsx("sidebar-link", isActive && "is-active")}><span className="nav-icon"><Icon size={18} /></span>{g.label}</NavLink>}
+              {g.items.map((it) => { const ItemIcon = ITEM_ICONS[GROUPS.flatMap((x) => x.items).findIndex((x) => x.to === it.to)]; return <NavLink key={it.to} to={href(it.to)} className={({ isActive }) => clsx("sidebar-link", isActive && "is-active")}><span className="nav-icon"><ItemIcon size={18} /></span>{it.label}</NavLink>; })}
+            </div>;
+          })}
+        </nav>
+        <div className="sidebar-foot"><span className="status-dot" /> RAG + MCP Lab</div>
+      </aside>}
+      <div className="workspace-body">
       <header className="app-header">
-        <Link to={href("/")} className="wordmark" aria-label="IPI Guard — Tổng quan">
-          <ShieldCheck size={23} strokeWidth={1.6} />
-          <span>IPI Guard<span className="wordmark-caption">Agent Security Lab</span></span>
-        </Link>
-        {!presenting && <nav className="primary-nav" aria-label="Điều hướng chính">
-          {GROUPS.map((g) => <Link key={g.label} to={href(g.paths[0])} className={clsx("primary-link", group === g && "is-active")} aria-current={group === g ? "page" : undefined}>{g.label}</Link>)}
-        </nav>}
+        {!presenting && <button className="mobile-menu" aria-label={menuOpen ? "Đóng điều hướng" : "Mở điều hướng"} aria-expanded={menuOpen} aria-controls="workspace-navigation" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X size={20} /> : <Menu size={20} />}</button>}
+        <span className="header-location">{presenting ? "IPI Guard" : group.label}<span className="header-divider">/</span><span>{loc.pathname.startsWith("/runs/") ? "Chi tiết lượt chạy" : group.items.find((it) => it.to === root)?.label ?? "Đánh giá agent"}</span></span>
         <button className="presentation-toggle" onClick={() => setPresenting(!presenting)} aria-pressed={presenting}>
-          {presenting ? <PanelTop size={16} /> : <Monitor size={16} />}
-          {presenting ? "Về làm việc" : "Trình bày"}
+          {presenting ? <PanelTop size={16} /> : <Monitor size={16} />}{presenting ? "Về làm việc" : "Trình bày"}
         </button>
       </header>
 
-      {!presenting && group.items.length > 0 && <nav className="secondary-nav" aria-label={group.label}>
-        {group.items.map((it) => <NavLink key={it.to} to={href(it.to)} className={({ isActive }) => clsx("secondary-link", isActive && "is-active")}>{it.label}</NavLink>)}
-      </nav>}
-
       <div className="workspace-context">
-        {presenting ? <div className="presentation-context"><span className="context-label">Đánh giá an toàn AI Agent</span><span>{scoped ? batch || SCOPE_LABEL[kind] : loc.pathname.startsWith("/runs/") ? "Chi tiết run" : group.label}</span></div> : scoped ? <ScopePicker /> : <span className="context-label">{group.label} <ChevronDown size={12} /></span>}
+        {presenting ? <div className="presentation-context"><span className="context-label">Đánh giá an toàn AI Agent</span><span>{scoped ? batch || SCOPE_LABEL[kind] : loc.pathname.startsWith("/runs/") ? "Chi tiết run" : group.label}</span></div> : scoped ? <ScopePicker /> : <span className="context-label">Không gian làm việc</span>}
         <div className="workspace-status">
-          <span className="connection-state"><span className={clsx("status-dot", meta.error && "is-error")} />{meta.error ? "Mất kết nối" : meta.isLoading ? "Đang kết nối" : meta.data?.live_demo ? "Cho phép chạy trực tiếp" : "Chỉ xem"}</span>
+          <span className="connection-state"><span className={clsx("status-dot", meta.error && "is-error")} />{meta.error ? "Mất kết nối" : meta.isLoading ? "Đang kết nối" : meta.data?.live_demo ? "Demo sẵn sàng" : "Chỉ xem"}</span>
           {!presenting && <button className="refresh-button" disabled={refreshing} onClick={refresh} aria-label="Làm mới dữ liệu"><RefreshCw size={14} className={refreshing ? "animate-spin" : ""} /></button>}
-          {!presenting && <span className="update-status" role="status">{refreshError ? "Cập nhật thất bại" : refreshing ? "Đang cập nhật…" : updated ? `Làm mới ${updated.toLocaleTimeString("vi-VN")}` : "Giám sát · 15 giây/lần"}</span>}
+          {!presenting && <span className="update-status" role="status">{refreshError ? "Cập nhật thất bại" : refreshing ? "Đang cập nhật…" : updated ? `Làm mới ${updated.toLocaleTimeString("vi-VN")}` : "Tự cập nhật · 15s"}</span>}
         </div>
       </div>
 
@@ -100,6 +108,7 @@ export function Layout() {
         {!presenting && <Link to="/config" className="footer-config">{meta.data?.model_tag ?? "Bộ model"} <span className="footer-divider">·</span> {meta.data?.attack_tag ?? "Bộ payload"}<ArrowUpRight size={12} /></Link>}
         {presenting && <span>Nhấn Esc để trở về làm việc</span>}
       </footer>
+      </div>
     </div>
   );
 }

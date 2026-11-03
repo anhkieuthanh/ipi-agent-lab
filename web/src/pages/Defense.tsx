@@ -118,7 +118,7 @@ export function DefensePage() {
   return (
     <>
       <PageHeader
-        title="Phân tích phòng thủ"
+        title="Phòng thủ"
         info="Mỗi cơ chế đánh giá theo cặp: giảm tấn công (ASR) đổi lấy mất hữu dụng (USR, FRR). Điểm tốt ở góc trên bên trái."
       />
       {(points.isLoading || presets.isLoading) && <Loading />}
@@ -127,38 +127,28 @@ export function DefensePage() {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
         <Card className="xl:col-span-3">
-          <CardHeader title="Đường đánh đổi an toàn – hữu dụng" icon={<ChartScatter size={16} />} />
+          <CardHeader title="An toàn & hữu dụng" icon={<ChartScatter size={16} />} />
           {points.data && <ParetoChart points={points.data.points} />}
         </Card>
 
         <Card className="xl:col-span-2">
-          <CardHeader title="Bốn cơ chế phòng thủ" icon={<ShieldCheck size={16} />} />
-          <div className="divide-y divide-slate-100">
+          <CardHeader title="Cơ chế phòng thủ" icon={<ShieldCheck size={16} />} />
+          <div className="defense-grid">
             {(["D1", "D2", "D3", "D4"] as const).map((code) => {
               const Icon = DEFENSE_ICON[code];
-              return (
-                <div key={code} className="flex items-start gap-3 px-5 py-3.5">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-defense-50 text-defense-600">
-                    <Icon size={17} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 text-[13.5px] font-semibold text-slate-800">
-                      <Badge tone="defense" className="font-mono">
-                        {code}
-                      </Badge>
-                      {DEFENSE_LABEL[code]}
-                    </div>
-                    <div className="mt-0.5 text-[12.5px] text-slate-500">{DEFENSE_DESC[code]}</div>
-                  </div>
-                </div>
-              );
+              return <div key={code} className="defense-tile">
+                <span className="block-icon" aria-hidden="true"><Icon size={22} /></span>
+                <Badge tone="defense">{code}</Badge>
+                <h3>{DEFENSE_LABEL[code]}</h3>
+                <details><summary>Chi tiết</summary>{DEFENSE_DESC[code]}</details>
+              </div>;
             })}
           </div>
         </Card>
       </div>
 
       <Card className="mt-6">
-        <CardHeader title="Cấu hình phòng thủ (preset)" icon={<SlidersHorizontal size={16} />} />
+        <CardHeader title="Các cấu hình" icon={<SlidersHorizontal size={16} />} />
         <div className="max-w-full overflow-x-auto"><table className="table-base">
           <thead>
             <tr>

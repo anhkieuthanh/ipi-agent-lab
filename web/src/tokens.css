@@ -1,11 +1,11 @@
 :root {
-  --color-paper: #f7f8fa;
+  --color-paper: #fafafa;
   --color-surface: #ffffff;
-  --color-ink: #17283e;
-  --color-muted: #657184;
-  --color-rule: #e1e5eb;
-  --color-accent: #203c60;
-  --color-accent-soft: #edf2f7;
+  --color-ink: #202124;
+  --color-muted: #666b73;
+  --color-rule: #e8e9ec;
+  --color-accent: #292d34;
+  --color-accent-soft: #f1f2f4;
   --color-focus: #345e8e;
   --color-danger: #b33a3f;
   --color-success: #27704b;
@@ -21,8 +21,8 @@
   --text-sm: .8125rem;
   --text-body: .875rem;
   --text-title: 1.75rem;
-  --radius-card: 6px;
-  --radius-input: 4px;
+  --radius-card: 12px;
+  --radius-input: 7px;
   --dur-short: 150ms;
   --ease-out: ease-out;
 }
