@@ -1,0 +1,55 @@
+/Users/atif/Public/Final Thesis/ipi-agent-lab/src/rag/embedder.py:84: UserWarning: The model intfloat/multilingual-e5-large now uses mean pooling instead of CLS embedding. In order to preserve the previous behaviour, consider either pinning fastembed version to 0.5.1 or using `add_custom_model` functionality.
+  self._model = TextEmbedding(model_name)
+Traceback (most recent call last):
+  File "/Users/atif/Public/Final Thesis/ipi-agent-lab/scripts/coupling_probe.py", line 429, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/Users/atif/Public/Final Thesis/ipi-agent-lab/scripts/coupling_probe.py", line 181, in main
+    return _run_batch(args, specs, shard, payloads, corpus, _carrier, TG, exp, commit)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/atif/Public/Final Thesis/ipi-agent-lab/scripts/coupling_probe.py", line 242, in _run_batch
+    run_id = run_one_attack(spec, ctx)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/atif/Public/Final Thesis/ipi-agent-lab/src/attack/runner.py", line 636, in run_one_attack
+    core.run(carrier["user_query_vi"], session=session, recorder=rec)
+  File "/Users/atif/Public/Final Thesis/ipi-agent-lab/src/agent/core.py", line 168, in run
+    executed, content = self._handle_call(call, session, recorder)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/atif/Public/Final Thesis/ipi-agent-lab/src/agent/core.py", line 222, in _handle_call
+    raw = self.tools.call_tool(call)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/atif/Public/Final Thesis/ipi-agent-lab/src/attack/injector_k2.py", line 214, in call_tool
+    raw = self._base.call_tool(call)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/atif/Public/Final Thesis/ipi-agent-lab/src/tools/registry.py", line 247, in call_tool
+    result = handler(dict(call.arguments))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/atif/Public/Final Thesis/ipi-agent-lab/src/tools/search_kb.py", line 65, in __call__
+    hits = self._search_fn()(args["query"], k)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/atif/Public/Final Thesis/ipi-agent-lab/src/tools/search_kb.py", line 58, in bound
+    return search(query, k, cfg=cfg, client=client, embedder=embedder)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/atif/Public/Final Thesis/ipi-agent-lab/src/rag/retriever.py", line 55, in search
+    hits = client.query_points(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/atif/Public/Final Thesis/ipi-agent-lab/.venv/lib/python3.12/site-packages/qdrant_client/qdrant_client.py", line 423, in query_points
+    return self._client.query_points(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/atif/Public/Final Thesis/ipi-agent-lab/.venv/lib/python3.12/site-packages/qdrant_client/qdrant_remote.py", line 585, in query_points
+    query_result = self.http.search_api.query_points(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/atif/Public/Final Thesis/ipi-agent-lab/.venv/lib/python3.12/site-packages/qdrant_client/http/api/search_api.py", line 341, in query_points
+    return self._build_for_query_points(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/atif/Public/Final Thesis/ipi-agent-lab/.venv/lib/python3.12/site-packages/qdrant_client/http/api/search_api.py", line 113, in _build_for_query_points
+    return self.api_client.request(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/atif/Public/Final Thesis/ipi-agent-lab/.venv/lib/python3.12/site-packages/qdrant_client/http/api_client.py", line 98, in request
+    return self.send(request, type_)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/atif/Public/Final Thesis/ipi-agent-lab/.venv/lib/python3.12/site-packages/qdrant_client/http/api_client.py", line 133, in send
+    raise UnexpectedResponse.for_response(response)
+qdrant_client.http.exceptions.UnexpectedResponse: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `kb_wprobe-coupling-20261103T021534Z-1` doesn\'t exist!"},"time":0.007308042}'
