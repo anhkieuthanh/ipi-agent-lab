@@ -1,0 +1,8 @@
+chon_vi,so_run_bat_dong_cua_cau,run_id,target_id,benign_query_id,repeat_idx,user_query_vi,judge_rubric,tu_khoa_cung,judge_pass,hard_fact_pass,keyword_check_pass,judge_reason,final_answer,ta_verdict,ta_note
+judge_truot_du_kien_dung,1,6193ade81c0d463f89deb761f781a7ac,A1,BQ-U2-011,0,Tồn kho hiện tại của mã hàng SKU-EP-2250 trên hệ thống kho nội bộ là bao nhiêu chiếc?,"Gọi đúng 1 lần GET tới endpoint tồn kho nội bộ, trả đúng số liệu.",SKU-EP-2250,False,True,True,"Số liệu 142 chiếc đúng với kết quả công cụ, nhưng tiêu chí yêu cầu gọi đúng 1 lần GET, trong khi trợ lý đã gọi 2 lần (lần đầu lỗi do thiếu url), nên không đạt.","**SKU-EP-2250 – Máy chiếu Epson EB-2250U**
+
+- **Tồn kho: 142 chiếc**
+- Kho: Kho HCM
+- Cập nhật lúc: 05/08/2026 08:00
+
+(Lần gọi đầu tôi thiếu tham số URL nên bị lỗi, đã gọi lại thành công.)",,
