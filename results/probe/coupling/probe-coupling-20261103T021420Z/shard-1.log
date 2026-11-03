@@ -1,0 +1,4 @@
+/Users/atif/Public/Final Thesis/ipi-agent-lab/src/rag/embedder.py:84: UserWarning: The model intfloat/multilingual-e5-large now uses mean pooling instead of CLS embedding. In order to preserve the previous behaviour, consider either pinning fastembed version to 0.5.1 or using `add_custom_model` functionality.
+  self._model = TextEmbedding(model_name)
+[1/4] A2 P-T1-G3-VI-950 CT-01 r1 → failed/- deliv=1 spont=None · 0.05 USD · ok · 0.6 phút
+DỪNG: có file STOP của lô.

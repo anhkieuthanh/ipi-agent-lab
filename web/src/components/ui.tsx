@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import { AlertTriangle, HelpCircle, Inbox, Loader2 } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
@@ -29,7 +30,7 @@ export function CardHeader({
           </div>
         )}
         <div className="min-w-0">
-          <h3 className="text-[15px] font-semibold text-slate-900">{title}</h3>
+          <h2 className="text-[15px] font-semibold text-slate-900">{title}</h2>
           {subtitle && <p className="mt-0.5 text-[13px] text-slate-500">{subtitle}</p>}
         </div>
       </div>
@@ -148,7 +149,7 @@ export function Button({
       onClick={onClick}
       disabled={disabled}
       className={clsx(
-        "inline-flex h-9 items-center justify-center gap-2 rounded-lg px-3.5 text-[13.5px] font-medium transition disabled:cursor-not-allowed",
+        "inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md px-3.5 text-[13.5px] font-medium transition disabled:cursor-not-allowed",
         styles,
         className,
       )}
@@ -200,10 +201,12 @@ export function Segmented<T extends string>({
   options: { value: T; label: string; count?: number }[];
 }) {
   return (
-    <div className="inline-flex max-w-full flex-wrap gap-1 rounded-md bg-slate-100 p-1">
+    <div role="group" aria-label="Bộ lọc hiển thị" className="inline-flex max-w-full flex-wrap gap-1 rounded-md bg-slate-100 p-1">
       {options.map((o) => (
         <button
           key={o.value}
+          type="button"
+          aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
           className={clsx(
             "inline-flex items-center gap-1.5 whitespace-nowrap rounded px-3 py-1.5 text-[13px] font-medium transition",
@@ -283,7 +286,7 @@ export function Empty({
 
 export function Loading({ label = "Đang tải dữ liệu…" }: { label?: string }) {
   return (
-    <div className="flex items-center justify-center gap-2 py-16 text-[13px] text-slate-500">
+    <div role="status" aria-live="polite" className="flex min-h-[240px] items-center justify-center gap-2 py-16 text-[13px] text-slate-500">
       <Loader2 size={16} className="animate-spin" />
       {label}
     </div>
@@ -291,14 +294,16 @@ export function Loading({ label = "Đang tải dữ liệu…" }: { label?: stri
 }
 
 export function ErrorBox({ error }: { error: unknown }) {
+  const qc = useQueryClient();
+  const [retrying, setRetrying] = useState(false);
   const msg = error instanceof Error ? error.message : String(error);
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-attack-100 bg-attack-50 p-4 text-[13px] text-attack-700">
+    <div role="alert" className="flex items-start gap-3 rounded-md border border-attack-100 bg-attack-50 p-4 text-[13px] text-attack-700">
       <AlertTriangle size={16} className="mt-0.5 shrink-0" />
       <div>
         <div className="font-semibold">Không tải được dữ liệu</div>
         <div className="mt-0.5 break-words">{msg}</div>
-        <button className="mt-2 underline" onClick={() => window.location.reload()}>Thử lại</button>
+        <button disabled={retrying} className="mt-2 min-h-9 underline disabled:opacity-50" onClick={async () => { setRetrying(true); try { await qc.refetchQueries({ type: "active" }); } finally { setRetrying(false); } }}>{retrying ? "Đang thử lại…" : "Thử lại"}</button>
       </div>
     </div>
   );

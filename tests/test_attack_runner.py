@@ -315,6 +315,7 @@ def _fake_seeded_run(run_id=None, **kw):
 @dataclass
 class _FakeK2Result:
     delivered: bool = True
+    applied: bool = False
 
 
 class _FakeK2Layer:
@@ -371,7 +372,7 @@ def _spec(corpus, carriers, channel, preset="off"):
     raise AssertionError(f"không có ô phủ cho kênh {channel}")
 
 
-@pytest.mark.parametrize("channel", ["K1", "K2a"])
+@pytest.mark.parametrize("channel", ["K1", "K2a", "K2b"])
 def test_run_one_attack_ghi_trace_va_nhan(tmp_path, exp, corpus, carriers, monkeypatch, channel):
     engine = open_store(tmp_path / "t.sqlite")
     ctx = _ctx(engine, corpus, carriers, monkeypatch, channel=channel)
@@ -393,6 +394,11 @@ def test_run_one_attack_ghi_trace_va_nhan(tmp_path, exp, corpus, carriers, monke
     else:
         assert bool(row["delivered"]) is True
         assert row["delivered_probe"] is None or pd.isna(row["delivered_probe"])
+    if channel == "K2b":
+        # Agent không gọi tool chở ⇒ payload chưa chèn vào kết quả nào, dù delivered hằng True.
+        assert bool(row["k2b_applied"]) is False
+    else:
+        assert row["k2b_applied"] is None or pd.isna(row["k2b_applied"])
     assert row["run_id"] == rid
 
 

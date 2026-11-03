@@ -186,6 +186,9 @@ class Run(SQLModel, table=True):
     # K1: probe truy hồi bằng câu hỏi gốc trước khi agent chạy — chẩn đoán khâu truy hồi, không vào
     # công thức nào. `delivered` tính từ kết quả search_kb thật (`injector_k1.observed_delivered`).
     delivered_probe: bool | None = None
+    # K2b: payload đã thực chèn vào ít nhất một kết quả tool chưa (`K2Result.applied`). `delivered`
+    # là hằng True trên K2 nên chỉ cột này tách "không chèn được" khỏi "model không làm theo".
+    k2b_applied: bool | None = None
     g1_hit: bool = False
     g1_channel: str | None = None
     # Canary đã vào context agent nhưng CHƯA rời vành đai — không tính G1 (`canary_handling` của

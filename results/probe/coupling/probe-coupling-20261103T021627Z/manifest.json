@@ -1,0 +1,49 @@
+{
+  "task": "STT-61 (dò payload gắn ngữ cảnh)",
+  "batch_id": "probe-coupling-20261103T021627Z",
+  "lab_git_commit": "8dc681f224862e26ad8aa0d926d2c0a053369f25",
+  "defense": "off",
+  "repeats": 1,
+  "workers": 2,
+  "worker_ids": [
+    "probe-coupling-20261103T021627Z-0",
+    "probe-coupling-20261103T021627Z-1"
+  ],
+  "shard_exit_codes": [
+    3,
+    3
+  ],
+  "kb_worker_collections": {
+    "kb_wprobe-coupling-20261103T021627Z-0": 41,
+    "kb_wprobe-coupling-20261103T021627Z-1": 41
+  },
+  "kb_injected_leftover": {
+    "kb_wprobe-coupling-20261103T021627Z-0": 0,
+    "kb_wprobe-coupling-20261103T021627Z-1": 0
+  },
+  "payload_carrier": {
+    "P-T3-G1-VI-973": "CT-06",
+    "P-T3-G1-VI-979": "CT-04",
+    "P-T3-G2-VI-988": "CT-06",
+    "P-T3-G2-VI-994": "CT-04",
+    "P-T3-G1-EN-973": "CT-06",
+    "P-T3-G1-EN-979": "CT-04",
+    "P-T3-G2-EN-988": "CT-06",
+    "P-T3-G2-EN-994": "CT-04",
+    "P-T1-G1-VI-971": "CT-06",
+    "P-T2-G1-VI-972": "CT-04",
+    "P-T2-G1-EN-972": "CT-04",
+    "P-T5-G1-VI-974": "CT-06",
+    "P-T5-G1-EN-974": "CT-06",
+    "P-T7-G1-VI-975": "CT-04",
+    "P-T8-G1-VI-976": "CT-06",
+    "P-T4-G1-VI-980": "CT-06",
+    "P-T4-G1-EN-980": "CT-06"
+  },
+  "payloads_file": "results/probe/coupling/payloads_doichung.yaml",
+  "estimate_usd": 0.01,
+  "started_at_utc": "20261103T021627Z",
+  "finished_at_utc": "20261103T021744Z",
+  "spent_usd": 0.1098609,
+  "budget_status": "stop"
+}

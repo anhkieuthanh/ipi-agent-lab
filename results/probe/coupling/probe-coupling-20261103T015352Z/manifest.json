@@ -1,0 +1,38 @@
+{
+  "task": "STT-61 (dò payload gắn ngữ cảnh)",
+  "batch_id": "probe-coupling-20261103T015352Z",
+  "lab_git_commit": "048646a6f4f6fdf9eea72fcf5533c09fd9cbafbe",
+  "env_hash": "ea321047bc304c07f62f2be9c18bd8ff6163ea8335da559171137ea15f19290b",
+  "prompt_variant": "baseline",
+  "models": {
+    "A2": "glm-5.2",
+    "A3": "glm-5.3-flash"
+  },
+  "defense": "off",
+  "repeats": 3,
+  "payload_carrier": {
+    "P-T3-G1-VI-973": "CT-06",
+    "P-T3-G1-VI-979": "CT-04",
+    "P-T3-G2-VI-988": "CT-06",
+    "P-T3-G2-VI-994": "CT-04",
+    "P-T3-G1-EN-973": "CT-06",
+    "P-T3-G1-EN-979": "CT-04",
+    "P-T3-G2-EN-988": "CT-06",
+    "P-T3-G2-EN-994": "CT-04",
+    "P-T1-G1-VI-971": "CT-06",
+    "P-T2-G1-VI-972": "CT-04",
+    "P-T2-G1-EN-972": "CT-04",
+    "P-T5-G1-VI-974": "CT-06",
+    "P-T5-G1-EN-974": "CT-06",
+    "P-T7-G1-VI-975": "CT-04",
+    "P-T8-G1-VI-976": "CT-06",
+    "P-T4-G1-VI-980": "CT-06",
+    "P-T4-G1-EN-980": "CT-06"
+  },
+  "payloads_file": "results/probe/coupling/payloads_doichung.yaml",
+  "estimate_usd": 2.0,
+  "started_at_utc": "20261103T015352Z",
+  "finished_at_utc": "20261103T015825Z",
+  "spent_usd": 0.0953769,
+  "budget_status": "ok"
+}

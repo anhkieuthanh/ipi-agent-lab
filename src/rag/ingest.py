@@ -43,6 +43,7 @@ from qdrant_client import QdrantClient, models
 if __package__ in (None, ""):  # chạy trực tiếp `python src/rag/ingest.py`
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from obs.worker import worker_collection  # noqa: E402
 from rag.embedder import Embedder, get_embedder  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -78,7 +79,7 @@ class RagConfig:
         return cls(
             model=raw["embedding"]["model"],
             qdrant_url=raw["qdrant"]["url"],
-            collection=raw["qdrant"]["collection"],
+            collection=worker_collection(raw["qdrant"]["collection"]),
             distance=raw["qdrant"]["distance"],
             max_tokens=raw["chunking"]["max_tokens"],
             overlap_tokens=raw["chunking"]["overlap_tokens"],
@@ -224,9 +225,13 @@ def ensure_collection(client: QdrantClient, cfg: RagConfig, embedder: Embedder) 
                 distance=models.Distance[cfg.distance.upper()],
             ),
         )
+    _create_payload_indexes(client, cfg.collection)
+
+
+def _create_payload_indexes(client: QdrantClient, collection: str) -> None:
     for field in ("run_id", "source", "doc_id"):
         client.create_payload_index(
-            collection_name=cfg.collection,
+            collection_name=collection,
             field_name=field,
             field_schema=models.PayloadSchemaType.KEYWORD,
             wait=True,
@@ -316,6 +321,59 @@ def build_base_collection(
         stats["files"] += 1
         stats["chunks"] += n
     return stats
+
+
+def clone_base_collection(
+    src: str,
+    dst: str,
+    *,
+    cfg: RagConfig | None = None,
+    client: QdrantClient | None = None,
+    batch: int = 256,
+) -> int:
+    """Dựng lại `dst` là bản sao điểm NỀN (`source = base`) của `src`, giữ nguyên id, vector và
+    payload — không embed lại, nên top-k trên `dst` trùng `src`. Trả về số điểm đã chép.
+
+    Dùng cho collection riêng của từng worker khi chạy song song (`obs.worker`). Tài liệu chèn còn sót
+    trong `src` không được chép. Từ chối `dst == src`: dựng lại sẽ xóa collection nền.
+    """
+    if dst == src:
+        raise ValueError(f"clone_base_collection: dst trùng src {src!r} — từ chối xóa collection nền")
+    cfg = cfg or RagConfig.load()
+    client = client or connect(cfg)
+    vectors = client.get_collection(src).config.params.vectors
+    if dst in {c.name for c in client.get_collections().collections}:
+        client.delete_collection(dst)
+    client.create_collection(collection_name=dst, vectors_config=vectors)
+    _create_payload_indexes(client, dst)
+
+    base_only = models.Filter(
+        must=[models.FieldCondition(key="source", match=models.MatchValue(value=cfg.base_marker))]
+    )
+    n, offset = 0, None
+    while True:
+        points, offset = client.scroll(
+            collection_name=src,
+            scroll_filter=base_only,
+            limit=batch,
+            offset=offset,
+            with_payload=True,
+            with_vectors=True,
+        )
+        if points:
+            client.upsert(
+                collection_name=dst,
+                points=[models.PointStruct(id=p.id, vector=p.vector, payload=p.payload)
+                        for p in points],
+                wait=True,
+            )
+            n += len(points)
+        if offset is None:
+            break
+    copied = client.count(collection_name=dst, exact=True).count
+    if copied != n:
+        raise RuntimeError(f"clone_base_collection: {dst!r} có {copied} điểm, đã chép {n}")
+    return n
 
 
 # --------------------------------------------------------------------------- #

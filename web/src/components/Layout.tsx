@@ -35,7 +35,7 @@ function ScopePicker() {
 
 export function Layout() {
   const loc = useLocation();
-  const { search, kind, batch } = useScope();
+  const { kind, batch, setScope } = useScope();
   const root = "/" + (loc.pathname.split("/")[1] ?? "");
   const group = GROUPS.find((g) => g.paths.includes(root)) ?? GROUPS[0];
   const scoped = SCOPED.includes(root) && !loc.pathname.startsWith("/runs/");
@@ -51,7 +51,10 @@ export function Layout() {
     window.addEventListener("keydown", exit);
     return () => window.removeEventListener("keydown", exit);
   }, []);
-  const href = (to: string) => ({ pathname: to, search: SCOPED.includes(to) ? search : "" });
+  const navScope = new URLSearchParams();
+  navScope.set("scope", kind);
+  if (batch) navScope.set("batch", batch);
+  const href = (to: string) => ({ pathname: to, search: navScope.toString() });
   async function refresh() {
     setRefreshing(true); setRefreshError(false);
     try {
@@ -90,6 +93,7 @@ export function Layout() {
         </div>
       </div>
 
+      {batch && scoped && !presenting && <div className="selected-scope"><span>Lô đang xem</span><code>{batch}</code><button onClick={() => setScope({ batch: "" })}>Bỏ chọn lô</button></div>}
       <main id="main-content" tabIndex={-1} className="workspace-main"><Outlet /></main>
       <footer className="app-footer">
         <span>IPI Guard <span className="footer-divider">/</span> Đánh giá an toàn agent RAG + MCP</span>

@@ -78,6 +78,8 @@ function StepCard({ step, initialOpen = false }: { step: Step; initialOpen?: boo
   return (
     <div className={clsx("rounded-lg border", tone.ring, step.decisive && "ring-2 ring-defense-400")}>
       <button
+        aria-expanded={hasBody ? open : undefined}
+        disabled={!hasBody}
         onClick={() => hasBody && setOpen(!open)}
         className={clsx("flex w-full items-center gap-3 px-4 py-2.5 text-left", hasBody && "cursor-pointer")}
       >

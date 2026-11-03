@@ -33,6 +33,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from interfaces import ToolResult
+from obs.worker import worker_path
 
 if TYPE_CHECKING:
     from tools.registry import ToolRegistry
@@ -71,7 +72,7 @@ class TicketConfig:
         if unknown:
             raise ValueError(f"create_ticket.params có khóa lạ {sorted(unknown)}")
         return cls(
-            store_path=_abs(params["store_path"]),
+            store_path=worker_path(_abs(params["store_path"])),
             customers_db_path=_abs(params["customers_db_path"]),
             ticket_id_format=str(params["ticket_id_format"]),
         )

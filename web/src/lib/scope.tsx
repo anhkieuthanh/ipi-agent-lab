@@ -16,7 +16,8 @@ export const SCOPE_LABEL: Record<ScopeKind, string> = {
 
 export function useScope() {
   const [sp, setSp] = useSearchParams();
-  const kind = (sp.get("scope") as ScopeKind) || "experiment";
+  const requested = sp.get("scope") ?? "experiment";
+  const kind: ScopeKind = Object.hasOwn(SCOPE_LABEL, requested) ? requested as ScopeKind : "experiment";
   const batch = sp.get("batch") || "";
 
   const params: Params = batch
@@ -25,6 +26,7 @@ export function useScope() {
 
   function setScope(next: { kind?: ScopeKind; batch?: string }) {
     const n = new URLSearchParams(sp);
+    n.delete("page");
     if (next.kind !== undefined) {
       n.set("scope", next.kind);
       n.delete("batch");
