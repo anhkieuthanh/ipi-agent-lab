@@ -379,19 +379,34 @@ def _run_parallel(args, batch_id, batch_dir, payloads, carrier_of, TG, commit, n
         codes = [p.returncode for p, _ in procs]
         if status == "ok" and any(c not in (0, EXIT_STOPPED) for c in codes):
             status = "stop" if EXIT_BUDGET in codes else "error"
+        # Lỗi dọn từng tài nguyên ghi vào manifest, KHÔNG chặn bước lưu kết quả phía sau. Collection
+        # dọn hỏng thì lô sau dọn lại (đầu lô xóa mọi `kb_w*` dưới khóa).
+        cleanup_errors: list[str] = []
         leftover: dict[str, int] = {}  # tài liệu chèn còn sót trong collection worker (run chết giữa chừng)
         for name in kb_copies:
-            wcfg = replace(kb_cfg, collection=name)
-            leftover[name] = count_points(cfg=wcfg, client=client, source=kb_cfg.inject_marker)
-            purge_injected(cfg=wcfg, client=client)
-            client.delete_collection(name)
+            try:
+                wcfg = replace(kb_cfg, collection=name)
+                leftover[name] = count_points(cfg=wcfg, client=client, source=kb_cfg.inject_marker)
+                purge_injected(cfg=wcfg, client=client)
+                client.delete_collection(name)
+            except Exception as e:  # noqa: BLE001
+                cleanup_errors.append(f"collection {name}: {e!r}")
         for wid in wids:
-            worker_path(ticket_base, wid).unlink(missing_ok=True)
+            try:
+                worker_path(ticket_base, wid).unlink(missing_ok=True)
+            except OSError as e:
+                cleanup_errors.append(f"tickets {wid}: {e!r}")
         shards = [batch_dir / f"trace-s{i}.sqlite" for i in range(n)]
-        _merge_shards(batch_dir / "trace.sqlite", shards)
-        for sh in shards:
-            sh.unlink(missing_ok=True)
-        spent = sum(spend_from_log(LOG, prices, run_ids=[batch_id]).values())
+        try:
+            _merge_shards(batch_dir / "trace.sqlite", shards)
+            for sh in shards:
+                sh.unlink(missing_ok=True)
+        except Exception as e:  # noqa: BLE001 — shard còn nguyên trên đĩa, gộp tay được
+            cleanup_errors.append(f"gộp trace: {e!r}")
+        try:
+            spent = sum(spend_from_log(LOG, prices, run_ids=[batch_id]).values())
+        except Exception as e:  # noqa: BLE001
+            cleanup_errors.append(f"đọc chi phí: {e!r}")
         manifest = {
             "task": "STT-61 (dò payload gắn ngữ cảnh)",
             "batch_id": batch_id,
@@ -403,6 +418,7 @@ def _run_parallel(args, batch_id, batch_dir, payloads, carrier_of, TG, commit, n
             "shard_exit_codes": codes,
             "kb_worker_collections": kb_copies,
             "kb_injected_leftover": leftover,
+            "cleanup_errors": cleanup_errors,
             "payload_carrier": {p["id"]: carrier_of(p) for p in payloads},
             "payloads_file": args.payloads,
             "estimate_usd": args.estimate_usd,
@@ -414,10 +430,15 @@ def _run_parallel(args, batch_id, batch_dir, payloads, carrier_of, TG, commit, n
         (batch_dir / "manifest.json").write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
-        engine = open_store(batch_dir / "trace.sqlite")
-        export_runs_csv(engine, batch_id, batch_dir / "runs.csv")
+        try:
+            engine = open_store(batch_dir / "trace.sqlite")
+            export_runs_csv(engine, batch_id, batch_dir / "runs.csv")
+            _summary(batch_dir, TG)
+        except Exception as e:  # noqa: BLE001 — manifest đã ghi; báo lỗi xuất CSV
+            print(f"Lỗi xuất runs.csv: {e!r}", flush=True)
+        if cleanup_errors:
+            print("Lỗi dọn tài nguyên (ghi trong manifest):", *cleanup_errors, sep="\n  ", flush=True)
         print(f"Kết thúc: {spent:.2f} USD · {status} · mã thoát con {codes}", flush=True)
-        _summary(batch_dir, TG)
     return 0 if status == "ok" else 2
 
 

@@ -9,9 +9,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import sqlite3
+import subprocess
+import sys
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
@@ -23,7 +27,9 @@ from eval.allowed_actions import ToolCallRecord
 from eval.canary import (
     DB_CANARY_PLACEHOLDER,
     DB_CANARY_ROW_ID,
+    LEGACY_RUN_DIR_MAX_AGE_S,
     REAL_CANARY_RE,
+    RUN_DIR_OWNER,
     RUN_DIR_PREFIX,
     SYSPROMPT_CANARY_RE,
     CanaryCleanupError,
@@ -207,14 +213,46 @@ def test_hai_run_lien_tiep_khong_dung_chung_canary(source_db, run_root):
         assert first[1] not in json.dumps(_notes(b.db_path))
 
 
+def _dead_pid() -> int:
+    p = subprocess.Popen([sys.executable, "-c", "pass"])
+    p.wait()
+    return p.pid
+
+
 def test_sweep_chi_xoa_thu_muc_cua_run(run_root):
     stale = run_root / f"{RUN_DIR_PREFIX}dead-run"
     stale.mkdir()
     (stale / "customers.db").write_bytes(b"x")
+    (stale / RUN_DIR_OWNER).write_text(str(_dead_pid()))
     other = run_root / "khong-lien-quan"
     other.mkdir()
     assert sweep_stale_run_dirs(run_root) == [stale]
     assert not stale.exists() and other.exists()
+
+
+def test_sweep_bo_qua_run_co_chu_con_song(run_root):
+    live = run_root / f"{RUN_DIR_PREFIX}live-run"
+    live.mkdir()
+    (live / RUN_DIR_OWNER).write_text(str(os.getpid()))
+    assert sweep_stale_run_dirs(run_root) == []
+    assert live.exists()
+
+
+def test_seeded_run_ghi_chu_va_song_qua_sweep(source_db, run_root):
+    with seeded_run(source_db=source_db, tmp_root=run_root) as r:
+        assert sweep_stale_run_dirs(run_root) == []
+        assert r.db_path.exists()
+
+
+def test_sweep_thu_muc_khong_chu_chi_xoa_khi_cu(run_root):
+    fresh = run_root / f"{RUN_DIR_PREFIX}legacy-fresh"
+    old = run_root / f"{RUN_DIR_PREFIX}legacy-old"
+    fresh.mkdir()
+    old.mkdir()
+    t = time.time() - LEGACY_RUN_DIR_MAX_AGE_S - 60
+    os.utime(old, (t, t))
+    assert sweep_stale_run_dirs(run_root) == [old]
+    assert fresh.exists()
 
 
 def test_use_db_thieu_file_la_loi(db_tool, tmp_path):

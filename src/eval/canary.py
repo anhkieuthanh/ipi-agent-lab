@@ -44,10 +44,12 @@ import base64
 import binascii
 import hashlib
 import json
+import os
 import re
 import shutil
 import sqlite3
 import tempfile
+import time
 import unicodedata
 import uuid
 from collections.abc import Iterable, Iterator
@@ -76,6 +78,10 @@ DB_CANARY_ROW_ID = 1
 DB_CANARY_PLACEHOLDER = "CANARY_DB_PLACEHOLDER__ghi_de_luc_chay"
 #: Tiền tố thư mục tạm của run — `sweep_stale_run_dirs()` chỉ xóa thư mục mang tiền tố này.
 RUN_DIR_PREFIX = "ipi-run-"
+#: File trong thư mục run ghi pid tiến trình sở hữu — sweep bỏ qua thư mục có chủ còn sống.
+RUN_DIR_OWNER = ".owner"
+#: Thư mục run không có file chủ (tạo trước khi có `RUN_DIR_OWNER`) chỉ bị dọn khi cũ hơn mức này.
+LEGACY_RUN_DIR_MAX_AGE_S = 6 * 3600
 
 #: Độ dài tối thiểu của một mảnh canary bị tách. Ngắn hơn thì một mảnh UUID hex
 #: bắt đầu trùng ngẫu nhiên với chuỗi hex hợp lệ trong tài liệu U5.
@@ -439,6 +445,7 @@ def seeded_run(
     canaries = new_run_canaries(run_id)
     run_dir = Path(tempfile.mkdtemp(prefix=f"{RUN_DIR_PREFIX}{canaries.run_id}-", dir=tmp_root))
     try:
+        (run_dir / RUN_DIR_OWNER).write_text(str(os.getpid()), encoding="utf-8")
         db_path = seed_customers_db(source_db, run_dir / source_db.name, canaries.db)
         if db_tool is not None:
             db_tool.use_db(db_path)
@@ -458,10 +465,33 @@ def seeded_run(
         raise CanaryCleanupError(f"{source_db} bị đổi trong run {canaries.run_id}")
 
 
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:  # tồn tại nhưng của user khác
+        return True
+    return True
+
+
+def _run_dir_orphaned(d: Path) -> bool:
+    """Thư mục run không còn tiến trình sở hữu: pid trong `RUN_DIR_OWNER` đã chết, hoặc (thư mục cũ
+    không có file chủ) chưa sửa đổi trong `LEGACY_RUN_DIR_MAX_AGE_S` giây."""
+    try:
+        return not _pid_alive(int((d / RUN_DIR_OWNER).read_text(encoding="utf-8").strip()))
+    except FileNotFoundError:
+        return time.time() - d.stat().st_mtime > LEGACY_RUN_DIR_MAX_AGE_S
+    except ValueError:  # file chủ hỏng: coi như mồ côi
+        return True
+
+
 def sweep_stale_run_dirs(tmp_root: Path | None = None) -> list[Path]:
-    """Xóa thư mục tạm của run cũ còn sót (tiến trình bị giết cứng). Gọi đầu lô, không gọi giữa lô."""
+    """Xóa thư mục tạm của run cũ còn sót (tiến trình bị giết cứng). Chỉ xóa thư mục đã xác minh không
+    còn tiến trình sở hữu (`_run_dir_orphaned`), nên gọi được khi lô khác đang chạy — runner nào cũng
+    gọi hàm này đầu lô, không runner nào phải giữ khóa chung để khỏi xóa DB tạm của run đang chạy."""
     root = Path(tmp_root or tempfile.gettempdir())
-    removed = [d for d in root.glob(f"{RUN_DIR_PREFIX}*") if d.is_dir()]
+    removed = [d for d in root.glob(f"{RUN_DIR_PREFIX}*") if d.is_dir() and _run_dir_orphaned(d)]
     for d in removed:
         shutil.rmtree(d, ignore_errors=True)
     return removed
