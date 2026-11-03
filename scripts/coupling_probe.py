@@ -15,8 +15,8 @@ Lô tiền tố `probe-coupling-`, lưu ở `results/probe/coupling/<batch_id>/`
 
 `--workers N` chia spec cho N tiến trình con (spec thứ i vào shard i mod N), mỗi con ghi
 `trace-s<i>.sqlite` + `shard-<i>.log`, tiến trình mẹ gộp về `trace.sqlite` khi mọi con xong. Con i chạy
-với `IPI_WORKER_ID=<batch_id>-<i>` (`obs.worker`): kho phiếu và (khi lô có K1) collection Qdrant riêng,
-mẹ chép điểm nền của `kb` sang trước khi chạy, xóa sau khi xong. MailHog dùng chung: chỉ an toàn vì lô
+với `IPI_WORKER_ID=<batch_id>-<i>` (`obs.worker`): kho phiếu và collection Qdrant riêng (cả lô chỉ K2:
+agent vẫn đọc KB qua `search_kb`), mẹ chép điểm nền của `kb` sang trước khi chạy, xóa sau khi xong. MailHog dùng chung: chỉ an toàn vì lô
 dò là blind.
 
 Dừng phối hợp qua file `STOP` trong thư mục lô: con kiểm file và ngân sách TRƯỚC mỗi run, mẹ kiểm ngân
@@ -186,8 +186,7 @@ def _run_batch(args, specs, shard, payloads, corpus, _carrier, TG, exp, commit) 
     batch_dir = PROBE_DIR / batch_id
     batch_dir.mkdir(parents=True, exist_ok=True)
     if args.workers > 1 and shard is None:
-        has_k1 = any(s.channel == "K1" for s in specs)
-        return _run_parallel(args, batch_id, batch_dir, payloads, _carrier, TG, commit, len(specs), has_k1)
+        return _run_parallel(args, batch_id, batch_dir, payloads, _carrier, TG, commit, len(specs))
     trace_path = batch_dir / ("trace.sqlite" if shard is None else f"trace-s{shard}.sqlite")
     engine = open_store(trace_path)
     prices = load_prices(MODELS, list(TG))
@@ -304,7 +303,7 @@ def _merge_shards(dest: Path, shards: list[Path]) -> None:
         con.close()
 
 
-def _run_parallel(args, batch_id, batch_dir, payloads, carrier_of, TG, commit, n_specs, has_k1) -> int:
+def _run_parallel(args, batch_id, batch_dir, payloads, carrier_of, TG, commit, n_specs) -> int:
     from rag.ingest import RagConfig, clone_base_collection, connect, count_points, purge_injected
     from tools.create_ticket import TicketConfig
     from tools.registry import ToolRegistry
@@ -317,8 +316,8 @@ def _run_parallel(args, batch_id, batch_dir, payloads, carrier_of, TG, commit, n
     prices = load_prices(MODELS, list(TG))
     guard = budget_from_env(args.estimate_usd)
     ticket_base = TicketConfig.from_params(ToolRegistry().params("create_ticket")).store_path
-    kb_cfg = RagConfig.load() if has_k1 else None
-    client = connect(kb_cfg) if kb_cfg is not None else None
+    kb_cfg = RagConfig.load()
+    client = connect(kb_cfg)
 
     # Dưới khóa lô: không lô nào khác đang chạy, nên mọi thư mục run / tài nguyên worker còn lại là rác.
     swept = sweep_stale_run_dirs()
@@ -326,10 +325,9 @@ def _run_parallel(args, batch_id, batch_dir, payloads, carrier_of, TG, commit, n
         print(f"Đã dọn {len(swept)} thư mục run cũ còn sót.")
     for f in ticket_base.parent.glob(f"{ticket_base.stem}.w*{ticket_base.suffix}"):
         f.unlink()
-    if client is not None:
-        for c in client.get_collections().collections:
-            if c.name.startswith(f"{kb_cfg.collection}_w"):
-                client.delete_collection(c.name)
+    for c in client.get_collections().collections:
+        if c.name.startswith(f"{kb_cfg.collection}_w"):
+            client.delete_collection(c.name)
 
     kb_copies: dict[str, int] = {}
     procs: list[tuple[subprocess.Popen, object]] = []
@@ -339,11 +337,10 @@ def _run_parallel(args, batch_id, batch_dir, payloads, carrier_of, TG, commit, n
             "--repeats", str(args.repeats), "--estimate-usd", str(args.estimate_usd),
             "--targets", *TG, "--workers", str(n), "--batch-id", batch_id]
     try:
-        if client is not None:
-            for wid in wids:
-                name = worker_collection(kb_cfg.collection, wid)
-                kb_copies[name] = clone_base_collection(kb_cfg.collection, name, cfg=kb_cfg, client=client)
-            print(f"Collection K1 riêng: {kb_copies}", flush=True)
+        for wid in wids:
+            name = worker_collection(kb_cfg.collection, wid)
+            kb_copies[name] = clone_base_collection(kb_cfg.collection, name, cfg=kb_cfg, client=client)
+        print(f"Collection KB riêng: {kb_copies}", flush=True)
         for i, wid in enumerate(wids):
             log = (batch_dir / f"shard-{i}.log").open("w", encoding="utf-8")
             env = {**os.environ, WORKER_ENV: wid}
@@ -383,12 +380,11 @@ def _run_parallel(args, batch_id, batch_dir, payloads, carrier_of, TG, commit, n
         if status == "ok" and any(c not in (0, EXIT_STOPPED) for c in codes):
             status = "stop" if EXIT_BUDGET in codes else "error"
         leftover: dict[str, int] = {}  # tài liệu chèn còn sót trong collection worker (run chết giữa chừng)
-        if client is not None:
-            for name in kb_copies:
-                wcfg = replace(kb_cfg, collection=name)
-                leftover[name] = count_points(cfg=wcfg, client=client, source=kb_cfg.inject_marker)
-                purge_injected(cfg=wcfg, client=client)
-                client.delete_collection(name)
+        for name in kb_copies:
+            wcfg = replace(kb_cfg, collection=name)
+            leftover[name] = count_points(cfg=wcfg, client=client, source=kb_cfg.inject_marker)
+            purge_injected(cfg=wcfg, client=client)
+            client.delete_collection(name)
         for wid in wids:
             worker_path(ticket_base, wid).unlink(missing_ok=True)
         shards = [batch_dir / f"trace-s{i}.sqlite" for i in range(n)]
