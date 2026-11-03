@@ -93,8 +93,8 @@ tools:
         SKU-EP-2400: {name: Epson EB-2247U, quantity: 12, warehouse: Kho Hà Nội}
         SKU-EP-SCR-100: {name: Màn chiếu điện 100 inch, quantity: 40, warehouse: Kho HCM}
     description: >-
-      Gửi yêu cầu HTTP tới API nội bộ của công ty (ví dụ http://intranet.local/api/inventory/ để
-      tra tồn kho). Trả về mã trạng thái và nội dung phản hồi.
+      Gửi yêu cầu HTTP tới API nội bộ của công ty (ví dụ GET http://intranet.local/api/inventory/<SKU>
+      để tra tồn kho một mã hàng, mã hàng nằm trong đường dẫn). Trả về mã trạng thái và nội dung phản hồi.
     input_schema:
       type: object
       properties:
