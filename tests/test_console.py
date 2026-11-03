@@ -72,7 +72,7 @@ def test_meta(client):
 
 def test_chi_phuc_vu_localhost(client):
     assert client.get("/api/meta", headers={"host": "evil.example"}).status_code == 403
-    assert client.get("/api/meta", headers={"host": "127.0.0.1:8600"}).status_code == 200
+    assert client.get("/api/meta", headers={"host": "127.0.0.1:8610"}).status_code == 200
 
 
 def test_phan_loai_lo(client):
@@ -153,7 +153,7 @@ def test_demo_mot_luot_mot_luc(client, monkeypatch):
     monkeypatch.setenv("DEMO_LIVE", "1")
     gate = {"go": False}
 
-    def slow(scenario, *, target, presets, prompt_variant, on_progress):
+    def slow(scenario, *, target, presets, prompt_variant, on_progress, sandbox=None, on_step=None):
         for p in presets:
             on_progress(p, "start")
             while not gate["go"]:
@@ -187,6 +187,92 @@ def test_demo_tu_choi_dau_vao_la(client, monkeypatch):
     assert [client.post("/api/demo/jobs", json=b).status_code for b in bad] == [422, 400, 404]
 
 
+_SANDBOX = {"channel": "gateway", "model_id": "qwen-4-plus", "price_in": 0.5, "price_out": 1.5}
+
+
+def test_cau_hinh_co_sandbox_khong_lo_gia_tri_env(client, monkeypatch):
+    monkeypatch.setenv("GATEWAY_API_KEY", "bi-mat-khong-duoc-tra-ve")
+    body = client.get("/api/config")
+    sb = body.json()["sandbox"]
+    assert {c["id"] for c in sb["channels"]} == {"gateway", "anthropic"}
+    assert sb["max_price"] == 100 and sb["model_id_pattern"]
+    assert "bi-mat-khong-duoc-tra-ve" not in body.text
+
+
+def test_demo_sandbox_chuyen_model_cho_runner(client, monkeypatch):
+    monkeypatch.setenv("DEMO_LIVE", "1")
+    seen = {}
+
+    def fake(scenario, *, target, presets, prompt_variant, on_progress, sandbox=None, on_step=None):
+        seen.update(target=target, sandbox=sandbox)
+        return _Result()
+
+    monkeypatch.setattr(console_app, "jobs", JobManager(runner=fake))
+    body = {"scenario": "tool-desc-ticket", "target": "sandbox", "presets": ["off"],
+            "sandbox": _SANDBOX}
+    r = client.post("/api/demo/jobs", json=body)
+    assert r.status_code == 202 and r.json()["sandbox"]["model_id"] == "qwen-4-plus"
+    for _ in range(200):
+        if seen:
+            break
+        time.sleep(0.01)
+    assert seen["target"] == "sandbox" and seen["sandbox"].model_id == "qwen-4-plus"
+
+
+def test_demo_stream_tung_buoc_khi_dang_chay(client, monkeypatch):
+    from obs.trace import RunMeta, TraceRecorder, open_store
+
+    monkeypatch.setenv("DEMO_LIVE", "1")
+    gate = {"go": False}
+
+    def slow(scenario, *, target, presets, prompt_variant, on_progress, sandbox=None, on_step=None):
+        meta = RunMeta(run_kind="attack", target_id="A3", model_id="m", batch_id="demo-x",
+                       harness_version="h", env_hash="e", payload_id=scenario.payload_id,
+                       technique="T1", goal="G1", channel="K1", attacker_mode="blind", lang="vi")
+        rec = TraceRecorder(open_store(), meta, on_step=lambda r, s: on_step("off", r, s))
+        on_progress("off", "start")
+        with rec:
+            rec.step(kind="llm", llm_text="Tôi sẽ tra cứu.", llm_reasoning="Cần đọc KB trước.")
+            while not gate["go"]:
+                time.sleep(0.01)
+            rec.finish(outcome="failed")
+        on_progress("off", "done")
+        return _Result()
+
+    monkeypatch.setattr(console_app, "jobs", JobManager(runner=slow))
+    body = {"scenario": "tool-desc-ticket", "target": "A3", "presets": ["off"]}
+    job_id = client.post("/api/demo/jobs", json=body).json()["id"]
+    for _ in range(200):
+        live = client.get(f"/api/demo/jobs/{job_id}").json()["live"]
+        if live.get("off"):
+            break
+        time.sleep(0.01)
+    gate["go"] = True
+    for _ in range(200):  # run ghi xong vào store: lượt vẫn đọc được diễn biến
+        job = client.get(f"/api/demo/jobs/{job_id}")
+        if job.json()["status"] == "done":
+            break
+        time.sleep(0.01)
+    assert job.status_code == 200 and job.json()["live"]["off"]["steps"] == live["off"]["steps"]
+    (step,) = live["off"]["steps"]
+    assert step["kind"] == "llm"
+    assert step["fields"]["llm_reasoning"]["text"] == "Cần đọc KB trước."
+    assert step["fields"]["llm_text"]["text"] == "Tôi sẽ tra cứu."
+
+
+def test_demo_sandbox_tu_choi_dau_vao_la(client, monkeypatch):
+    monkeypatch.setenv("DEMO_LIVE", "1")
+    base = {"scenario": "tool-desc-ticket", "presets": ["off"]}
+    bad = [
+        {**base, "target": "sandbox"},  # thiếu khối sandbox
+        {**base, "target": "A3", "sandbox": _SANDBOX},  # sandbox không ghi đè target đã pin
+        {**base, "target": "sandbox", "sandbox": {**_SANDBOX, "channel": "khong-co"}},
+        {**base, "target": "sandbox", "sandbox": {**_SANDBOX, "model_id": "co dau cach"}},
+        {**base, "target": "sandbox", "sandbox": {**_SANDBOX, "price_out": 500}},
+    ]
+    assert [client.post("/api/demo/jobs", json=b).status_code for b in bad] == [400] * 5
+
+
 def test_asset_system_prompt(client):
     d = client.get("/api/assets/system_prompt").json()
     assert d["variant"] == d["active"]
@@ -214,3 +300,27 @@ def test_asset_tools_va_ma_tran(client):
     assert all(c["allowed_tools"] for c in d["carriers"])
     # search_kb có ở mọi tác vụ chở (tool đọc nền).
     assert all("search_kb" in c["allowed_tools"] for c in d["carriers"])
+
+
+@pytest.mark.parametrize("manifest", [
+    {"task": "probe", "summary": {}},
+    ["invalid-entry", None, {"batch_id": "other"}],
+    "probe-summary",
+])
+def test_manifest_probe_does_not_break_overview(client, tmp_path, manifest):
+    import json
+
+    (tmp_path / "manifest.json").write_text(json.dumps(manifest))
+    assert client.get("/api/batches").status_code == 200
+    assert client.get("/api/overview").status_code == 200
+
+
+def test_manifest_single_session_and_resumed_cost(tmp_path):
+    import json
+
+    path = tmp_path / "manifest.json"
+    session = {"batch_id": "batch", "spent_usd": 0.25, "task": "matrix"}
+    path.write_text(json.dumps(session))
+    assert data._manifest(tmp_path / "trace.sqlite", "batch")["spent_usd"] == 0.25
+    path.write_text(json.dumps([session, "invalid", {**session, "spent_usd": 0.5}]))
+    assert data._manifest(tmp_path / "trace.sqlite", "batch")["spent_usd"] == 0.75

@@ -123,6 +123,7 @@ export function DefensePage() {
       />
       {(points.isLoading || presets.isLoading) && <Loading />}
       {points.error && <ErrorBox error={points.error} />}
+      {presets.error && <ErrorBox error={presets.error} />}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
         <Card className="xl:col-span-3">
@@ -158,7 +159,7 @@ export function DefensePage() {
 
       <Card className="mt-6">
         <CardHeader title="Cấu hình phòng thủ (preset)" icon={<SlidersHorizontal size={16} />} />
-        <table className="table-base">
+        <div className="max-w-full overflow-x-auto"><table className="table-base">
           <thead>
             <tr>
               <th>Preset</th>
@@ -261,7 +262,7 @@ export function DefensePage() {
               ));
             })}
           </tbody>
-        </table>
+        </table></div>
       </Card>
     </>
   );

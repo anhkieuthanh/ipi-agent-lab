@@ -167,9 +167,11 @@ def valid_carriers(
             by_goal = allowed
 
     chosen = by_tool if by_tool is not None else by_goal
-    if chosen is None:  # không luật nào bắt: K1 ghép được mọi tác vụ chở (channel_rule.K1)
-        return k1_carriers
-    return [c for c in chosen if c in k1_carriers]
+    out = k1_carriers if chosen is None else [c for c in chosen if c in k1_carriers]
+    only = payload.get("only_carriers")
+    if only:  # payload gắn ngữ cảnh ghim đúng carrier nó viết cho (v-attack-1.1, STT-61)
+        out = [c for c in out if c in only]
+    return out
 
 
 # ── Dựng tài liệu ───────────────────────────────────────────────────────────────

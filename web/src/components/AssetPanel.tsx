@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Database, FileCode2, Wrench, X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { api } from "@/lib/api";
 import { Badge, ErrorBox, Loading, Mono } from "@/components/ui";
@@ -63,7 +63,7 @@ function CustomersView() {
         <span>· {d.seeded_rows} bản ghi mồi canary</span>
       </div>
       <div className="overflow-x-auto rounded-lg border border-slate-200">
-        <table className="table-base min-w-max">
+        <div className="max-w-full overflow-x-auto"><table className="table-base min-w-max">
           <thead>
             <tr>
               {d.columns.map((c) => (
@@ -85,7 +85,7 @@ function CustomersView() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </div>
       <p className="text-[12px] text-slate-500">
         {d.note} Hàng tô vàng là bản ghi mồi (id {d.canary_row_id}); cột <Mono className="text-[11px]">canary_note</Mono> đã ẩn.
@@ -128,7 +128,7 @@ function ToolsView() {
       <div>
         <div className="mb-2 text-[13px] font-semibold text-slate-700">Tool được phép theo tác vụ chở</div>
         <div className="overflow-x-auto rounded-lg border border-slate-200">
-          <table className="table-base min-w-max">
+          <div className="max-w-full overflow-x-auto"><table className="table-base min-w-max">
             <thead>
               <tr>
                 <th>Tác vụ</th>
@@ -153,7 +153,7 @@ function ToolsView() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
         <p className="mt-2 text-[12px] text-slate-500">● = tool nằm trong allowlist của tác vụ; D3 chặn tool ngoài danh sách.</p>
       </div>
@@ -162,11 +162,26 @@ function ToolsView() {
 }
 
 export function AssetPanel({ code, onClose }: { code: AssetCode | null; onClose: () => void }) {
+  const panelRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!code) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const panel = panelRef.current;
+    panel?.focus();
+    const trap = (e: KeyboardEvent) => {
+      if (e.key !== "Tab" || !panel) return;
+      const nodes = Array.from(panel.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [tabindex="0"]')).filter(n => !n.hasAttribute("disabled"));
+      const first = nodes[0], last = nodes[nodes.length - 1];
+      if (!first) { e.preventDefault(); panel.focus(); }
+      else if (e.shiftKey && (document.activeElement === first || document.activeElement === panel)) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (document.activeElement === last || document.activeElement === panel)) { e.preventDefault(); first.focus(); }
+    };
+    window.addEventListener("keydown", trap);
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("keydown", trap); document.body.style.overflow = previousOverflow; previous?.focus(); };
   }, [code, onClose]);
 
   if (!code) return null;
@@ -175,7 +190,7 @@ export function AssetPanel({ code, onClose }: { code: AssetCode | null; onClose:
   return (
     <div className="fixed inset-0 z-40">
       <div className="absolute inset-0 bg-slate-900/30" onClick={onClose} />
-      <aside className="absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col bg-white shadow-xl">
+      <aside ref={panelRef} role="dialog" aria-modal="true" aria-label={m.title} tabIndex={-1} className="absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col bg-white shadow-xl">
         <div className="flex items-start gap-3 border-b border-slate-100 px-6 py-4">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
             <Icon size={18} />

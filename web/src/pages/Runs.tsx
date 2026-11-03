@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { ListTree, Search } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { Badge, Card, Empty, ErrorBox, Loading, Mono, OutcomeBadge, PageHeader, Select } from "@/components/ui";
@@ -18,9 +18,10 @@ export function RunsPage() {
   const [runKind, setRunKind] = useState<"" | "attack" | "benign">("");
   const [outcome, setOutcome] = useState("");
   const [page, setPage] = useState(0);
+  useEffect(() => setPage(0), [sp.get("scope"), sp.get("batch")]);
 
   const query = useQuery({
-    queryKey: ["runs", params, q, runKind, outcome, page],
+    queryKey: ["runs", params, q, runKind, outcome, page], refetchInterval: 15_000,
     queryFn: () =>
       api.runs({ ...params, q: q || undefined, run_kind: runKind || undefined, outcome: outcome || undefined, limit: PAGE, offset: page * PAGE }),
   });
@@ -77,7 +78,8 @@ export function RunsPage() {
               { value: "", label: "Tất cả" },
               { value: "success", label: "Tấn công thành công" },
               { value: "blocked", label: "Bị chặn" },
-              { value: "failed", label: "Không đạt" },
+              { value: "failed", label: "Tấn công không đạt" },
+              { value: "fail", label: "Không đạt (lành tính)" },
               { value: "pass", label: "Đạt (lành tính)" },
             ]}
             className="w-52"
@@ -93,7 +95,7 @@ export function RunsPage() {
             <Empty title="Không có run nào khớp" icon={<ListTree size={20} />} />
           ) : (
             <>
-              <table className="table-base">
+              <div className="max-w-full overflow-x-auto"><table className="table-base">
                 <thead>
                   <tr>
                     <th>Run</th>
@@ -152,7 +154,7 @@ export function RunsPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
               <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-[13px] text-slate-500">
                 <span>
                   {int(data.total)} run · trang {page + 1}/{Math.max(pages, 1)}

@@ -77,6 +77,9 @@ def test_all_eight_techniques_accepted(engine):
     [
         ({"technique": "T9"}, {"outcome": "failed"}),
         ({"target_id": "api1"}, {"outcome": "failed"}),
+        # Model thử ngoài bộ đo chỉ hợp lệ trong lô demo-sandbox-, không lọt vào lô thực nghiệm.
+        ({"target_id": "sandbox"}, {"outcome": "failed"}),
+        ({"target_id": "sandbox", "batch_id": "demo-20261027T000000Z"}, {"outcome": "failed"}),
         ({"channel": "K3"}, {"outcome": "failed"}),
         ({}, {"outcome": "blocked"}),  # blocked mà không có nguyên nhân
         ({}, {"outcome": "blocked", "blocked_by": "D3"}),  # blocked_by ngoài tập
@@ -91,6 +94,34 @@ def test_all_eight_techniques_accepted(engine):
 def test_check_constraints_reject_invalid(engine, meta_over, result):
     with pytest.raises(IntegrityError):
         _record(engine, _meta(**meta_over), **result)
+
+
+def test_sandbox_target_only_in_sandbox_demo_batch(engine):
+    meta = _meta(target_id="sandbox", model_id="qwen-4-plus", batch_id="demo-sandbox-20261027T000000Z")
+    run_id = _record(engine, meta, outcome="failed")
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT target_id FROM runs WHERE run_id = :r"), {"r": run_id}).one()
+    assert row.target_id == "sandbox"
+
+
+def test_on_step_streams_each_step_and_reasoning_is_stored(engine):
+    seen = []
+
+    def watch(rec, step):
+        seen.append((rec.run_id, step.step_idx, step.kind, step.llm_reasoning))
+        raise RuntimeError("giao diện lỗi")  # không được làm hỏng run
+
+    with TraceRecorder(engine, _meta(), on_step=watch) as rec:
+        rec.step(kind="llm", llm_text="gọi tool", llm_reasoning="cần tra KB")
+        rec.step(kind="tool", tool_name="search_kb", tool_args={"query": "x"})
+        rec.finish(outcome="failed")
+    assert seen == [(rec.run_id, 0, "llm", "cần tra KB"), (rec.run_id, 1, "tool", None)]
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT parse_error FROM runs WHERE run_id = :r"), {"r": rec.run_id}).one()
+        reasoning = conn.execute(
+            text("SELECT llm_reasoning FROM steps WHERE run_id = :r AND step_idx = 0"), {"r": rec.run_id}
+        ).scalar_one()
+    assert row.parse_error == 0 and reasoning == "cần tra KB"
 
 
 def test_benign_run_without_attack_labels(engine):

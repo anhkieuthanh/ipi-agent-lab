@@ -46,15 +46,15 @@ lint:
 # IPI Guard Console (STT-58/82) — API FastAPI + giao diện React.
 # console-build: build giao diện vào web/dist (cần Node). console: API phục vụ cả giao diện đã
 # build ở một cổng, chỉ nghe 127.0.0.1, mở nút chạy demo (DEMO_LIVE=1). console-dev: chạy Vite
-# (5173) + API (8600) song song khi phát triển giao diện.
+# (5180) + API (8610) song song khi phát triển giao diện.
 console-build:
 	cd web && npm install --no-audit --no-fund && npm run build
 
 console:
-	DEMO_LIVE=1 PYTHONPATH=src uv run uvicorn console.app:app --host 127.0.0.1 --port 8600
+	DEMO_LIVE=1 PYTHONPATH=src uv run uvicorn console.app:app --host 127.0.0.1 --port 8610
 
 console-dev:
-	DEMO_LIVE=1 PYTHONPATH=src uv run uvicorn console.app:app --host 127.0.0.1 --port 8600 --reload &
+	DEMO_LIVE=1 PYTHONPATH=src uv run uvicorn console.app:app --host 127.0.0.1 --port 8610 --reload &
 	cd web && npm run dev
 
 # Chạy một kịch bản demo từ dòng lệnh (không cần giao diện).

@@ -41,7 +41,7 @@ function Result({ b }: { b: Batch }) {
 
 export function BatchesPage() {
   const [filter, setFilter] = useState<Filter>("all");
-  const q = useQuery({ queryKey: ["batches"], queryFn: () => api.batches() });
+  const q = useQuery({ queryKey: ["batches"], refetchInterval: 15_000, queryFn: () => api.batches() });
   if (q.isLoading) return <Loading />;
   if (q.error) return <ErrorBox error={q.error} />;
   const all = q.data!;
@@ -69,7 +69,7 @@ export function BatchesPage() {
         {rows.length === 0 ? (
           <Empty title="Không có lô nào" icon={<Layers size={20} />} />
         ) : (
-          <table className="table-base">
+          <div className="max-w-full overflow-x-auto"><table className="table-base">
             <thead>
               <tr>
                 <th>Lô</th>
@@ -159,7 +159,7 @@ export function BatchesPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </Card>
     </>

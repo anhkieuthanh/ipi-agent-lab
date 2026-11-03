@@ -142,7 +142,7 @@ export type Step = {
   latency_ms: number | null;
   tokens_in: number | null;
   tokens_out: number | null;
-  fields: Partial<Record<"llm_text" | "tool_args" | "tool_result", Marked>>;
+  fields: Partial<Record<"llm_reasoning" | "llm_text" | "tool_args" | "tool_result", Marked>>;
   hits: Record<string, unknown>[];
   events: string[];
   blocking: boolean;
@@ -179,6 +179,24 @@ export type Scenario = {
   carrier_task_id: string;
   query: string;
   payload_text: string;
+  attack: AttackBrief;
+};
+
+/** Mổ xẻ payload của một kịch bản — từ bản ghi corpus, xem `console.demo.payload_brief`. */
+export type AttackBrief = {
+  lang: string;
+  technique_variant: string | null;
+  technique_rationale: string | null;
+  template: string | null;
+  instruction: string;
+  instruction_vi: string | null;
+  transform: string[];
+  instruction_span: [number, number] | null;
+  placement: string;
+  tool: string | null;
+  arguments: Record<string, unknown>;
+  success: string;
+  source: { kind: string | null; ref: string | null; license: string | null };
 };
 
 export type Job = {
@@ -187,6 +205,7 @@ export type Job = {
   target: string;
   presets: string[];
   prompt_variant: string | null;
+  sandbox: SandboxModel | null;
   status: "queued" | "running" | "done" | "error";
   events: { preset: string; event: string; at: string }[];
   batch_id: string | null;
@@ -195,11 +214,24 @@ export type Job = {
   error: string | null;
   created_at: string;
   finished_at: string | null;
+  /** preset → bước của run tới hiện tại (cập nhật trong lúc chạy). */
+  live: Record<string, { run_id: string; steps: Step[] }>;
+};
+
+/** Model thử ngoài bộ đo (khối `sandbox` của config/models.yaml) — chỉ cho lượt demo. */
+export type SandboxModel = { channel: string; model_id: string; price_in: number; price_out: number };
+
+export type SandboxLimits = {
+  label: string;
+  channels: { id: string; label: string; provider: string; env: string[]; ready: boolean }[];
+  model_id_pattern: string;
+  max_price: number;
 };
 
 export type ConfigSummary = {
   targets: { id: string; label: string; model_id: string; provider: string; pricing: { input: number; output: number } }[];
   aux_models: { id: string; label: string; model_id: string; provider: string; pricing: { input: number; output: number } }[];
+  sandbox: SandboxLimits;
   presets: Preset[];
   payloads: { total: number; by_technique: Record<string, number> };
   carriers: { id: string; name: string; query: string; allowed_tools: string[]; channels: string[] }[];
@@ -288,7 +320,13 @@ export const api = {
   run: (id: string) => request<RunDetail>(`/api/runs/${encodeURIComponent(id)}`),
   config: () => request<ConfigSummary>("/api/config"),
   scenarios: () => request<Scenario[]>("/api/demo/scenarios"),
-  startDemo: (body: { scenario: string; target: string; presets: string[]; prompt_variant: string | null }) =>
+  startDemo: (body: {
+    scenario: string;
+    target: string;
+    presets: string[];
+    prompt_variant: string | null;
+    sandbox?: SandboxModel | null;
+  }) =>
     request<Job>("/api/demo/jobs", { method: "POST", body: JSON.stringify(body) }),
   job: (id: string) => request<Job>(`/api/demo/jobs/${id}`),
   activeJob: () => request<Job | null>("/api/demo/active"),

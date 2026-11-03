@@ -26,6 +26,21 @@ def test_kich_ban_khoa_duy_nhat_va_phu_ba_muc_tieu():
     assert {s.goal for s in demo.SCENARIOS} == {"G1", "G2", "G3"}
 
 
+def test_payload_brief_mo_xe_payload_cho_nguoi_xem():
+    for s in demo.SCENARIOS:
+        b = demo.payload_brief(s)
+        text = demo.payload_text(s)
+        assert b["placement"] and b["success"]
+        assert b["instruction_vi"], s.key  # kể cả T8: nghĩa gốc lấy từ khung base_frame
+        if b["instruction_span"]:
+            start, end = b["instruction_span"]
+            assert text[start:end] == b["instruction"]
+    t8 = demo.payload_brief(demo.scenario("vi-obfuscation"))
+    assert t8["transform"] == ["telex"]
+    assert t8["instruction_vi"] != t8["instruction"]
+    assert demo.payload_brief(demo.scenario("fake-supplier"))["tool"] is None
+
+
 def test_payload_text_da_thay_chi_thi():
     for s in demo.SCENARIOS:
         assert "{INSTRUCTION}" not in demo.payload_text(s)

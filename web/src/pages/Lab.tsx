@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import {
+  Activity,
   Columns2,
-  FileWarning,
   FlaskConical,
   Loader2,
   Map as MapIcon,
@@ -10,7 +10,6 @@ import {
   Shield,
   ShieldCheck,
   SlidersHorizontal,
-  User,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -23,6 +22,7 @@ import {
   SystemMap,
   hookStatusFromSteps,
 } from "@/components/SystemMap";
+import { AttackBrief } from "@/components/Attack";
 import { StepTimeline, ToolActions } from "@/components/Trace";
 import { TraceReplay } from "@/components/TraceReplay";
 import {
@@ -36,11 +36,13 @@ import {
   Mono,
   OutcomeBadge,
   PageHeader,
+  Segmented,
   Select,
   VerdictBanner,
 } from "@/components/ui";
 import { api, type Job, type Preset, type RunDetail } from "@/lib/api";
-import { CHANNEL_LABEL, GOAL_LABEL, int, presetLabel, seconds, usd } from "@/lib/format";
+import { int, presetLabel, seconds, usd } from "@/lib/format";
+import { SANDBOX_ID, useSandboxModel } from "@/lib/sandbox";
 
 const CODES: DefenseCode[] = ["D1", "D2", "D3", "D4"];
 
@@ -93,7 +95,7 @@ function ResultColumn({
   if (q.error || !q.data) return <ErrorBox error={q.error ?? "lỗi"} />;
   const d: RunDetail = q.data;
   const run = d.run;
-  const spontaneous = d.verdict?.tone === "attack" && !d.tool_actions.some((a) => a.follows_payload);
+  const spontaneous = d.run.goal === "G2" && d.verdict?.tone === "attack" && !d.tool_actions.some((a) => a.follows_payload);
   const codes = codesOf(presets, String(run.preset));
   return (
     <Card className={clsx("flex flex-col", showing && "ring-2 ring-brand-500")}>
@@ -107,7 +109,7 @@ function ResultColumn({
       <div className="space-y-3 p-4">
         {d.verdict && <VerdictBanner verdict={d.verdict} />}
         {spontaneous && (
-          <Callout tone="warn">Scorer chấm thành công nhưng agent không gọi tool payload đòi (VT-16).</Callout>
+          <Callout tone="warn">Scorer chấm đạt G2 nhưng chưa thấy tool khớp gợi ý payload. Cần đối chiếu trace trước khi kết luận nguyên nhân.</Callout>
         )}
         <div className="grid grid-cols-3 gap-2 text-center">
           {[
@@ -165,6 +167,7 @@ function Results({
 }) {
   const q = useQuery({ queryKey: ["runs", "demo-batch", batchId], queryFn: () => api.runs({ batch: [batchId], limit: 10 }) });
   if (q.isLoading) return <Loading />;
+  if (q.error) return <ErrorBox error={q.error} />;
   const items = q.data?.items ?? [];
   if (!items.length) return null;
   return (
@@ -230,6 +233,53 @@ function DefenseMap({
   );
 }
 
+/** Diễn biến từng bước của lượt đang chạy — mỗi preset một run, chọn bằng tab. */
+function LivePanel({ job, attack }: { job: Job; attack?: string }) {
+  const running = ["queued", "running"].includes(job.status);
+  const started = job.presets.filter((p) => job.events.some((e) => e.preset === p && e.event === "start"));
+  const current = started[started.length - 1] ?? job.presets[0];
+  const [pick, setPick] = useState<string | null>(null);
+  const preset = pick ?? current;
+  const done = job.events.some((e) => e.preset === preset && e.event === "done");
+  const steps = job.live?.[preset]?.steps ?? [];
+  const isLive = running && preset === current && !done;
+  if (!started.length) return null;
+  return (
+    <Card className="xl:col-span-3">
+      <CardHeader
+        title="Diễn biến trực tiếp"
+        subtitle={`${attack ? `${attack} — ` : ""}từng bước agent làm, cập nhật trong lúc chạy: suy luận của model (nếu model trả về), lời model, tool được gọi, phòng thủ xử lý. Đoạn tô màu là payload.`}
+        icon={<Activity size={16} />}
+        action={
+          isLive ? (
+            <Badge tone="brand" dot>
+              Đang chạy
+            </Badge>
+          ) : null
+        }
+      />
+      <div className="space-y-4 p-5">
+        {job.presets.length > 1 && (
+          <Segmented
+            value={preset}
+            onChange={setPick}
+            options={job.presets.map((p) => ({
+              value: p,
+              label: presetLabel(p),
+              count: job.live?.[p]?.steps.length ?? 0,
+            }))}
+          />
+        )}
+        {steps.length || isLive ? (
+          <StepTimeline steps={steps} live={isLive} />
+        ) : (
+          <p className="text-[13px] text-slate-500">Preset này chưa chạy.</p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 export function LabPage() {
   const qc = useQueryClient();
   const meta = useQuery({ queryKey: ["meta"], queryFn: api.meta });
@@ -238,6 +288,7 @@ export function LabPage() {
 
   const [key, setKey] = useState("");
   const [target, setTarget] = useState("A3");
+  const [sandbox] = useSandboxModel();
   const [variant, setVariant] = useState("");
   const [enabled, setEnabled] = useState<Record<DefenseCode, boolean>>({ D1: true, D2: true, D3: true, D4: true });
   const [variantPick, setVariantPick] = useState<string | null>(null);
@@ -253,6 +304,17 @@ export function LabPage() {
   useEffect(() => {
     if (config.data && !variant) setVariant(config.data.prompt.active);
   }, [config.data, variant]);
+  // Bỏ model thử trên trang Cấu hình thì quay về model đích mặc định.
+  useEffect(() => {
+    if (target === SANDBOX_ID && !sandbox) setTarget("A3");
+  }, [target, sandbox]);
+
+  // Tải lại trang giữa lượt chạy: nối lại vào lượt đang chạy để tiếp tục xem diễn biến.
+  const active = useQuery({ queryKey: ["activeJob"], queryFn: api.activeJob, enabled: !jobId });
+  useEffect(() => {
+    const a = active.data;
+    if (!jobId && a && ["queued", "running"].includes(a.status)) setJobId(a.id);
+  }, [active.data, jobId]);
 
   const job = useQuery({
     queryKey: ["job", jobId],
@@ -285,7 +347,14 @@ export function LabPage() {
   }, [viewRun, viewDetail.data, allPresets]);
 
   const start = useMutation({
-    mutationFn: () => api.startDemo({ scenario: key, target, presets, prompt_variant: variant }),
+    mutationFn: () =>
+      api.startDemo({
+        scenario: key,
+        target,
+        presets,
+        prompt_variant: variant,
+        sandbox: target === SANDBOX_ID ? sandbox : null,
+      }),
     onSuccess: (j) => {
       setJobId(j.id);
       setBatchId(null);
@@ -293,7 +362,8 @@ export function LabPage() {
     },
   });
 
-  if (scenarios.isLoading || config.isLoading) return <Loading />;
+  if (scenarios.isLoading || config.isLoading || meta.isLoading) return <Loading />;
+  if (scenarios.error || config.error || meta.error) return <ErrorBox error={scenarios.error ?? config.error ?? meta.error} />;
   const live = meta.data?.live_demo;
   const running = job.data && ["queued", "running"].includes(job.data.status);
 
@@ -314,7 +384,7 @@ export function LabPage() {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <Card className="xl:col-span-3">
-          <CardHeader title="Kịch bản" icon={<FlaskConical size={16} />} />
+          <CardHeader title="Kịch bản tấn công" icon={<FlaskConical size={16} />} />
           <div className="p-5">
             <Select
               value={key}
@@ -322,33 +392,7 @@ export function LabPage() {
               options={(scenarios.data ?? []).map((s) => ({ value: s.key, label: s.title }))}
               className="mb-4"
             />
-            {scenario && (
-              <>
-                <p className="mb-4 rounded-lg border-l-4 border-payload-400 bg-payload-50/50 px-4 py-3 text-[13px] text-slate-700">
-                  {scenario.story}
-                </p>
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  <div>
-                    <div className="label mb-1.5 flex items-center gap-1.5">
-                      <User size={13} /> Nhân viên hỏi agent
-                    </div>
-                    <div className="rounded-lg bg-brand-50/60 px-3 py-2.5 text-[13px] text-slate-700">{scenario.query}</div>
-                    <div className="mt-1.5 text-[12px] text-slate-500">
-                      Tác vụ {scenario.carrier_task_id} · {CHANNEL_LABEL[scenario.channel] ?? scenario.channel}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="label mb-1.5 flex items-center gap-1.5">
-                      <FileWarning size={13} /> Payload cài vào dữ liệu
-                    </div>
-                    <pre className="code-block ring-payload-200">{scenario.payload_text}</pre>
-                    <div className="mt-1.5 text-[12px] text-slate-500">
-                      {scenario.payload_id} · {scenario.goal} · {GOAL_LABEL[scenario.goal]}
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
+            {scenario && <AttackBrief scenario={scenario} />}
           </div>
         </Card>
 
@@ -363,12 +407,26 @@ export function LabPage() {
           <CardHeader title="Thiết lập lượt chạy" icon={<SlidersHorizontal size={16} />} />
           <div className="space-y-4 p-5">
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <Select
-              label="Model đích"
-              value={target}
-              onChange={setTarget}
-              options={(config.data?.targets ?? []).map((t) => ({ value: t.id, label: `${t.id} · ${t.model_id}` }))}
-            />
+            <div>
+              <Select
+                label="Model đích"
+                value={target}
+                onChange={setTarget}
+                options={[
+                  ...(config.data?.targets ?? []).map((t) => ({ value: t.id, label: `${t.id} · ${t.model_id}` })),
+                  ...(sandbox ? [{ value: SANDBOX_ID, label: `Thử · ${sandbox.model_id}` }] : []),
+                ]}
+              />
+              {target === SANDBOX_ID ? (
+                <div className="mt-1.5 text-[12px] text-amber-700">
+                  Model ngoài bộ đo — lượt này chỉ là demo, không vào số liệu báo cáo.
+                </div>
+              ) : (
+                <Link to="/config" className="mt-1.5 inline-block text-[12px] text-slate-500 hover:text-brand-700">
+                  {sandbox ? "Đổi model thử ở trang Cấu hình" : "Thử model khác ở trang Cấu hình"}
+                </Link>
+              )}
+            </div>
             <Select
               label="System prompt"
               value={variant}
@@ -419,13 +477,15 @@ export function LabPage() {
             <Button
               variant="primary"
               className="w-full lg:ml-auto lg:flex lg:w-[320px]"
-              disabled={!live || !presets.length || !!running || start.isPending}
+              disabled={!live || !scenario || !presets.length || !!running || active.isFetching || !!active.error || !!job.error || start.isPending}
               onClick={() => start.mutate()}
               icon={running || start.isPending ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
             >
               {running ? "Đang chạy…" : "Chạy tấn công"}
             </Button>
             {start.error && <ErrorBox error={start.error} />}
+            {active.error && <ErrorBox error={active.error} />}
+            {job.error && <Callout tone="warn" title="Mất kết nối cập nhật tiến độ">Dữ liệu bên dưới có thể đã cũ. Hệ thống đang thử kết nối lại.</Callout>}
 
             {job.data && (
               <div className="rounded-lg bg-slate-50 p-3">
@@ -463,6 +523,14 @@ export function LabPage() {
             )}
           </div>
         </Card>
+
+        {job.data && (
+          <LivePanel
+            key={job.data.id}
+            job={job.data}
+            attack={scenarios.data?.find((s) => s.key === job.data!.scenario)?.title}
+          />
+        )}
       </div>
 
       {batchId && (

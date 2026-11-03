@@ -550,6 +550,8 @@ class RunContext:
     # Ảnh chụp JSON → tầng phòng thủ (`build_defenses`). Thiếu thì chỉ chạy được preset `off`.
     defenses: Mapping[str, Any] = field(default_factory=dict)
     carrier_task_types: Mapping[str, str] = field(default_factory=carrier_task_types)
+    # Gọi sau mỗi bước của run (`TraceRecorder.on_step`) — demo console dùng để stream tiến trình.
+    on_step: Callable[..., None] | None = None
 
 
 def _defense_for(spec: AttackRunSpec, ctx: RunContext) -> Any:
@@ -626,7 +628,7 @@ def run_one_attack(spec: AttackRunSpec, ctx: RunContext) -> str:
             **ctx.core_params,
         )
         try:
-            with TraceRecorder(ctx.engine, meta) as rec:
+            with TraceRecorder(ctx.engine, meta, on_step=ctx.on_step) as rec:
                 rec.run.delivered = delivered
                 if injected is not None:
                     rec.run.delivered_probe = injected.delivered

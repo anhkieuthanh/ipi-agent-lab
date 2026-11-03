@@ -158,6 +158,9 @@ def valid_carriers(
         except Exception:  # noqa: BLE001 - không ghép được là loại, không phải lỗi
             continue
         out.append(ct["id"])
+    only = payload.get("only_carriers")
+    if only:  # payload gắn ngữ cảnh ghim đúng carrier nó viết cho (v-attack-1.1, STT-61)
+        out = [c for c in out if c in only]
     return out
 
 

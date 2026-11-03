@@ -1,0 +1,27 @@
+{
+  "task": "STT-61 (dò payload gắn ngữ cảnh)",
+  "batch_id": "probe-coupling-20261102T061926Z",
+  "lab_git_commit": "eb66bbb7fa87f65363ee744738eaf04478198c66",
+  "env_hash": "82cad54e10b9e33902c8a91423232e0143c2a3a655a447c11362618b0e8b3cc4",
+  "prompt_variant": "baseline",
+  "models": {
+    "A2": "glm-5.2",
+    "A3": "glm-5.3-flash"
+  },
+  "defense": "off",
+  "repeats": 3,
+  "payload_carrier": {
+    "P-T3-G1-VI-940": "CT-04",
+    "P-T3-G1-VI-941": "CT-05",
+    "P-T3-G1-VI-942": "CT-06",
+    "P-T1-G3-VI-940": "CT-06",
+    "P-T3-G3-VI-940": "CT-03",
+    "P-T3-G1-VI-943": "CT-03"
+  },
+  "payloads_file": "results/probe/coupling/payloads_g1g3.yaml",
+  "estimate_usd": 4.0,
+  "started_at_utc": "20261102T061926Z",
+  "finished_at_utc": "20261102T070119Z",
+  "spent_usd": 0.6065244000000001,
+  "budget_status": "ok"
+}
