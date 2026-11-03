@@ -639,6 +639,8 @@ def run_one_attack(spec: AttackRunSpec, ctx: RunContext) -> str:
                         rec.run.delivered = injector_k1.observed_delivered(
                             rec.steps, injected.doc_ids
                         )
+                    elif spec.channel == "K2b":
+                        rec.run.k2b_applied = layer.result.applied
                 score(
                     rec,
                     ScoreContext(

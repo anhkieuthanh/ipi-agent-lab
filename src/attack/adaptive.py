@@ -462,6 +462,8 @@ def run_round(
                 finally:
                     if spec.channel == "K1":
                         rec.run.delivered = observed_delivered(rec.steps, injected.doc_ids)
+                    elif spec.channel == "K2b":
+                        rec.run.k2b_applied = layer.result.applied
                 score(
                     rec,
                     ScoreContext(

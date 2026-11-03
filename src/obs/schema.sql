@@ -26,6 +26,7 @@ CREATE TABLE runs (
 	run_canaries VARCHAR NOT NULL, 
 	delivered BOOLEAN, 
 	delivered_probe BOOLEAN, 
+	k2b_applied BOOLEAN, 
 	g1_hit BOOLEAN NOT NULL, 
 	g1_channel VARCHAR, 
 	leak_attempted BOOLEAN NOT NULL, 
