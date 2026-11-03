@@ -244,6 +244,25 @@ def test_seeded_run_ghi_chu_va_song_qua_sweep(source_db, run_root):
         assert r.db_path.exists()
 
 
+@pytest.mark.parametrize("content", ["", "  ", "khong-phai-pid"])
+def test_sweep_giu_thu_muc_moi_co_file_chu_rong_hoac_hong(run_root, content):
+    """File chủ rỗng (đang ghi dở) hay hỏng: thư mục mới vẫn được giữ, chỉ xét theo tuổi."""
+    d = run_root / f"{RUN_DIR_PREFIX}init-run"
+    d.mkdir()
+    (d / RUN_DIR_OWNER).write_text(content)
+    assert sweep_stale_run_dirs(run_root) == []
+    t = time.time() - LEGACY_RUN_DIR_MAX_AGE_S - 60
+    os.utime(d, (t, t))
+    assert sweep_stale_run_dirs(run_root) == [d]
+
+
+def test_seeded_run_khong_de_lai_file_chu_tam(source_db, run_root):
+    with seeded_run(source_db=source_db, tmp_root=run_root) as r:
+        names = {p.name for p in r.db_path.parent.iterdir()}
+        assert RUN_DIR_OWNER in names
+        assert not any(n.startswith(f"{RUN_DIR_OWNER}.tmp") for n in names)
+
+
 def test_sweep_thu_muc_khong_chu_chi_xoa_khi_cu(run_root):
     fresh = run_root / f"{RUN_DIR_PREFIX}legacy-fresh"
     old = run_root / f"{RUN_DIR_PREFIX}legacy-old"

@@ -445,7 +445,7 @@ def seeded_run(
     canaries = new_run_canaries(run_id)
     run_dir = Path(tempfile.mkdtemp(prefix=f"{RUN_DIR_PREFIX}{canaries.run_id}-", dir=tmp_root))
     try:
-        (run_dir / RUN_DIR_OWNER).write_text(str(os.getpid()), encoding="utf-8")
+        _write_owner(run_dir)
         db_path = seed_customers_db(source_db, run_dir / source_db.name, canaries.db)
         if db_tool is not None:
             db_tool.use_db(db_path)
@@ -465,6 +465,14 @@ def seeded_run(
         raise CanaryCleanupError(f"{source_db} bị đổi trong run {canaries.run_id}")
 
 
+def _write_owner(run_dir: Path) -> None:
+    """Ghi `RUN_DIR_OWNER` nguyên tử (file tạm + `os.replace`): sweep không bao giờ thấy file chủ đã
+    tồn tại mà chưa có pid. Trước khi file xuất hiện, thư mục mới tạo được giữ nhờ luật tuổi."""
+    tmp = run_dir / f"{RUN_DIR_OWNER}.tmp-{os.getpid()}"
+    tmp.write_text(str(os.getpid()), encoding="utf-8")
+    os.replace(tmp, run_dir / RUN_DIR_OWNER)
+
+
 def _pid_alive(pid: int) -> bool:
     try:
         os.kill(pid, 0)
@@ -476,14 +484,17 @@ def _pid_alive(pid: int) -> bool:
 
 
 def _run_dir_orphaned(d: Path) -> bool:
-    """Thư mục run không còn tiến trình sở hữu: pid trong `RUN_DIR_OWNER` đã chết, hoặc (thư mục cũ
-    không có file chủ) chưa sửa đổi trong `LEGACY_RUN_DIR_MAX_AGE_S` giây."""
+    """Thư mục run không còn tiến trình sở hữu: pid trong `RUN_DIR_OWNER` đã chết. Không đọc được pid
+    (chưa có file chủ — thư mục cũ hoặc đang khởi tạo — hay file hỏng) thì chỉ coi là mồ côi khi thư
+    mục chưa sửa đổi trong `LEGACY_RUN_DIR_MAX_AGE_S` giây."""
     try:
-        return not _pid_alive(int((d / RUN_DIR_OWNER).read_text(encoding="utf-8").strip()))
-    except FileNotFoundError:
-        return time.time() - d.stat().st_mtime > LEGACY_RUN_DIR_MAX_AGE_S
-    except ValueError:  # file chủ hỏng: coi như mồ côi
-        return True
+        pid = int((d / RUN_DIR_OWNER).read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        try:
+            return time.time() - d.stat().st_mtime > LEGACY_RUN_DIR_MAX_AGE_S
+        except FileNotFoundError:  # chủ vừa dọn xong
+            return False
+    return not _pid_alive(pid)
 
 
 def sweep_stale_run_dirs(tmp_root: Path | None = None) -> list[Path]:

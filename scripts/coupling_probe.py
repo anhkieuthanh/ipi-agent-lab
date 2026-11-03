@@ -396,17 +396,32 @@ def _run_parallel(args, batch_id, batch_dir, payloads, carrier_of, TG, commit, n
                 worker_path(ticket_base, wid).unlink(missing_ok=True)
             except OSError as e:
                 cleanup_errors.append(f"tickets {wid}: {e!r}")
+        # Lưu kết quả: gộp vào file tạm rồi đổi tên — hỏng giữa chừng thì KHÔNG có trace.sqlite/runs.csv
+        # một phần trông như cả lô; shard giữ nguyên để gộp lại. Mọi lỗi ở đây làm lô thất bại.
+        save_errors: list[str] = []
         shards = [batch_dir / f"trace-s{i}.sqlite" for i in range(n)]
+        merging = batch_dir / "trace.merging.sqlite"
+        merged = False
         try:
-            _merge_shards(batch_dir / "trace.sqlite", shards)
+            merging.unlink(missing_ok=True)
+            _merge_shards(merging, shards)
+            os.replace(merging, batch_dir / "trace.sqlite")
+            merged = True
             for sh in shards:
                 sh.unlink(missing_ok=True)
-        except Exception as e:  # noqa: BLE001 — shard còn nguyên trên đĩa, gộp tay được
-            cleanup_errors.append(f"gộp trace: {e!r}")
+        except Exception as e:  # noqa: BLE001 — shard còn nguyên trên đĩa, gộp lại được
+            save_errors.append(f"gộp trace: {e!r}")
+        if merged:
+            try:
+                csv_tmp = batch_dir / "runs.csv.tmp"
+                export_runs_csv(open_store(batch_dir / "trace.sqlite"), batch_id, csv_tmp)
+                os.replace(csv_tmp, batch_dir / "runs.csv")
+            except Exception as e:  # noqa: BLE001
+                save_errors.append(f"xuất runs.csv: {e!r}")
         try:
             spent = sum(spend_from_log(LOG, prices, run_ids=[batch_id]).values())
         except Exception as e:  # noqa: BLE001
-            cleanup_errors.append(f"đọc chi phí: {e!r}")
+            save_errors.append(f"đọc chi phí: {e!r}")
         manifest = {
             "task": "STT-61 (dò payload gắn ngữ cảnh)",
             "batch_id": batch_id,
@@ -419,6 +434,8 @@ def _run_parallel(args, batch_id, batch_dir, payloads, carrier_of, TG, commit, n
             "kb_worker_collections": kb_copies,
             "kb_injected_leftover": leftover,
             "cleanup_errors": cleanup_errors,
+            "save_status": "error" if save_errors else "ok",
+            "save_errors": save_errors,
             "payload_carrier": {p["id"]: carrier_of(p) for p in payloads},
             "payloads_file": args.payloads,
             "estimate_usd": args.estimate_usd,
@@ -430,16 +447,15 @@ def _run_parallel(args, batch_id, batch_dir, payloads, carrier_of, TG, commit, n
         (batch_dir / "manifest.json").write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
-        try:
-            engine = open_store(batch_dir / "trace.sqlite")
-            export_runs_csv(engine, batch_id, batch_dir / "runs.csv")
+        if merged and not save_errors:
             _summary(batch_dir, TG)
-        except Exception as e:  # noqa: BLE001 — manifest đã ghi; báo lỗi xuất CSV
-            print(f"Lỗi xuất runs.csv: {e!r}", flush=True)
         if cleanup_errors:
             print("Lỗi dọn tài nguyên (ghi trong manifest):", *cleanup_errors, sep="\n  ", flush=True)
-        print(f"Kết thúc: {spent:.2f} USD · {status} · mã thoát con {codes}", flush=True)
-    return 0 if status == "ok" else 2
+        if save_errors:
+            print("LỖI LƯU KẾT QUẢ (ghi trong manifest):", *save_errors, sep="\n  ", flush=True)
+        print(f"Kết thúc: {spent:.2f} USD · {status} · lưu {manifest['save_status']} · mã thoát con {codes}",
+              flush=True)
+    return 0 if status == "ok" and not save_errors else 2
 
 
 if __name__ == "__main__":

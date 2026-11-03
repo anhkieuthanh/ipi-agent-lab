@@ -51,7 +51,7 @@ def _down(*a, **kw):
     raise ConnectionError("qdrant mất kết nối")
 
 
-def test_loi_don_qdrant_van_ghi_manifest_va_csv(tmp_path, monkeypatch):
+def _setup(tmp_path, monkeypatch):
     cp = _load_script()
     monkeypatch.setattr(cp, "sweep_stale_run_dirs", lambda: [])
     monkeypatch.setattr(cp, "load_prices", lambda *a, **kw: {})
@@ -74,16 +74,56 @@ def test_loi_don_qdrant_van_ghi_manifest_va_csv(tmp_path, monkeypatch):
 
     batch_dir = tmp_path / "probe-coupling-test"
     batch_dir.mkdir()
-    args = SimpleNamespace(workers=2, payloads="p.yaml", repeats=1, estimate_usd=1.0)
-    rc = cp._run_parallel(args, "probe-coupling-test", batch_dir, [], lambda p: None, ("A2",),
-                          "abc", 0)
+    return cp, batch_dir
 
-    manifest = json.loads((batch_dir / "manifest.json").read_text(encoding="utf-8"))
+
+def _run(cp, batch_dir):
+    args = SimpleNamespace(workers=2, payloads="p.yaml", repeats=1, estimate_usd=1.0)
+    rc = cp._run_parallel(args, batch_dir.name, batch_dir, [], lambda p: None, ("A2",), "abc", 0)
+    return rc, json.loads((batch_dir / "manifest.json").read_text(encoding="utf-8"))
+
+
+def test_loi_don_qdrant_van_ghi_manifest_va_csv(tmp_path, monkeypatch):
+    cp, batch_dir = _setup(tmp_path, monkeypatch)
+    rc, manifest = _run(cp, batch_dir)
+    assert manifest["save_status"] == "ok"
     assert manifest["shard_exit_codes"] == [0, 0]
     assert len(manifest["cleanup_errors"]) == 2  # một lỗi mỗi collection worker
     assert all("mất kết nối" in e for e in manifest["cleanup_errors"])
     assert (batch_dir / "runs.csv").exists()
     assert rc == 0
+
+
+def test_gop_trace_loi_thi_lo_that_bai_va_khong_co_trace_mot_phan(tmp_path, monkeypatch):
+    cp, batch_dir = _setup(tmp_path, monkeypatch)
+    shard = batch_dir / "trace-s0.sqlite"
+    shard.write_bytes(b"")
+
+    def _half_merge(dest, shards):
+        dest.write_bytes(b"mot phan")  # ghi dở rồi hỏng
+        raise RuntimeError("đĩa đầy")
+
+    monkeypatch.setattr(cp, "_merge_shards", _half_merge)
+    rc, manifest = _run(cp, batch_dir)
+    assert rc != 0
+    assert manifest["save_status"] == "error"
+    assert any("gộp trace" in e for e in manifest["save_errors"])
+    assert not (batch_dir / "trace.sqlite").exists()
+    assert not (batch_dir / "runs.csv").exists()
+    assert shard.exists()  # shard giữ để gộp lại
+
+
+def test_xuat_csv_loi_thi_lo_that_bai(tmp_path, monkeypatch):
+    cp, batch_dir = _setup(tmp_path, monkeypatch)
+
+    def _boom(*a, **kw):
+        raise OSError("không ghi được")
+
+    monkeypatch.setattr(cp, "export_runs_csv", _boom)
+    rc, manifest = _run(cp, batch_dir)
+    assert rc != 0
+    assert any("runs.csv" in e for e in manifest["save_errors"])
+    assert (batch_dir / "trace.sqlite").exists()
 
 
 def test_test_khong_dung_kho_phieu_that(tmp_path, monkeypatch):
