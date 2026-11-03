@@ -15,9 +15,14 @@ Lô tiền tố `probe-coupling-`, lưu ở `results/probe/coupling/<batch_id>/`
 
 `--workers N` chia spec cho N tiến trình con (spec thứ i vào shard i mod N), mỗi con ghi
 `trace-s<i>.sqlite` + `shard-<i>.log`, tiến trình mẹ gộp về `trace.sqlite` khi mọi con xong. Con i chạy
-với `IPI_WORKER_ID=i` (`obs.worker`): kho phiếu `tickets.w<i>.db` riêng, và khi lô có K1 thì collection
-`kb_w<i>` riêng — mẹ chép điểm nền của `kb` sang trước khi chạy, xóa sau khi xong. Hạn mức chi phí tính
-trên cả lô (log lọc theo batch_id) ở mọi con. MailHog dùng chung: chỉ an toàn vì lô dò là blind.
+với `IPI_WORKER_ID=<batch_id>-<i>` (`obs.worker`): kho phiếu và (khi lô có K1) collection Qdrant riêng,
+mẹ chép điểm nền của `kb` sang trước khi chạy, xóa sau khi xong. MailHog dùng chung: chỉ an toàn vì lô
+dò là blind.
+
+Dừng phối hợp qua file `STOP` trong thư mục lô: con kiểm file và ngân sách TRƯỚC mỗi run, mẹ kiểm ngân
+sách mỗi `MONITOR_S` giây và đặt `STOP` khi vượt ngưỡng hoặc có con báo vượt. Mẹ nhận SIGINT/SIGTERM
+(hoặc lỗi bất kỳ) thì đặt `STOP`, ngắt các con, chờ con thoát (`GRACE_S` giây rồi kill), sau đó vẫn
+dọn tài nguyên, gộp trace dở và ghi manifest. Mỗi lúc chỉ một lô (`obs.worker.batch_lock`).
 
     uv run python scripts/coupling_probe.py --payloads <file> --estimate-usd 2 --workers 4
 """
@@ -27,6 +32,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import signal
 import sqlite3
 import subprocess
 import sys
@@ -65,7 +71,14 @@ from obs.trace import (  # noqa: E402
     open_store,
     uncommitted_changes,
 )
-from obs.worker import WORKER_ENV, worker_collection, worker_id, worker_path  # noqa: E402
+from obs.worker import (  # noqa: E402
+    WORKER_ENV,
+    BatchLockedError,
+    batch_lock,
+    worker_collection,
+    worker_id,
+    worker_path,
+)
 
 MODELS = ROOT / "config" / "models.yaml"
 TOOLS = ROOT / "config" / "tools.yaml"
@@ -73,6 +86,10 @@ LOG = ROOT / "logs" / "llm_client.jsonl"
 PROBE_DIR = ROOT / "results" / "probe" / "coupling"
 PAYLOADS = PROBE_DIR / "payloads_coupling.yaml"
 TARGETS = ("A2", "A3")
+LOCK = ROOT / "logs" / "batch.lock"
+MONITOR_S = 5  # chu kỳ mẹ kiểm ngân sách và trạng thái con
+GRACE_S = 30  # thời gian chờ con thoát sau SIGINT trước khi kill
+EXIT_BUDGET, EXIT_STOPPED = 3, 4  # mã thoát của con: tự dừng vì ngân sách / dừng theo file STOP
 
 # Mỗi payload dò bám đúng một tác vụ chở (tool/nghiệp vụ khớp).
 PAYLOAD_CARRIER = {
@@ -152,6 +169,19 @@ def main() -> int:
     if args.estimate_usd is None:
         parser.error("cần --estimate-usd để mở lô")
 
+    if shard is None:  # mẹ (hoặc lô tuần tự) giữ khóa suốt lô; con chạy dưới khóa của mẹ
+        signal.signal(signal.SIGTERM, signal.default_int_handler)  # SIGTERM → KeyboardInterrupt
+        try:
+            with batch_lock(LOCK):
+                return _run_batch(args, specs, shard, payloads, corpus, _carrier, TG, exp, commit)
+        except BatchLockedError as e:
+            print(f"Không mở lô: {e}")
+            return 2
+    signal.signal(signal.SIGTERM, signal.default_int_handler)
+    return _run_batch(args, specs, shard, payloads, corpus, _carrier, TG, exp, commit)
+
+
+def _run_batch(args, specs, shard, payloads, corpus, _carrier, TG, exp, commit) -> int:
     batch_id = args.batch_id or f"probe-coupling-{_stamp()}"
     batch_dir = PROBE_DIR / batch_id
     batch_dir.mkdir(parents=True, exist_ok=True)
@@ -196,9 +226,19 @@ def main() -> int:
     }
 
     status = "ok"
+    stop_file = batch_dir / "STOP"
     t0 = time.monotonic()
     try:
         for i, spec in enumerate(specs, start=1):
+            # Kiểm TRƯỚC khi nhận run: con khác/mẹ đã ra lệnh dừng, hoặc ngân sách đã chạm ngưỡng.
+            if stop_file.exists():
+                status = "stopped"
+                print("DỪNG: có file STOP của lô.", flush=True)
+                break
+            if guard.status(sum(spend_from_log(LOG, prices, run_ids=[batch_id]).values())) == "stop":
+                status = "stop"
+                print("DỪNG trước run: chi phí lô vượt 120% dự toán hoặc chạm hạn mức tổng.", flush=True)
+                break
             run_id = run_one_attack(spec, ctx)
             con = sqlite3.connect(trace_path)
             row = con.execute(
@@ -227,7 +267,7 @@ def main() -> int:
             )
             export_runs_csv(engine, batch_id, batch_dir / "runs.csv")
     if shard is not None:
-        return 3 if status == "stop" else 0
+        return {"stop": EXIT_BUDGET, "stopped": EXIT_STOPPED}.get(status, 0)
     _summary(batch_dir, TG)
     return 0
 
@@ -269,76 +309,119 @@ def _run_parallel(args, batch_id, batch_dir, payloads, carrier_of, TG, commit, n
     from tools.create_ticket import TicketConfig
     from tools.registry import ToolRegistry
 
+    n = args.workers
+    wids = [f"{batch_id}-{i}" for i in range(n)]
+    started = _stamp()
+    stop_file = batch_dir / "STOP"
+    stop_file.unlink(missing_ok=True)
+    prices = load_prices(MODELS, list(TG))
+    guard = budget_from_env(args.estimate_usd)
+    ticket_base = TicketConfig.from_params(ToolRegistry().params("create_ticket")).store_path
+    kb_cfg = RagConfig.load() if has_k1 else None
+    client = connect(kb_cfg) if kb_cfg is not None else None
+
+    # Dưới khóa lô: không lô nào khác đang chạy, nên mọi thư mục run / tài nguyên worker còn lại là rác.
     swept = sweep_stale_run_dirs()
     if swept:
         print(f"Đã dọn {len(swept)} thư mục run cũ còn sót.")
-    n = args.workers
-    started = _stamp()
-    ticket_base = TicketConfig.from_params(ToolRegistry().params("create_ticket")).store_path
-    kb_cfg = RagConfig.load() if has_k1 else None
+    for f in ticket_base.parent.glob(f"{ticket_base.stem}.w*{ticket_base.suffix}"):
+        f.unlink()
+    if client is not None:
+        for c in client.get_collections().collections:
+            if c.name.startswith(f"{kb_cfg.collection}_w"):
+                client.delete_collection(c.name)
+
     kb_copies: dict[str, int] = {}
-    if kb_cfg is not None:
-        client = connect(kb_cfg)
-        for i in range(n):
-            name = worker_collection(kb_cfg.collection, str(i))
-            kb_copies[name] = clone_base_collection(kb_cfg.collection, name, cfg=kb_cfg, client=client)
-        print(f"Collection K1 riêng: {kb_copies}", flush=True)
+    procs: list[tuple[subprocess.Popen, object]] = []
+    codes: list[int | None] = []
+    status, spent = "ok", 0.0
     base = [sys.executable, str(Path(__file__).resolve()), "--payloads", args.payloads,
             "--repeats", str(args.repeats), "--estimate-usd", str(args.estimate_usd),
             "--targets", *TG, "--workers", str(n), "--batch-id", batch_id]
-    procs = []
-    for i in range(n):
-        log = (batch_dir / f"shard-{i}.log").open("w", encoding="utf-8")
-        env = {**os.environ, WORKER_ENV: str(i)}
-        procs.append((subprocess.Popen([*base, "--shard", f"{i}/{n}"], stdout=log,
-                                       stderr=subprocess.STDOUT, cwd=ROOT, env=env), log))
-    print(f"{n} tiến trình con, {n_specs} run; log: {(batch_dir / 'shard-<i>.log').relative_to(ROOT)}",
-          flush=True)
-    codes = []
-    for p, log in procs:
-        codes.append(p.wait())
-        log.close()
-    leftover: dict[str, int] = {}  # tài liệu chèn còn sót trong collection worker (run chết giữa chừng)
-    if kb_cfg is not None:
-        for name in kb_copies:
-            wcfg = replace(kb_cfg, collection=name)
-            leftover[name] = count_points(cfg=wcfg, client=client, source=kb_cfg.inject_marker)
-            purge_injected(cfg=wcfg, client=client)
-            client.delete_collection(name)
-    for i in range(n):
-        worker_path(ticket_base, str(i)).unlink(missing_ok=True)
-    shards = [batch_dir / f"trace-s{i}.sqlite" for i in range(n)]
-    _merge_shards(batch_dir / "trace.sqlite", shards)
-    for s in shards:
-        s.unlink(missing_ok=True)
-    prices = load_prices(MODELS, list(TG))
-    spent = sum(spend_from_log(LOG, prices, run_ids=[batch_id]).values())
-    status = "stop" if 3 in codes else ("error" if any(c not in (0, 3) for c in codes) else "ok")
-    manifest = {
-        "task": "STT-61 (dò payload gắn ngữ cảnh)",
-        "batch_id": batch_id,
-        "lab_git_commit": commit,
-        "defense": "off",
-        "repeats": args.repeats,
-        "workers": n,
-        "shard_exit_codes": codes,
-        "kb_worker_collections": kb_copies,
-        "kb_injected_leftover": leftover,
-        "payload_carrier": {p["id"]: carrier_of(p) for p in payloads},
-        "payloads_file": args.payloads,
-        "estimate_usd": args.estimate_usd,
-        "started_at_utc": started,
-        "finished_at_utc": _stamp(),
-        "spent_usd": spent,
-        "budget_status": status,
-    }
-    (batch_dir / "manifest.json").write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
-    engine = open_store(batch_dir / "trace.sqlite")
-    export_runs_csv(engine, batch_id, batch_dir / "runs.csv")
-    print(f"Xong: {spent:.2f} USD · {status} · mã thoát con {codes}")
-    _summary(batch_dir, TG)
+    try:
+        if client is not None:
+            for wid in wids:
+                name = worker_collection(kb_cfg.collection, wid)
+                kb_copies[name] = clone_base_collection(kb_cfg.collection, name, cfg=kb_cfg, client=client)
+            print(f"Collection K1 riêng: {kb_copies}", flush=True)
+        for i, wid in enumerate(wids):
+            log = (batch_dir / f"shard-{i}.log").open("w", encoding="utf-8")
+            env = {**os.environ, WORKER_ENV: wid}
+            # Phiên riêng: Ctrl-C ở terminal chỉ tới mẹ, mẹ chuyển một lần (không ngắt con hai lần).
+            procs.append((subprocess.Popen([*base, "--shard", f"{i}/{n}"], stdout=log,
+                                           stderr=subprocess.STDOUT, cwd=ROOT, env=env,
+                                           start_new_session=True), log))
+        print(f"{n} tiến trình con, {n_specs} run; log: {(batch_dir / 'shard-<i>.log').relative_to(ROOT)}",
+              flush=True)
+        while any(p.poll() is None for p, _ in procs):
+            time.sleep(MONITOR_S)
+            spent = sum(spend_from_log(LOG, prices, run_ids=[batch_id]).values())
+            over = guard.status(spent) == "stop"
+            if (over or any(p.poll() == EXIT_BUDGET for p, _ in procs)) and not stop_file.exists():
+                status = "stop"
+                stop_file.write_text(f"ngân sách: {spent:.2f} USD\n", encoding="utf-8")
+                print(f"DỪNG: chi phí lô {spent:.2f} USD vượt ngưỡng — đặt STOP, chờ con xong run.",
+                      flush=True)
+    except BaseException as e:  # SIGINT/SIGTERM (KeyboardInterrupt) hoặc lỗi khi dựng/khởi động con
+        status = "interrupted" if isinstance(e, KeyboardInterrupt) else f"error: {e!r}"
+        print(f"NGẮT LÔ ({status}) — dừng các con, lưu kết quả dở.", flush=True)
+        stop_file.write_text(f"{status}\n", encoding="utf-8")
+        for p, _ in procs:
+            if p.poll() is None:
+                p.send_signal(signal.SIGINT)
+    finally:
+        deadline = time.monotonic() + GRACE_S
+        for p, _ in procs:
+            try:
+                p.wait(timeout=max(0.0, deadline - time.monotonic()))
+            except subprocess.TimeoutExpired:
+                p.kill()
+                p.wait()
+        for _, log in procs:
+            log.close()
+        codes = [p.returncode for p, _ in procs]
+        if status == "ok" and any(c not in (0, EXIT_STOPPED) for c in codes):
+            status = "stop" if EXIT_BUDGET in codes else "error"
+        leftover: dict[str, int] = {}  # tài liệu chèn còn sót trong collection worker (run chết giữa chừng)
+        if client is not None:
+            for name in kb_copies:
+                wcfg = replace(kb_cfg, collection=name)
+                leftover[name] = count_points(cfg=wcfg, client=client, source=kb_cfg.inject_marker)
+                purge_injected(cfg=wcfg, client=client)
+                client.delete_collection(name)
+        for wid in wids:
+            worker_path(ticket_base, wid).unlink(missing_ok=True)
+        shards = [batch_dir / f"trace-s{i}.sqlite" for i in range(n)]
+        _merge_shards(batch_dir / "trace.sqlite", shards)
+        for sh in shards:
+            sh.unlink(missing_ok=True)
+        spent = sum(spend_from_log(LOG, prices, run_ids=[batch_id]).values())
+        manifest = {
+            "task": "STT-61 (dò payload gắn ngữ cảnh)",
+            "batch_id": batch_id,
+            "lab_git_commit": commit,
+            "defense": "off",
+            "repeats": args.repeats,
+            "workers": n,
+            "worker_ids": wids,
+            "shard_exit_codes": codes,
+            "kb_worker_collections": kb_copies,
+            "kb_injected_leftover": leftover,
+            "payload_carrier": {p["id"]: carrier_of(p) for p in payloads},
+            "payloads_file": args.payloads,
+            "estimate_usd": args.estimate_usd,
+            "started_at_utc": started,
+            "finished_at_utc": _stamp(),
+            "spent_usd": spent,
+            "budget_status": status,
+        }
+        (batch_dir / "manifest.json").write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        engine = open_store(batch_dir / "trace.sqlite")
+        export_runs_csv(engine, batch_id, batch_dir / "runs.csv")
+        print(f"Kết thúc: {spent:.2f} USD · {status} · mã thoát con {codes}", flush=True)
+        _summary(batch_dir, TG)
     return 0 if status == "ok" else 2
 
 
