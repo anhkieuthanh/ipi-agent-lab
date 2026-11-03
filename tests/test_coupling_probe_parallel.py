@@ -64,6 +64,13 @@ def test_loi_don_qdrant_van_ghi_manifest_va_csv(tmp_path, monkeypatch):
     monkeypatch.setattr(ingest, "count_points", _down)
     monkeypatch.setattr(ingest, "purge_injected", _down)
     monkeypatch.setattr(cp, "ROOT", tmp_path)
+    # Kho phiếu trỏ vào tmp: đầu lô mẹ xóa mọi `tickets.w*.db` cạnh kho gốc — không được đụng data/
+    # của lô thật đang chạy.
+    import tools.create_ticket as ct
+
+    real = ct.TicketConfig.from_params
+    monkeypatch.setattr(ct.TicketConfig, "from_params", classmethod(
+        lambda cls, params: real({**params, "store_path": str(tmp_path / "tickets.db")})))
 
     batch_dir = tmp_path / "probe-coupling-test"
     batch_dir.mkdir()
@@ -77,3 +84,15 @@ def test_loi_don_qdrant_van_ghi_manifest_va_csv(tmp_path, monkeypatch):
     assert all("mất kết nối" in e for e in manifest["cleanup_errors"])
     assert (batch_dir / "runs.csv").exists()
     assert rc == 0
+
+
+def test_test_khong_dung_kho_phieu_that(tmp_path, monkeypatch):
+    """Chốt chặn cho chính bộ test: kho phiếu worker thật trong data/ không bị test xóa."""
+    real_dir = ROOT / "data"
+    sentinel = real_dir / "tickets.wsentinel-test.db"
+    sentinel.write_bytes(b"")
+    try:
+        test_loi_don_qdrant_van_ghi_manifest_va_csv(tmp_path, monkeypatch)
+        assert sentinel.exists()
+    finally:
+        sentinel.unlink(missing_ok=True)
