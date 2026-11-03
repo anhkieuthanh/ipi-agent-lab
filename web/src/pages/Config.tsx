@@ -76,7 +76,7 @@ function ModelsCard({ d, tag }: { d: ConfigSummary; tag?: string }) {
         title="Mô hình đích"
         subtitle={
           <>
-            Bộ model đã chốt theo phụ lục GVHD, khóa bằng <Mono>{tag ?? "v-models-1.0"}</Mono>. Đơn giá USD/Mtok (vào / ra).
+            Bộ model đã chốt theo phụ lục GVHD, khóa bằng <Mono>{tag ?? "v-models-1.1"}</Mono>. Đơn giá USD/Mtok (vào / ra).
           </>
         }
         icon={<Cpu size={16} />}

@@ -3,12 +3,12 @@
 #
 # Bộ model theo phụ lục GVHD đã ký (hạng mục 6). Đổi model = đổi `.env` + một khối targets,
 # không sửa code.
-# `model_id` là id đã chốt, khóa bằng `v-models-1.0`; giá trị biến `model_env` trong `.env` phải
+# `model_id` là id đã chốt, khóa bằng `v-models-1.1`; giá trị biến `model_env` trong `.env` phải
 # trùng `model_id`. Gateway chỉ có bí danh, nên trace ghi trường `model` của response để bắt trôi.
 # `pricing_usd_per_mtok`: giá thật trên dashboard gateway (STT-15). Còn null thì src/obs/cost.py
 # từ chối mở lô — không chạy lô nào khi còn TODO.
 # Mỗi khối chỉ trỏ TÊN biến môi trường (base_url_env, api_key_env, model_env); giá trị thật
-# nằm trong `.env`, mẫu ở `.env.example`. Pin model sau `v-models-1.0` (quy tắc cứng #9).
+# nằm trong `.env`, mẫu ở `.env.example`. Pin model sau `v-models-1.1` (quy tắc cứng #9).
 
 schema_version: "1.0"
 
@@ -53,8 +53,10 @@ targets:
     base_url_env: GATEWAY_BASE_URL
     api_key_env: GATEWAY_API_KEY
     model_env: TARGET_MODEL_A3
-    model_id: glm-5.3-flash
-    # Đơn giá TA cung cấp 2026-10-21 (STT-37).
+    # Đổi từ glm-5.3-flash (timeout/429 liên tục trên gateway, 2026-11-03), GVHD duyệt 2026-11-03.
+    model_id: deepseek-v4.1-flash-1017
+    # Giá TẠM: dùng lại đơn giá glm-5.3-flash, chưa tra dashboard gateway cho model mới — chi phí A3
+    # trong log/manifest có thể lệch giá thật cho tới khi thay bằng giá dashboard.
     pricing_usd_per_mtok: {input: 0.60, output: 1.80}
 
 # Model chấm `judge_pass` (USR ở STT-37, B3, B4) — giao thức thực nghiệm mục 8, N9. Ngoài A1–A3
@@ -93,7 +95,7 @@ attacker:
 
 # Model thử ngoài bộ đo — CHỈ cho lượt demo trên console (STT-82), runner lô không bao giờ đọc khối
 # này. Người dùng chọn kênh gọi, gõ model_id và đơn giá trên trang Cấu hình; khối này giới hạn những
-# gì được nhập. Không pin bằng `v-models-1.0` và không phải target: run ghi `target_id = "sandbox"`,
+# gì được nhập. Không pin bằng `v-models-1.1` và không phải target: run ghi `target_id = "sandbox"`,
 # lô tiền tố `demo-sandbox-` trong store riêng results/demo — không lẫn vào số liệu báo cáo. Log
 # llm_client ghi `model` từng lần gọi nên vẫn truy được model nào đã chạy.
 sandbox:

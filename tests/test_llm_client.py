@@ -17,7 +17,7 @@ from agent import llm_client as llm_mod
 from agent.llm_client import LLMClient, LLMClientConfigError, LLMClientError
 
 CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "models.yaml"
-PINNED = {"A1": "claude-opus-5", "A2": "glm-5.2", "A3": "glm-5.3-flash"}
+PINNED = {"A1": "claude-opus-5", "A2": "glm-5.2", "A3": "deepseek-v4.1-flash-1017"}
 
 
 @pytest.fixture(autouse=True)
@@ -89,7 +89,7 @@ def test_unknown_target_raises(tmp_path):
 
 
 def test_model_env_must_match_pinned_id(monkeypatch):
-    monkeypatch.setenv("TARGET_MODEL_A3", "deepseek-v4.1-flash")
+    monkeypatch.setenv("TARGET_MODEL_A3", "glm-5.3-flash")  # model A3 trước v-models-1.1
     with pytest.raises(LLMClientConfigError, match="model_id đã pin"):
         LLMClient(target_id="A3", config_path=CONFIG_PATH, log_path=None)
 

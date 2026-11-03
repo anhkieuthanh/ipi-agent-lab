@@ -4,7 +4,7 @@
 chuỗi `target_id`; base_url/api_key/model lấy qua biến môi trường mà config trỏ tên, KHÔNG
 hard-code ở đây (mẫu ở `.env.example`).
 
-Pin model (quy tắc cứng #9, khóa `v-models-1.0`): giá trị biến `model_env` phải trùng
+Pin model (quy tắc cứng #9, khóa `v-models-1.1`): giá trị biến `model_env` phải trùng
 `model_id` trong config, lệch thì từ chối khởi tạo. Gateway chỉ cung cấp bí danh, nên mỗi
 `LLMResult` mang thêm `response_model` — trường `model` mà gateway trả về — để trace phát hiện
 nhà cung cấp đổi snapshot sau bí danh.
@@ -238,7 +238,7 @@ class LLMClient:
         if pinned and self.model != pinned:
             raise LLMClientConfigError(
                 f"target '{target_id}': {spec['model_env']}='{self.model}' lệch model_id đã pin "
-                f"'{pinned}' (v-models-1.0). Sửa .env, không sửa config."
+                f"'{pinned}' (v-models-1.1). Sửa .env, không sửa config."
             )
 
         self.timeout_s: float = opt("timeout_s", 60)
