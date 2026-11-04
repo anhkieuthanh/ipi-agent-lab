@@ -24,6 +24,7 @@ import {
 } from "@/components/SystemMap";
 import { AttackBrief } from "@/components/Attack";
 import { StepTimeline, ToolActions } from "@/components/Trace";
+import { DemoCheckNote, VerifyPanel } from "@/components/Services";
 import { TraceReplay } from "@/components/TraceReplay";
 import {
   Badge,
@@ -40,7 +41,7 @@ import {
   Select,
   VerdictBanner,
 } from "@/components/ui";
-import { api, type Job, type Preset, type RunDetail } from "@/lib/api";
+import { api, type DemoCheck, type Job, type Preset, type RunDetail, type Scenario } from "@/lib/api";
 import { int, presetLabel, seconds, usd } from "@/lib/format";
 import { SANDBOX_ID, useSandboxModel } from "@/lib/sandbox";
 
@@ -159,11 +160,13 @@ function Results({
   presets,
   viewRun,
   onShow,
+  scenario,
 }: {
   batchId: string;
   presets: Preset[];
   viewRun: string | null;
   onShow: (runId: string) => void;
+  scenario?: Scenario;
 }) {
   const q = useQuery({ queryKey: ["runs", "demo-batch", batchId], queryFn: () => api.runs({ batch: [batchId], limit: 10 }) });
   if (q.isLoading) return <Loading />;
@@ -187,6 +190,7 @@ function Results({
           />
         ))}
       </div>
+      {scenario && <VerifyPanel runIds={items.map((r) => r.run_id)} channel={scenario.channel} goal={scenario.goal} />}
     </div>
   );
 }
@@ -296,11 +300,14 @@ export function LabPage() {
   const [viewRun, setViewRun] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [batchId, setBatchId] = useState<string | null>(null);
+  const [check, setCheck] = useState<DemoCheck | null>(null);
 
   const scenario = scenarios.data?.find((s) => s.key === key) ?? scenarios.data?.[0];
   useEffect(() => {
     if (scenario && !key) setKey(scenario.key);
   }, [scenario, key]);
+  // Đổi kịch bản thì kết quả kiểm tra dịch vụ cũ không còn đúng.
+  useEffect(() => { setCheck(null); }, [key]);
   useEffect(() => {
     if (config.data && !variant) setVariant(config.data.prompt.active);
   }, [config.data, variant]);
@@ -346,16 +353,23 @@ export function LabPage() {
     return { preset, codes: codesOf(allPresets, preset), detail: viewDetail.data };
   }, [viewRun, viewDetail.data, allPresets]);
 
+  // Kiểm tra lại các dịch vụ kịch bản cần ngay trước khi chạy (backend probe lại nếu kết quả đã cũ).
+  // Dịch vụ bắt buộc lỗi thì dừng và hỏi; `force` = người dùng chọn vẫn chạy.
   const start = useMutation({
-    mutationFn: () =>
-      api.startDemo({
+    mutationFn: async (force: boolean) => {
+      const c = await api.demoCheck(key);
+      setCheck(c);
+      if (!c.ok && !force) return null;
+      return api.startDemo({
         scenario: key,
         target,
         presets,
         prompt_variant: variant,
         sandbox: target === SANDBOX_ID ? sandbox : null,
-      }),
+      });
+    },
     onSuccess: (j) => {
+      if (!j) return;
       setJobId(j.id);
       setBatchId(null);
       setViewRun(null);
@@ -480,11 +494,17 @@ export function LabPage() {
               variant="primary"
               className="w-full lg:ml-auto lg:flex lg:w-[320px]"
               disabled={!live || !scenario || !presets.length || !!running || active.isFetching || !!active.error || !!job.error || start.isPending}
-              onClick={() => start.mutate()}
+              onClick={() => start.mutate(false)}
               icon={running || start.isPending ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
             >
               {running ? "Đang chạy…" : "Chạy thí nghiệm"}
             </Button>
+            {check && <DemoCheckNote check={check} />}
+            {check && !check.ok && !running && (
+              <Button variant="danger" className="w-full lg:ml-auto lg:flex lg:w-[320px]" disabled={!live || start.isPending} onClick={() => start.mutate(true)} icon={<Play size={15} />}>
+                Vẫn chạy dù dịch vụ bắt buộc đang lỗi
+              </Button>
+            )}
             {start.error && <ErrorBox error={start.error} />}
             {active.error && <ErrorBox error={active.error} />}
             {job.error && <Callout tone="warn" title="Mất kết nối cập nhật tiến độ">Dữ liệu bên dưới có thể đã cũ. Hệ thống đang thử kết nối lại.</Callout>}
@@ -539,6 +559,7 @@ export function LabPage() {
         <Results
           batchId={batchId}
           presets={allPresets}
+          scenario={scenarios.data?.find((s) => s.key === job.data?.scenario)}
           viewRun={viewRun}
           onShow={(id) => {
             setViewRun(id);

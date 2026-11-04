@@ -14,6 +14,7 @@ import {
 import { useState } from "react";
 
 import { AssetPanel, type AssetCode } from "@/components/AssetPanel";
+import { ServicesCard } from "@/components/Services";
 import { MapLegend, NODES, SystemMap } from "@/components/SystemMap";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { GLOSSARY } from "@/lib/glossary";
@@ -177,6 +178,9 @@ export function SystemPage() {
             })}
           </div>
         </Card>
+      </div>
+      <div className="mt-6">
+        <ServicesCard />
       </div>
       <AssetPanel code={asset} onClose={() => setAsset(null)} />
     </>

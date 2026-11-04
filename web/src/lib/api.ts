@@ -238,6 +238,54 @@ export type ConfigSummary = {
   prompt: { active: string; variants: string[] };
 };
 
+/** Trạng thái dịch vụ hạ tầng (config/services.yaml). `kind: config` chỉ kiểm có cấu hình, không probe. */
+export type ProbeState = "up" | "down" | "not_configured" | "unknown";
+export type ConfigState = "configured" | "not_configured";
+export type ServiceStatus = {
+  id: string;
+  label: string;
+  short: string;
+  role: string;
+  kind: "probe" | "config";
+  status: ProbeState | ConfigState;
+  /** Độ trễ của lượt kiểm tra sức khỏe, không phải độ trễ xử lý của dịch vụ. */
+  latency_ms: number | null;
+  error: string | null;
+  checked_at: string;
+  public_url: string | null;
+  port: number | null;
+};
+export type ServicesStatus = { checked_at: string; ttl_s: number; age_s: number; services: ServiceStatus[] };
+export type DemoCheck = {
+  ok: boolean;
+  checked_at: string;
+  deps: { id: string; label: string; need: "required" | "optional"; status: ServiceStatus["status"]; error: string | null }[];
+  blocking: string[];
+};
+export type MailItem = {
+  id: string;
+  received_at: string;
+  from: string;
+  to: string[];
+  subject: string;
+  snippet: string;
+  truncated: boolean;
+  attachments: string[];
+  run_id: string | null;
+};
+export type MailBox = { status: ProbeState; error?: string; total: number; items: MailItem[] };
+export type CanaryHit = {
+  id: number;
+  run_id: string | null;
+  received_at: string;
+  method: string;
+  original_url: string | null;
+  body_preview: string;
+  body_encoding: string;
+  truncated: boolean;
+};
+export type CanaryHits = { status: ProbeState; error?: string; items: CanaryHit[] };
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -333,4 +381,8 @@ export const api = {
   assetSystemPrompt: () => request<AssetSystemPrompt>("/api/assets/system_prompt"),
   assetCustomers: () => request<AssetCustomers>("/api/assets/customers"),
   assetTools: () => request<AssetTools>("/api/assets/tools"),
+  services: (refresh = false) => request<ServicesStatus>(`/api/services${refresh ? "?refresh=1" : ""}`),
+  demoCheck: (scenario: string) => request<DemoCheck>(`/api/services/demo-check${qs({ scenario })}`),
+  mail: (runs: string[], limit = 20) => request<MailBox>(`/api/services/mail${qs({ run: runs, limit })}`),
+  canaryHits: (runs: string[]) => request<CanaryHits>(`/api/services/canary-hits${qs({ run: runs })}`),
 };

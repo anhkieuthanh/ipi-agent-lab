@@ -23,7 +23,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from console import data
+from console import data, services
 from console.jobs import BusyError, JobManager
 
 load_dotenv(data.ROOT / ".env")
@@ -35,6 +35,7 @@ app = FastAPI(title="IPI Guard Console", version="1.0.0", docs_url="/api/docs",
               openapi_url="/api/openapi.json")
 cache = data.RunCache()
 jobs = JobManager()
+monitor = services.Monitor()
 
 Batches = Annotated[list[str] | None, Query(alias="batch")]
 Kinds = Annotated[list[str] | None, Query(alias="kind")]
@@ -275,6 +276,60 @@ def demo_job(job_id: str) -> dict:
 def demo_active() -> dict | None:
     job = jobs.active()
     return job.public() if job else None
+
+
+# ---------------------------------------------------------------------------
+# Dịch vụ hạ tầng (config/services.yaml) — trạng thái và nghiệm thu sau lượt chạy
+# ---------------------------------------------------------------------------
+
+RunIds = Annotated[list[str], Query(alias="run", min_length=1, max_length=10)]
+
+
+@app.get("/api/services")
+def services_status(refresh: bool = False) -> dict:
+    return monitor.status(force=refresh)
+
+
+@app.get("/api/services/demo-check")
+def services_demo_check(scenario: str) -> dict:
+    try:
+        s = data.demo.scenario(scenario)
+    except KeyError as e:
+        raise HTTPException(404, "không có kịch bản này") from e
+    return services.demo_check(monitor, {"channel": s.channel, "goal": s.goal,
+                                         "technique": s.technique})
+
+
+def _run_windows(run_ids: list[str]) -> list[dict]:
+    df = cache.runs()
+    if df.empty or not run_ids:
+        return []
+    rows = df[df["run_id"].isin(run_ids)]
+    out = []
+    for r in rows.itertuples():
+        out.append({
+            "run_id": r.run_id,
+            # Chuỗi UTC không múi giờ của trace store; services._parse_time coi là UTC.
+            "created_at": str(r.created_at) if r.created_at else None,
+            "finished_at": str(r.finished_at) if r.finished_at else None,
+        })
+    return out
+
+
+@app.get("/api/services/mail")
+def services_mail(
+    run: Annotated[list[str] | None, Query(max_length=10)] = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+) -> dict:
+    return services.mail_messages(monitor, _run_windows(run or []), limit)
+
+
+@app.get("/api/services/canary-hits")
+def services_canary_hits(run: RunIds) -> dict:
+    try:
+        return services.canary_hits(monitor, run)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
 
 
 # ---------------------------------------------------------------------------

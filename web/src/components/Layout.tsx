@@ -4,6 +4,7 @@ import { ArrowUpRight, Monitor, PanelTop, RefreshCw, ShieldCheck, LayoutDashboar
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
+import { ServiceStrip } from "@/components/Services";
 import { api } from "@/lib/api";
 import { SCOPE_LABEL, type ScopeKind, useScope } from "@/lib/scope";
 
@@ -95,6 +96,7 @@ export function Layout() {
       <div className="workspace-context">
         {presenting ? <div className="presentation-context"><span className="context-label">Đánh giá an toàn AI Agent</span><span>{scoped ? batch || SCOPE_LABEL[kind] : loc.pathname.startsWith("/runs/") ? "Chi tiết run" : group.label}</span></div> : scoped ? <ScopePicker /> : <span className="context-label">Không gian làm việc</span>}
         <div className="workspace-status">
+          {!presenting && <ServiceStrip />}
           <span className="connection-state"><span className={clsx("status-dot", meta.error && "is-error")} />{meta.error ? "Mất kết nối" : meta.isLoading ? "Đang kết nối" : meta.data?.live_demo ? "Demo sẵn sàng" : "Chỉ xem"}</span>
           {!presenting && <button className="refresh-button" disabled={refreshing} onClick={refresh} aria-label="Làm mới dữ liệu"><RefreshCw size={14} className={refreshing ? "animate-spin" : ""} /></button>}
           {!presenting && <span className="update-status" role="status">{refreshError ? "Cập nhật thất bại" : refreshing ? "Đang cập nhật…" : updated ? `Làm mới ${updated.toLocaleTimeString("vi-VN")}` : "Tự cập nhật · 15s"}</span>}

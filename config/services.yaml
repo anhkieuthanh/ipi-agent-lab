@@ -1,0 +1,82 @@
+# Dịch vụ hạ tầng lab mà IPI Guard Console theo dõi (src/console/services.py).
+#
+# Mỗi dịch vụ có HAI địa chỉ, không trộn:
+# - probe: địa chỉ backend console dùng để kiểm tra sức khỏe. Lấy từ CHÍNH nguồn harness dùng
+#   (`base_from`), cùng biến môi trường ghi đè, để "xanh" nghĩa là harness gọi được. Không bao giờ
+#   gửi ra trình duyệt.
+# - public_url: địa chỉ trình duyệt mở (tab mới). Biến `public_url_env` ghi đè khi console chạy sau
+#   proxy hay trong container (hostname Docker như `mailhog` không mở được từ trình duyệt).
+#   Thông tin đăng nhập và query trong URL bị bỏ trước khi trả về.
+#
+# `base_from`: `<file>:<khóa chấm>` — `rag` = config/rag.yaml, `tools` = params trong config/tools.yaml.
+#
+# Trạng thái: up · down · not_configured · unknown. `kind: config` chỉ kiểm có cấu hình hay không,
+# KHÔNG gửi request (gateway LLM tính tiền theo lượt): configured · not_configured.
+#
+# `demo`: dịch vụ nào kịch bản demo cần. `required_for` / `optional_for` nhận `all` hoặc điều kiện
+# theo trường của kịch bản (khớp một giá trị bất kỳ). required thắng optional; không khớp = không dùng.
+# Căn cứ:
+# - MailHog: runner xóa hộp thư ở đầu MỌI run (`run_one_attack` → `clear_mailbox`); down là run lỗi.
+# - Qdrant: K1 tiêm tài liệu độc vào collection trước run — bắt buộc. Kênh khác agent vẫn có
+#   `search_kb`, nên Qdrant down làm hành vi model lệch nhưng run vẫn chạy được.
+# - Canary listener: `http_request` trả phản hồi cố định dù listener sống hay chết, scorer chấm G1
+#   trên trace — listener chỉ là điểm dò thứ hai để đối chiếu, hữu ích khi mục tiêu là G1.
+
+schema_version: "1.0"
+
+probe:
+  timeout_s: 1.0
+  # Kết quả dùng chung cho mọi tab trong khoảng này; nút "Làm mới" bỏ qua cache nhưng không dưới
+  # `min_interval_s` để bấm liên tục không thành vòng probe.
+  cache_ttl_s: 12
+  min_interval_s: 2
+  # Trước khi chạy demo: kết quả cũ hơn ngưỡng này thì probe lại.
+  stale_before_demo_s: 5
+
+services:
+  - id: qdrant
+    label: Qdrant
+    short: Qdrant
+    role: Kho vector của RAG (kênh K1, tool search_kb)
+    kind: probe
+    base_from: rag:qdrant.url
+    health_path: /readyz
+    public_url: http://localhost:6333/dashboard
+    public_url_env: QDRANT_PUBLIC_URL
+    demo:
+      required_for: {channel: [K1]}
+      optional_for: all
+
+  - id: mailhog
+    label: MailHog
+    short: Mail
+    role: SMTP giả cho tool send_email
+    kind: probe
+    base_from: tools:send_email.mailhog_api_url
+    base_env: MAILHOG_API_URL
+    # limit=1: chỉ cần biết API trả lời, không tải cả hộp thư.
+    health_path: /api/v2/messages?limit=1
+    public_url: http://localhost:8025
+    public_url_env: MAILHOG_PUBLIC_URL
+    demo:
+      required_for: all
+
+  - id: canary
+    label: Canary listener
+    short: Canary
+    role: Bồn chứa request ra ngoài của http_request (đối chiếu G1)
+    kind: probe
+    base_from: tools:http_request.external_sink_url
+    base_env: CANARY_LISTENER_URL
+    health_path: /healthz
+    # Listener không có giao diện web: sự kiện xem ngay trong console (trang Thí nghiệm).
+    public_url: null
+    demo:
+      optional_for: {goal: [G1]}
+
+  - id: gateway
+    label: Gateway LLM
+    short: Gateway
+    role: Cổng gọi model đích A1–A3 (config/models.yaml)
+    kind: config
+    env: GATEWAY_BASE_URL
