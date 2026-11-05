@@ -16,6 +16,7 @@ import math
 import os
 import sys
 import threading
+import time
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
@@ -99,9 +100,19 @@ class RunCache:
         self._df = pd.DataFrame()
         self._paths: dict[str, Path] = {}
 
+    # Quét results/ (rglob + mở thử từng sqlite) tốn ~50 ms trên ổ mount của Docker Desktop; mỗi
+    # request gọi `runs()` nhiều lần nên kết quả quét dùng lại trong khoảng ngắn này.
+    DISCOVER_TTL_S = 3.0
+
     def stores(self) -> dict[str, Path]:
+        now = time.monotonic()
+        cached = getattr(self, "_stores_cache", None)
+        if cached is not None and now - cached[0] < self.DISCOVER_TTL_S:
+            return cached[1]
         found = td.discover_stores(extra=self._extra)
-        return {td.store_label(p): p for p in found}
+        result = {td.store_label(p): p for p in found}
+        self._stores_cache = (now, result)
+        return result
 
     def runs(self) -> pd.DataFrame:
         stores = self.stores()
@@ -149,19 +160,27 @@ def select(
 # ---------------------------------------------------------------------------
 
 
-def _manifest(store_path: Path, batch_id: str) -> dict[str, Any] | None:
+def _read_manifest(store_path: Path) -> list[dict[str, Any]]:
     path = store_path.parent / "manifest.json"
     if not path.is_file():
-        return None
+        return []
     try:
         sessions = json.loads(path.read_text(encoding="utf-8"))
     except ValueError:
-        return None
+        return []
     if isinstance(sessions, dict):
         sessions = [sessions]
     if not isinstance(sessions, list):
-        return None
-    sessions = [s for s in sessions if isinstance(s, dict) and s.get("batch_id") == batch_id]
+        return []
+    return [s for s in sessions if isinstance(s, dict)]
+
+
+def _manifest(
+    store_path: Path, batch_id: str, all_sessions: list[dict[str, Any]] | None = None
+) -> dict[str, Any] | None:
+    if all_sessions is None:
+        all_sessions = _read_manifest(store_path)
+    sessions = [s for s in all_sessions if s.get("batch_id") == batch_id]
     if not sessions:
         return None
     last = sessions[-1]
@@ -182,6 +201,10 @@ def batches(cache: RunCache, kinds: Sequence[str] = KINDS) -> list[dict[str, Any
     if df.empty:
         return []
     df = df[df["kind"].isin(kinds)]
+    # Mỗi store tra đường dẫn và đọc manifest MỘT lần: `store_path` quét lại results/ mỗi lần gọi,
+    # gọi theo từng lô (hàng trăm lô) chậm hàng giây trên ổ mount của Docker Desktop.
+    paths = {s: cache.store_path(s) for s in df["store"].unique()}  # stores() đã cache
+    manifests = {s: _read_manifest(p) for s, p in paths.items()}
     out = []
     for (store, batch_id), cell in df.groupby(["store", "batch_id"], sort=False):
         clean_cell = cell[~cell["parse_error"]]
@@ -204,7 +227,7 @@ def batches(cache: RunCache, kinds: Sequence[str] = KINDS) -> list[dict[str, Any
             "created_at": cell["created_at"].min(),
             "finished_at": cell["finished_at"].max(),
             "tokens": int(cell["tokens_in"].fillna(0).sum() + cell["tokens_out"].fillna(0).sum()),
-            "manifest": _manifest(cache.store_path(store), batch_id),
+            "manifest": _manifest(paths[store], batch_id, manifests[store]),
         }
         if batch_kind(batch_id) == "demo":
             first = cell.iloc[0]
@@ -308,13 +331,25 @@ def gates(runs: pd.DataFrame) -> list[dict[str, Any]]:
     return [scorer, pilot]
 
 
+_SPEND_CACHE: dict[tuple, dict[str, float]] = {}
+
+
+def _spend_cached(cache_targets: tuple[str, ...]) -> dict[str, float]:
+    """Chi phí theo log, đọc lại chỉ khi log hoặc bảng giá đổi (log >100 MB, mỗi lần đọc ~0,6 s)."""
+    st, mp = LOG_PATH.stat(), MODELS_PATH.stat()
+    key = (cache_targets, st.st_mtime_ns, st.st_size, mp.st_mtime_ns)
+    if key not in _SPEND_CACHE:
+        _SPEND_CACHE.clear()
+        _SPEND_CACHE[key] = spend_from_log(LOG_PATH, load_prices(MODELS_PATH, list(cache_targets)))
+    return dict(_SPEND_CACHE[key])
+
+
 def budget(cache_targets: Sequence[str] = ("A1", "A2", "A3", "judge")) -> dict[str, Any]:
     total = os.getenv("COST_BUDGET_USD_TOTAL", "").strip()
     spent: float | None = None
     by: dict[str, float] = {}
     if LOG_PATH.is_file():
-        prices = load_prices(MODELS_PATH, cache_targets)
-        by = spend_from_log(LOG_PATH, prices)
+        by = _spend_cached(tuple(cache_targets))
         spent = sum(by.values())
     return {
         "total_usd": float(total) if total else None,
