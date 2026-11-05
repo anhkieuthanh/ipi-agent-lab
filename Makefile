@@ -1,4 +1,4 @@
-.PHONY: up down reset ps logs console console-build console-dev demo-cli kb-build kb-rebuild kb-bench kb-stats test lint
+.PHONY: up down reset ps logs console console-restart console-logs console-host console-build console-dev demo-cli kb-build kb-rebuild kb-bench kb-stats test lint
 
 # --wait: chỉ trả về khi cả 5 service đã HEALTHY (xem healthcheck trong
 # docker-compose.yml), thay vì trả về ngay lúc container vừa được tạo.
@@ -45,12 +45,23 @@ lint:
 
 # IPI Guard Console (STT-58/82) — API FastAPI + giao diện React.
 # console-build: build giao diện vào web/dist (cần Node). console: API phục vụ cả giao diện đã
-# build ở một cổng, chỉ nghe 127.0.0.1, mở nút chạy demo (DEMO_LIVE=1). console-dev: chạy Vite
+# build ở một cổng (container `console`, loopback), mở nút chạy demo (DEMO_LIVE=1). console-dev: chạy Vite
 # (5180) + API (8610) song song khi phát triển giao diện.
 console-build:
 	cd web && npm install --no-audit --no-fund && npm run build
 
+# Console chạy trong Docker (service `console`, http://localhost:8610), nền và tự khởi động lại.
 console:
+	docker compose up -d --build --wait console
+
+console-restart:
+	docker compose restart console
+
+console-logs:
+	docker compose logs -f --tail 100 console
+
+# Chạy thẳng trên host (gỡ lỗi), cùng cổng — dừng container trước (`docker compose stop console`).
+console-host:
 	DEMO_LIVE=1 PYTHONPATH=src uv run uvicorn console.app:app --host 127.0.0.1 --port 8610
 
 console-dev:

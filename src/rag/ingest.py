@@ -28,6 +28,7 @@ còn chạy tay thì phải khai báo; dùng `make kb-build` / `make kb-bench` c
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 import uuid
@@ -78,7 +79,8 @@ class RagConfig:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
         return cls(
             model=raw["embedding"]["model"],
-            qdrant_url=raw["qdrant"]["url"],
+            # QDRANT_URL ghi đè (container gọi theo tên service `qdrant`), cùng kiểu tools.yaml.
+            qdrant_url=os.environ.get("QDRANT_URL") or raw["qdrant"]["url"],
             collection=worker_collection(raw["qdrant"]["collection"]),
             distance=raw["qdrant"]["distance"],
             max_tokens=raw["chunking"]["max_tokens"],

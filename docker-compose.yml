@@ -2,8 +2,8 @@
 #
 # 5 service: qdrant (vector store, volume bền), mailhog (SMTP giả cho tool
 # send_email, STT-29), canary-listener (bồn chứa của http_request, STT-34),
-# app (dev container, uv sync sẵn deps).
-# canary-listener, app dùng chung một image.
+# app (dev container, uv sync sẵn deps), console (IPI Guard Console, cổng 8610).
+# canary-listener, app, console dùng chung một image.
 #
 # Image bên thứ ba pin phiên bản — `latest` làm hạ tầng trôi giữa các lần chạy
 # lô, số liệu không còn so sánh được. qdrant server khớp qdrant-client 1.19.
@@ -109,8 +109,53 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-# Giao diện IPI Guard Console (API FastAPI + web React) chạy trên host bằng `make console`, không
-# trong Compose: nó cần gọi model qua `.env` và bản build của web/, và chỉ nên nghe 127.0.0.1.
+  # IPI Guard Console (API FastAPI + bản build web/dist). Chạy nền, tự khởi động lại — không chết
+  # theo phiên terminal/preview. `.env` đọc qua mount /workspace (load_dotenv không đè biến dưới đây,
+  # nên hạ tầng luôn gọi theo tên service). Cổng chỉ mở trên loopback: middleware console vẫn chặn
+  # Host ngoài localhost. Sửa web/ thì `make console-build` rồi `make console-restart`.
+  # Model embedding (fastembed, ~2 GB, K1 tiêm tài liệu) cache trong volume bền: tải một lần.
+  console:
+    build:
+      context: .
+    container_name: ipi-console
+    command: ["uv", "run", "--no-sync", "uvicorn", "console.app:app",
+              "--host", "0.0.0.0", "--port", "8610"]
+    ports:
+      - "127.0.0.1:8610:8610"
+    volumes:
+      - .:/workspace
+      - fastembed_cache:/fastembed_cache
+    environment:
+      PYTHONPATH: /workspace/src
+      DEMO_LIVE: "1"
+      FASTEMBED_CACHE_PATH: /fastembed_cache
+      QDRANT_URL: http://qdrant:6333
+      SMTP_HOST: mailhog
+      SMTP_PORT: "1025"
+      MAILHOG_API_URL: http://mailhog:8025
+      CANARY_LISTENER_URL: http://canary-listener:8099
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8610/api/services', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      mailhog:
+        condition: service_healthy
+      canary-listener:
+        condition: service_healthy
+    restart: unless-stopped
+
 
 volumes:
   qdrant_data:
+  fastembed_cache:

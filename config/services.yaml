@@ -40,6 +40,7 @@ services:
     role: Kho vector của RAG (kênh K1, tool search_kb)
     kind: probe
     base_from: rag:qdrant.url
+    base_env: QDRANT_URL
     health_path: /readyz
     public_url: http://localhost:6333/dashboard
     public_url_env: QDRANT_PUBLIC_URL

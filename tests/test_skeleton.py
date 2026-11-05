@@ -47,7 +47,17 @@ def test_dependency_nen_da_cai(mod):
 
 
 def test_compose_du_service():
-    assert set(SERVICES) == {"qdrant", "mailhog", "canary-listener", "app"}
+    assert set(SERVICES) == {"qdrant", "mailhog", "canary-listener", "app", "console"}
+
+
+def test_compose_console_chi_mo_loopback_va_goi_ha_tang_theo_ten_service():
+    console = SERVICES["console"]
+    assert console["ports"] == ["127.0.0.1:8610:8610"]
+    assert "healthcheck" in console
+    env = console["environment"]
+    assert env["QDRANT_URL"] == "http://qdrant:6333"
+    assert env["MAILHOG_API_URL"] == "http://mailhog:8025"
+    assert env["CANARY_LISTENER_URL"] == "http://canary-listener:8099"
 
 
 def test_compose_listener_chi_mo_loopback_va_app_tro_toi_no():
