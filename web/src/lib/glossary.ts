@@ -72,11 +72,17 @@ export const GLOSSARY: Group[] = [
     ],
   },
   {
-    id: "W",
-    label: "Tác vụ & câu hỏi",
-    prefix: "CT · U",
+    // Danh sách CT lấy từ /api/config (data/carrier_tasks.json) — trang Hệ thống hiện bảng chi tiết.
+    id: "CT",
+    label: "Tác vụ chở",
+    prefix: "CT-01…06",
+    items: [],
+  },
+  {
+    id: "U",
+    label: "Câu hỏi lành tính",
+    prefix: "U1–U5",
     items: [
-      { code: "CT-01…06", name: "Tác vụ chở", desc: "Việc nghiệp vụ hợp lệ agent đang làm khi bị tấn công." },
       { code: "U1", name: "Hỏi đáp RAG", desc: "16 câu — đo tác động D1/D2 lên chất lượng trả lời." },
       { code: "U2", name: "Gọi 1 tool đọc", desc: "14 câu — đo tác động D3." },
       { code: "U3", name: "Chuỗi nhiều tool", desc: "12 câu — suy luận nhiều bước." },

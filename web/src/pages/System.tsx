@@ -1,5 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
 import {
+  Boxes,
   Cpu,
   Crosshair,
   Gauge,
@@ -16,7 +18,8 @@ import { useState } from "react";
 import { AssetPanel, type AssetCode } from "@/components/AssetPanel";
 import { ServicesCard } from "@/components/Services";
 import { MapLegend, NODES, SystemMap } from "@/components/SystemMap";
-import { Badge, Card, PageHeader } from "@/components/ui";
+import { Badge, Card, ErrorBox, Loading, Mono, PageHeader } from "@/components/ui";
+import { api } from "@/lib/api";
 import { GLOSSARY } from "@/lib/glossary";
 
 type Info = { title: string; codes: string[]; desc: string };
@@ -55,7 +58,8 @@ const GROUP_ICON: Record<string, LucideIcon> = {
   T: Swords,
   D: ShieldCheck,
   A: Cpu,
-  W: ListChecks,
+  CT: Boxes,
+  U: ListChecks,
   M: Gauge,
 };
 
@@ -152,6 +156,9 @@ export function SystemPage() {
               );
             })}
           </div>
+          {tab === "CT" ? (
+            <CarrierTasks />
+          ) : (
           <div className="grid grid-cols-1 gap-2 p-4 md:grid-cols-2 xl:grid-cols-3">
             {group.items.map((t) => {
               const canClick = isTS;
@@ -177,6 +184,7 @@ export function SystemPage() {
               );
             })}
           </div>
+          )}
         </Card>
       </div>
       <div className="mt-6">
@@ -184,5 +192,64 @@ export function SystemPage() {
       </div>
       <AssetPanel code={asset} onClose={() => setAsset(null)} />
     </>
+  );
+}
+
+/** Tác vụ chở CT-01…06: việc nghiệp vụ hợp lệ agent đang làm khi bị tấn công (data/carrier_tasks.json). */
+function CarrierTasks() {
+  const q = useQuery({ queryKey: ["config"], queryFn: api.config });
+  if (q.isLoading) return <Loading />;
+  if (q.error) return <ErrorBox error={q.error} />;
+  const carriers = q.data!.carriers;
+  return (
+    <div className="p-4">
+      <p className="mb-3 text-[12.5px] text-slate-500">
+        Tác vụ nhân viên giao cho agent; payload được cài vào dữ liệu mà tác vụ này đọc. Agent chỉ được
+        gọi tool trong danh sách của tác vụ — D3 chặn tool ngoài danh sách.
+      </p>
+      <div className="max-w-full overflow-x-auto rounded-lg border border-slate-200">
+        <table className="table-base">
+          <thead>
+            <tr>
+              <th>Mã</th>
+              <th>Tác vụ</th>
+              <th>Kênh tiêm</th>
+              <th>Tool được phép</th>
+            </tr>
+          </thead>
+          <tbody>
+            {carriers.map((c) => (
+              <tr key={c.id}>
+                <td className="whitespace-nowrap">
+                  <Mono className="font-medium">{c.id}</Mono>
+                </td>
+                <td className="max-w-[460px] text-[13px] text-slate-600">
+                  <div className="font-medium text-slate-800">{c.name || c.id}</div>
+                  {c.query && <div className="mt-0.5 text-[12px] text-slate-500">{c.query}</div>}
+                </td>
+                <td>
+                  <div className="flex flex-wrap gap-1">
+                    {c.channels?.map((k) => (
+                      <Badge key={k} tone="payload" className="font-mono">
+                        {k}
+                      </Badge>
+                    ))}
+                  </div>
+                </td>
+                <td>
+                  <div className="flex flex-wrap gap-1">
+                    {c.allowed_tools?.map((t) => (
+                      <span key={t} className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

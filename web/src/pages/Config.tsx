@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
 import {
   ArrowRight,
-  Boxes,
   CircleAlert,
   CircleCheck,
   Cpu,
@@ -369,53 +368,6 @@ export function ConfigPage() {
           </Card>
         </div>
 
-        <Card className="xl:col-span-5">
-          <CardHeader title="Tác vụ chở" subtitle="Tác vụ nhân viên giao cho agent; payload cài vào dữ liệu tác vụ này đọc." icon={<Boxes size={16} />} />
-          <div className="overflow-x-auto">
-            <div className="max-w-full overflow-x-auto"><table className="table-base">
-              <thead>
-                <tr>
-                  <th>Mã</th>
-                  <th>Tác vụ</th>
-                  <th>Kênh tiêm</th>
-                  <th>Tool được phép</th>
-                </tr>
-              </thead>
-              <tbody>
-                {d.carriers.map((c) => (
-                  <tr key={c.id}>
-                    <td>
-                      <Mono className="font-medium">{c.id}</Mono>
-                    </td>
-                    <td className="max-w-[420px] text-[13px] text-slate-600">
-                      <div className="truncate" title={c.query}>
-                        {c.name || c.query}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="flex flex-wrap gap-1">
-                        {c.channels?.map((k) => (
-                          <Badge key={k} tone="payload" className="font-mono">
-                            {k}
-                          </Badge>
-                        ))}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="flex flex-wrap gap-1">
-                        {c.allowed_tools?.map((t) => (
-                          <span key={t} className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600">
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table></div>
-          </div>
-        </Card>
       </div>
     </>
   );
