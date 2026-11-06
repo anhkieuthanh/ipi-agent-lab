@@ -5,6 +5,13 @@
 
 FROM python:3.12-slim
 
+# git: trace ghi commit harness (`obs.trace.lab_git_commit`) mỗi lượt chạy. Repo mount từ host có
+# chủ sở hữu khác user container — khai báo safe.directory, nếu không git từ chối đọc.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/* \
+    && git config --system --add safe.directory /workspace
+
 RUN pip install --no-cache-dir uv
 
 # Venv nằm NGOÀI /workspace: docker-compose mount mã nguồn vào /workspace, nếu venv
