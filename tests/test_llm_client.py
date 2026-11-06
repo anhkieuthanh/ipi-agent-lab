@@ -356,3 +356,18 @@ def test_reasoning_extracted_when_model_returns_it(tmp_path):
         [{"role": "user", "content": "hi"}], max_tokens=1024
     )
     assert result.reasoning == "Xét điều khoản."
+
+
+def test_reasoning_effort_tu_config_gui_kem_request(tmp_path):
+    # A1/A2 đặt reasoning_effort: medium trong models.yaml; A3 không đặt thì không gửi khóa.
+    seen = []
+
+    def handler(request):
+        seen.append(json.loads(request.content))
+        return httpx.Response(200, json=_completion(model="glm-5.2", content="ok"))
+
+    http = httpx.Client(transport=httpx.MockTransport(handler))
+    _client(tmp_path, http, target="A2").chat([{"role": "user", "content": "hi"}])
+    _client(tmp_path, http, target="A3").chat([{"role": "user", "content": "hi"}])
+    assert seen[0]["reasoning_effort"] == "medium"
+    assert "reasoning_effort" not in seen[1]

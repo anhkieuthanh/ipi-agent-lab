@@ -235,7 +235,8 @@ benign_task_types:
 # runner `scripts/run_utility_baseline.py` đọc qua `Experiment.unit("utility_baseline")`.
 utility_baseline:
   run_kind: benign
-  targets: [A1, A2, A3]
+  # A3 bỏ khỏi lượt USR chạy lại 2026-11-06 (TA quyết): gateway trả lời A3 75–81 s, vượt timeout.
+  targets: [A1, A2]
   presets: ["off"]
   queries: all                    # 60 câu của data/benign_queries.json
   repeats: 3

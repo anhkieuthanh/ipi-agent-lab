@@ -326,6 +326,7 @@ def _run_batch(*, args, exp, benign, targets, repeats, query_ids, specs, batch_i
         "judge_model": ctx.judge_client.model,
         "judge_prompt_hash": ctx.judge_cfg.prompt_hash(),
         "models": {t: m.model for t, m in ctx.models.items()},
+        "reasoning_effort": {t: m.reasoning_effort for t, m in ctx.models.items()},
         "targets": targets,
         "repeats": repeats,
         "query_ids": query_ids,

@@ -246,6 +246,13 @@ class LLMClient:
         self.backoff_base_s: float = opt("backoff_base_s", 1.0)
         self.backoff_max_s: float = opt("backoff_max_s", 30.0)
         self.default_temperature = opt("temperature", 0)
+        # Mức suy luận gửi kèm request (`reasoning_effort` của API tương thích OpenAI); None = không
+        # gửi, model chạy mặc định. Provider anthropic không nhận khóa này.
+        self.reasoning_effort: str | None = opt("reasoning_effort", None)
+        if self.reasoning_effort is not None and self.provider == "anthropic":
+            raise LLMClientConfigError(
+                f"target '{target_id}': reasoning_effort chỉ dùng với provider openai"
+            )
         self.log_bodies: bool = opt("log_bodies", True) if log_bodies is None else log_bodies
 
         self.log_path = Path(log_path) if log_path else None
@@ -289,6 +296,8 @@ class LLMClient:
             }
             if temp is not None:
                 request_kwargs["temperature"] = temp
+            if self.reasoning_effort is not None:
+                request_kwargs.setdefault("reasoning_effort", self.reasoning_effort)
             if tools:
                 request_kwargs["tools"] = tools
                 request_kwargs["tool_choice"] = tool_choice
