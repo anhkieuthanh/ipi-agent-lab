@@ -92,7 +92,7 @@ def meta() -> dict:
         "product": "IPI Guard Console",
         "lab_commit": _commit(),
         "models": {t["id"]: t["model_id"] for t in cfg["targets"]},
-        "model_tag": "v-models-1.1",
+        "model_tag": "v-models-1.2",
         "attack_tag": "v-attack-1.0",
         "prompt_active": cfg["prompt"]["active"],
         "live_demo": live(),
