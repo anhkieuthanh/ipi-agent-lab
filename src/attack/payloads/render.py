@@ -58,6 +58,26 @@ def base_text(p: dict[str, Any]) -> str:
     return template.replace(_INSTRUCTION, instruction_of(p) or "")
 
 
+RUN_ID_PLACEHOLDER = "{run_id}"
+
+
+def fill_run_id(payload: dict[str, Any], run_id: str) -> dict[str, Any]:
+    """Bản sao payload đã thay `{run_id}` bằng mã run thật trong mọi chuỗi agent sẽ đọc (chỉ thị,
+    template, mảnh T6…), để marker G3 model chép lại khớp marker scorer dò. GIỮ NGUYÊN
+    `activation_check` — scorer tự thay `{run_id}` trong `marker_template` khi chấm."""
+
+    def fill(v: Any) -> Any:
+        if isinstance(v, str):
+            return v.replace(RUN_ID_PLACEHOLDER, run_id)
+        if isinstance(v, dict):
+            return {k: fill(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [fill(x) for x in v]
+        return v
+
+    return {k: (v if k == "activation_check" else fill(v)) for k, v in payload.items()}
+
+
 def render_for_channel(
     p: dict[str, Any], channel: str, *, cfg: dict[str, Any] | None = None
 ) -> str:

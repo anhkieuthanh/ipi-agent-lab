@@ -42,6 +42,7 @@ from agent.core import CoreA
 from agent.llm_client import LLMClientError
 from agent.prompts import build_system_prompt
 from attack import injector_k1, injector_k2
+from attack.payloads.render import fill_run_id
 from attack.payloads.schema import DEFAULT_TASKS_PATH, load_payloads
 from defense.pipeline import DEFAULT_CONFIG_PATH as DEFENSES_PATH
 from defense.pipeline import DefensePipeline, load_defenses_raw
@@ -585,12 +586,15 @@ def run_one_attack(spec: AttackRunSpec, ctx: RunContext) -> str:
 
         injected = None
         if spec.channel == "K1":
-            injected = ctx.inject_k1(payload, carrier, seeded.run_id, k=ctx.kb_top_k)
+            injected = ctx.inject_k1(
+                fill_run_id(payload, seeded.run_id), carrier, seeded.run_id, k=ctx.kb_top_k
+            )
             tool_layer: Any = ctx.tools.registry
             delivered = None  # tính sau khi agent chạy, từ kết quả search_kb thật
         else:
             layer = ctx.build_k2_layer(
-                ctx.tools.registry, payload, carrier, spec.channel, seeded.run_id
+                ctx.tools.registry, fill_run_id(payload, seeded.run_id), carrier, spec.channel,
+                seeded.run_id,
             )
             tool_layer = layer
             delivered = layer.result.delivered

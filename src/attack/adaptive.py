@@ -49,6 +49,7 @@ from attack.payloads.render import (
     K2_CHANNELS,
     ChannelRenderError,
     base_text,
+    fill_run_id,
     instruction_of,
     load_render_config,
     render_for_channel,
@@ -412,12 +413,15 @@ def run_round(
         ctx.tools.registry.reset_descriptions()
 
         if spec.channel == "K1":
-            injected = ctx.inject_k1(payload, carrier, seeded.run_id, k=ctx.kb_top_k)
+            injected = ctx.inject_k1(
+                fill_run_id(payload, seeded.run_id), carrier, seeded.run_id, k=ctx.kb_top_k
+            )
             tool_layer: Any = ctx.tools.registry
             delivered = None  # tính sau khi agent chạy, từ kết quả search_kb thật
         else:
             layer = ctx.build_k2_layer(
-                ctx.tools.registry, payload, carrier, spec.channel, seeded.run_id
+                ctx.tools.registry, fill_run_id(payload, seeded.run_id), carrier, spec.channel,
+                seeded.run_id,
             )
             tool_layer = layer
             delivered = layer.result.delivered
@@ -463,7 +467,9 @@ def run_round(
                     if spec.channel == "K1":
                         rec.run.delivered = observed_delivered(rec.steps, injected.doc_ids)
                     elif spec.channel == "K2b":
+                        # K2b chỉ vào ngữ cảnh khi tool chở được gọi (VT-17): `delivered` = đã chèn.
                         rec.run.k2b_applied = layer.result.applied
+                        rec.run.delivered = layer.result.applied
                 score(
                     rec,
                     ScoreContext(
