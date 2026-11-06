@@ -1,0 +1,26 @@
+{
+  "checked_at": "20261106T024803Z",
+  "results": [
+    {
+      "target_id": "A1",
+      "ok": true,
+      "model": "glm-5.3",
+      "response_model": "glm-5.3",
+      "tool_calls": [
+        {
+          "name": "search_kb",
+          "arguments": {
+            "query": "chính sách bảo hành thời hạn bảo hành"
+          },
+          "parse_error": false
+        }
+      ],
+      "text": null,
+      "finish_reason": "tool_calls",
+      "tokens_in": 255,
+      "tokens_out": 48,
+      "latency_ms": 4325,
+      "attempts": 1
+    }
+  ]
+}
