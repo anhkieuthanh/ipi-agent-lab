@@ -885,6 +885,7 @@ def run_detail(cache: RunCache, run_id: str) -> dict[str, Any] | None:
         "verdict": verdict.__dict__ if verdict else None,
         "payload": payload,
         "payload_text": _payload_text(payload, run["channel"]),
+        "injected_context": _injected_context(run, payload),
         "user_query": user_query(run),
         "steps": step_out,
         "final_answer": {"text": final, "spans": _spans(final, needles, canaries)} if final else None,
@@ -893,6 +894,28 @@ def run_detail(cache: RunCache, run_id: str) -> dict[str, Any] | None:
         if run["env_hash"] and run["harness_version"] else None,
     })
 
+
+
+def _injected_context(run: pd.Series, payload: dict | None) -> dict | None:
+    """K2a: mô tả tool chở payload, dựng lại (`demo.k2a_context`) — trace không lưu danh sách tool
+    gửi model nên payload K2a không hiện ở bước nào. K1/K2b: payload đã nằm trong `tool_result`."""
+    if run["channel"] != "K2a" or not payload or not run["carrier_task_id"]:
+        return None
+    try:
+        ctx = demo.k2a_context(payload, run["carrier_task_id"], run["run_id"])
+    except Exception:  # noqa: BLE001 — payload/tác vụ chở ngoài bộ đo hiện hành: không dựng được
+        return None
+    desc = ctx["description"]
+    spans = [{"start": ctx["payload_start"], "end": ctx["payload_end"], "kind": "payload"}]
+    enabled = json.loads(run["defense_config"] or "{}").get("enabled") or []
+    return {
+        "source": "tool_description",
+        "tool": ctx["tool"],
+        "text": {"text": desc, "spans": spans},
+        "reconstructed": True,
+        "d1_wrapped": "d1_spotlighting" in enabled,
+        "rug_pull": ctx["rug_pull"],
+    }
 
 def _payload_text(payload: dict | None, channel: str | None) -> str | None:
     if not payload or not channel:

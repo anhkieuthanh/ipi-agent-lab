@@ -118,3 +118,23 @@ def test_tool_actions_danh_dau_lam_theo_payload(tmp_path):
     assert [a.tool for a in acts] == ["search_kb", "send_email", "send_email"]
     assert [a.follows_payload for a in acts] == [False, True, False]
     assert not any(a.blocked for a in acts)
+
+
+def test_k2a_context_dung_lai_mo_ta_tool_cho_moi_cap_k2a():
+    """Mô tả tool dựng lại = mô tả gốc + payload đã thay {run_id}; span đúng vùng payload."""
+    from attack.payloads.render import RUN_ID_PLACEHOLDER
+    from tools.registry import load_tool_defs
+
+    corpus = {p["id"]: p for p in demo.load_corpus()}
+    defs = load_tool_defs(demo.TOOLS)
+    rows = [r for r in demo.catalog() if r[0] == "K2a"]
+    assert rows
+    for _, _, _, pid, cid in rows:
+        ctx = demo.k2a_context(corpus[pid], cid, "run-xyz")
+        desc = ctx["description"]
+        assert desc.startswith(defs[ctx["tool"]].description)
+        assert ctx["payload_end"] == len(desc)
+        injected = desc[ctx["payload_start"]:]
+        assert RUN_ID_PLACEHOLDER not in injected
+        expected = demo.render_for_channel(demo.fill_run_id(corpus[pid], "run-xyz"), "K2a")
+        assert injected == expected

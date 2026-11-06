@@ -2,10 +2,10 @@
 // tô màu dựng bằng phần tử <mark>, không qua innerHTML.
 
 import clsx from "clsx";
-import { Brain, ChevronDown, Cpu, Loader2, ShieldAlert, Sparkles, Wrench } from "lucide-react";
+import { Brain, ChevronDown, Cpu, FileCode2, Loader2, ShieldAlert, Sparkles, Wrench } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
-import type { Marked, Step, ToolAction } from "@/lib/api";
+import type { InjectedContext as InjectedCtx, Marked, Step, ToolAction } from "@/lib/api";
 import { seconds } from "@/lib/format";
 
 import { Badge } from "./ui";
@@ -136,6 +136,49 @@ function StepCard({ step, initialOpen = false }: { step: Step; initialOpen?: boo
               />
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Ngữ cảnh chở payload không nằm trong bước nào của trace (K2a: mô tả tool gửi kèm mọi lượt gọi
+ * model). Hiện trước các bước, ghi rõ là bản dựng lại. */
+export function InjectedContext({ ctx }: { ctx: InjectedCtx | null | undefined }) {
+  const [open, setOpen] = useState(true);
+  if (!ctx) return null;
+  return (
+    <div className="rounded-lg border border-payload-200 bg-payload-50/30">
+      <button
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left"
+      >
+        <FileCode2 size={15} className="text-payload-600" />
+        <span className="text-[13px] font-medium text-slate-700">
+          Ngữ cảnh gửi model · mô tả tool <span className="font-mono text-slate-900">{ctx.tool}</span>
+        </span>
+        <div className="flex items-center gap-1.5">
+          <Badge tone="payload">Có payload</Badge>
+          {ctx.reconstructed && <Badge>Dựng lại</Badge>}
+        </div>
+        <ChevronDown size={14} className={clsx("ml-auto text-slate-400 transition", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="space-y-2 border-t border-payload-100 px-4 py-3">
+          <p className="text-[12.5px] text-slate-600">
+            K2a: payload nối vào mô tả tool, gửi kèm danh sách tool ở{" "}
+            {ctx.rug_pull ? "các lượt gọi model sau lần liệt kê đầu (rug-pull)" : "mọi lượt gọi model"} — nên
+            không hiện ở bước nào bên dưới.
+            {ctx.reconstructed &&
+              " Trace không lưu danh sách tool; bản này dựng lại từ corpus và config hiện hành."}
+          </p>
+          {ctx.d1_wrapped && (
+            <p className="text-[12.5px] text-amber-700">
+              D1 bật: model nhận bản mô tả đã qua spotlighting, không phải nguyên văn dưới đây.
+            </p>
+          )}
+          <HighlightText value={ctx.text} />
         </div>
       )}
     </div>

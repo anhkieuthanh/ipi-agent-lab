@@ -38,7 +38,14 @@ from dotenv import load_dotenv  # noqa: E402
 from agent.core import load_core_params  # noqa: E402
 from agent.llm_client import SANDBOX_ID, LLMClient  # noqa: E402
 from agent.prompts import build_system_prompt, load_prompt_config, template_hash  # noqa: E402
-from attack.payloads.render import instruction_of, render_for_channel  # noqa: E402
+from attack.injector_k2 import target_tool_for  # noqa: E402
+from attack.payloads.render import (  # noqa: E402
+    apply_k2a,
+    fill_run_id,
+    instruction_of,
+    load_render_config,
+    render_for_channel,
+)
 from attack.runner import (  # noqa: E402
     DEFAULT_TASKS_PATH,
     HARNESS_PREFIX,
@@ -62,6 +69,7 @@ from obs.trace import (  # noqa: E402
     lab_git_commit,
     open_store,
 )
+from tools.registry import load_tool_defs  # noqa: E402
 
 MODELS = ROOT / "config" / "models.yaml"
 TOOLS = ROOT / "config" / "tools.yaml"
@@ -250,6 +258,31 @@ def payload_text(s: Scenario) -> str:
     """Chuỗi payload đúng như được tiêm trên kênh của kịch bản (template đã thay chỉ thị)."""
     by_id = {p["id"]: p for p in load_corpus()}
     return render_for_channel(by_id[s.payload_id], s.channel)
+
+
+
+def k2a_context(
+    payload: dict[str, Any], carrier_task_id: str, run_id: str, *, tools_path: Path = TOOLS
+) -> dict[str, Any]:
+    """Mô tả tool chở payload K2a của một run, DỰNG LẠI bằng đúng các hàm runner dùng
+    (`target_tool_for`, `fill_run_id`, `render_for_channel`, `apply_k2a`) trên corpus, tác vụ chở và
+    config hiện hành. Trace không lưu danh sách tool gửi model, nên đây không phải bản ghi của run:
+    config đổi sau run thì bản dựng lệch. Chưa qua CONTEXT_ASSEMBLY (D1 bọc mô tả khi bật).
+
+    `payload_start`/`payload_end` đếm theo code point (như offset span của trace)."""
+    carrier = {c["id"]: c for c in load_carriers()}[carrier_task_id]
+    cfg = load_render_config()
+    tool = target_tool_for(payload, carrier, "K2a", cfg=cfg)
+    text = render_for_channel(fill_run_id(payload, run_id), "K2a", cfg=cfg)
+    base = load_tool_defs(tools_path)[tool].description
+    description = apply_k2a(base, text, cfg=cfg)
+    return {
+        "tool": tool,
+        "description": description,
+        "payload_start": len(description) - len(text),
+        "payload_end": len(description),
+        "rug_pull": bool((cfg["channels"]["K2a"].get("rug_pull") or {}).get("enabled")),
+    }
 
 
 #: Payload nằm ở đâu và tới model bằng đường nào — mô tả cho người xem, theo kênh của kịch bản.

@@ -24,7 +24,7 @@ import {
 } from "@/components/SystemMap";
 import { AttackBrief } from "@/components/Attack";
 import { ScenarioPicker } from "@/components/ScenarioPicker";
-import { StepTimeline, ToolActions } from "@/components/Trace";
+import { InjectedContext, StepTimeline, ToolActions } from "@/components/Trace";
 import { DemoCheckNote, VerifyPanel } from "@/components/Services";
 import { TraceReplay } from "@/components/TraceReplay";
 import {
@@ -144,7 +144,8 @@ function ResultColumn({
         </div>
         <details className="group">
           <summary className="cursor-pointer text-[13px] font-medium text-brand-600">Xem từng bước</summary>
-          <div className="mt-2">
+          <div className="mt-2 space-y-2">
+            <InjectedContext ctx={d.injected_context} />
             <StepTimeline steps={d.steps} />
           </div>
         </details>

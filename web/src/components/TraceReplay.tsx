@@ -81,6 +81,8 @@ export function buildFrames(d: RunDetail, codes: string[]): Frame[] {
   d.steps.forEach((s, i) => {
     const status = stepStatus(s, codes);
     const notes = [...hitNotes(s), ...s.events];
+    if (i === 0 && d.injected_context)
+      notes.unshift(`Payload K2a nằm trong mô tả tool ${d.injected_context.tool}, gửi kèm lượt gọi này.`);
     const payload = s.payload_fields.length > 0;
     const n = `Bước ${i + 1}`;
     if (s.kind === "llm") {

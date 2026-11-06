@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, FileWarning, Info, Mail, Map as MapIcon, MessageSquare, Target, Wrench } from "lucide-react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
-import { TraceInspector, ToolActions, TraceLegend } from "@/components/Trace";
+import { InjectedContext, TraceInspector, ToolActions, TraceLegend } from "@/components/Trace";
 import { HighlightText } from "@/components/Trace";
 import { TraceReplay } from "@/components/TraceReplay";
 import {
@@ -83,7 +83,8 @@ export function RunDetailPage() {
               title="Diễn biến"
               subtitle={<TraceLegend />}
             />
-            <div className="p-4">
+            <div className="space-y-4 p-4">
+              <InjectedContext ctx={d.injected_context} />
               <TraceInspector steps={d.steps} />
             </div>
           </Card>

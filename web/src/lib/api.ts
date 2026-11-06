@@ -158,11 +158,23 @@ export type Step = {
 export type Verdict = { label: string; tone: "attack" | "defense" | "refusal" | "neutral"; detail: string };
 export type ToolAction = { tool: string; args: string; blocked: boolean; follows_payload: boolean };
 
+/** K2a: mô tả tool chở payload, API dựng lại từ corpus + config hiện hành (trace không lưu danh
+ * sách tool gửi model). `d1_wrapped`: D1 bật — model thấy bản đã bọc spotlighting, không phải bản này. */
+export type InjectedContext = {
+  source: "tool_description";
+  tool: string;
+  text: Marked;
+  reconstructed: boolean;
+  d1_wrapped: boolean;
+  rug_pull: boolean;
+};
+
 export type RunDetail = {
   run: RunRow & Record<string, unknown>;
   verdict: Verdict | null;
   payload: Record<string, unknown> | null;
   payload_text: string | null;
+  injected_context: InjectedContext | null;
   /** Câu nhân viên gửi agent (tra theo carrier_task_id / benign_query_id). */
   user_query: { id: string; text: string } | null;
   steps: Step[];
