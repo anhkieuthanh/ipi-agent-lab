@@ -258,6 +258,19 @@ def scenarios() -> list[dict]:
     return data.scenarios()
 
 
+@app.get("/api/demo/catalog")
+def scenario_catalog() -> dict:
+    return data.scenario_catalog()
+
+
+@app.get("/api/demo/scenario")
+def scenario_detail(key: Annotated[str, Query(min_length=1, max_length=120)]) -> dict:
+    try:
+        return data.scenario_detail(key)
+    except KeyError as e:
+        raise HTTPException(404, "không có kịch bản này") from e
+
+
 class SandboxRequest(BaseModel):
     """Model thử ngoài bộ đo — giới hạn đầu vào nằm ở khối `sandbox` của config/models.yaml."""
 

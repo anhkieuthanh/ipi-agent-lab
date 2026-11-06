@@ -23,6 +23,7 @@ import {
   hookStatusFromSteps,
 } from "@/components/SystemMap";
 import { AttackBrief } from "@/components/Attack";
+import { ScenarioPicker } from "@/components/ScenarioPicker";
 import { StepTimeline, ToolActions } from "@/components/Trace";
 import { DemoCheckNote, VerifyPanel } from "@/components/Services";
 import { TraceReplay } from "@/components/TraceReplay";
@@ -290,7 +291,10 @@ export function LabPage() {
   const scenarios = useQuery({ queryKey: ["scenarios"], queryFn: api.scenarios });
   const config = useQuery({ queryKey: ["config"], queryFn: api.config });
 
-  const [key, setKey] = useState("");
+  const [mode, setMode] = useState<"preset" | "custom">("preset");
+  const [presetKey, setPresetKey] = useState("");
+  const [customKey, setCustomKey] = useState("");
+  const key = mode === "preset" ? presetKey : customKey;
   const [target, setTarget] = useState("A3");
   const [sandbox] = useSandboxModel();
   const [variant, setVariant] = useState("");
@@ -302,10 +306,18 @@ export function LabPage() {
   const [batchId, setBatchId] = useState<string | null>(null);
   const [check, setCheck] = useState<DemoCheck | null>(null);
 
-  const scenario = scenarios.data?.find((s) => s.key === key) ?? scenarios.data?.[0];
+  // Kịch bản tự chọn không có trong danh sách chọn sẵn — lấy chi tiết theo khóa `custom:…`.
+  const custom = useQuery({
+    queryKey: ["scenario", customKey],
+    queryFn: () => api.scenario(customKey),
+    enabled: mode === "custom" && !!customKey,
+    placeholderData: (prev) => prev,
+  });
+  const presetScenario = scenarios.data?.find((s) => s.key === presetKey) ?? scenarios.data?.[0];
+  const scenario = mode === "preset" ? presetScenario : custom.data?.key === customKey ? custom.data : undefined;
   useEffect(() => {
-    if (scenario && !key) setKey(scenario.key);
-  }, [scenario, key]);
+    if (presetScenario && !presetKey) setPresetKey(presetScenario.key);
+  }, [presetScenario, presetKey]);
   // Đổi kịch bản thì kết quả kiểm tra dịch vụ cũ không còn đúng.
   useEffect(() => { setCheck(null); }, [key]);
   useEffect(() => {
@@ -336,6 +348,15 @@ export function LabPage() {
       qc.invalidateQueries({ queryKey: ["batches"] });
     }
   }, [job.data, qc]);
+
+  // Kịch bản của lượt đang xem (có thể là kịch bản tự chọn, kể cả sau khi tải lại trang).
+  const jobKey = job.data?.scenario;
+  const jobScenario = useQuery({
+    queryKey: ["scenario", jobKey],
+    queryFn: () => api.scenario(jobKey!),
+    enabled: !!jobKey,
+    initialData: () => scenarios.data?.find((s) => s.key === jobKey),
+  });
 
   const allPresets = useMemo(() => config.data?.presets ?? [], [config.data]);
   const onCodes = CODES.filter((c) => enabled[c]);
@@ -400,13 +421,29 @@ export function LabPage() {
         <Card className="xl:col-span-3">
           <CardHeader title="1. Kịch bản" icon={<FlaskConical size={16} />} />
           <div className="p-5">
-            <Select
-              value={key}
-              onChange={setKey}
-              options={(scenarios.data ?? []).map((s) => ({ value: s.key, label: s.title }))}
-              label="Kịch bản"
-              className="mb-4"
+            <Segmented
+              value={mode}
+              onChange={setMode}
+              options={[
+                { value: "preset", label: "Chọn sẵn" },
+                { value: "custom", label: "Tự chọn từ corpus" },
+              ]}
             />
+            <div className="mb-4 mt-3">
+              {mode === "preset" ? (
+                <Select
+                  value={presetKey}
+                  onChange={setPresetKey}
+                  options={(scenarios.data ?? []).map((s) => ({ value: s.key, label: s.title }))}
+                  label="Kịch bản"
+                />
+              ) : (
+                <>
+                  <ScenarioPicker value={customKey} onChange={setCustomKey} />
+                  {custom.error && <div className="mt-3"><ErrorBox error={custom.error} /></div>}
+                </>
+              )}
+            </div>
             {scenario && <details className="detail-disclosure"><summary>Nội dung kịch bản</summary><div><AttackBrief scenario={scenario} /></div></details>}
           </div>
         </Card>
@@ -550,7 +587,7 @@ export function LabPage() {
           <LivePanel
             key={job.data.id}
             job={job.data}
-            attack={scenarios.data?.find((s) => s.key === job.data!.scenario)?.title}
+            attack={jobScenario.data?.title}
           />
         )}
       </div>
@@ -559,7 +596,7 @@ export function LabPage() {
         <Results
           batchId={batchId}
           presets={allPresets}
-          scenario={scenarios.data?.find((s) => s.key === job.data?.scenario)}
+          scenario={jobScenario.data}
           viewRun={viewRun}
           onShow={(id) => {
             setViewRun(id);

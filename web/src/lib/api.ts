@@ -186,6 +186,13 @@ export type Scenario = {
   attack: AttackBrief;
 };
 
+/** Bộ chọn kịch bản tự do: mỗi hàng [kênh, kỹ thuật, mục tiêu, payload_id, tác vụ chở] ghép được. */
+export type ScenarioCatalog = {
+  rows: [string, string, string, string, string][];
+  payloads: Record<string, { lang: string | null; variant: string | null; source: string | null }>;
+  carriers: Record<string, string>;
+};
+
 /** Mổ xẻ payload của một kịch bản — từ bản ghi corpus, xem `console.demo.payload_brief`. */
 export type AttackBrief = {
   lang: string;
@@ -435,6 +442,8 @@ export const api = {
   run: (id: string) => request<RunDetail>(`/api/runs/${encodeURIComponent(id)}`),
   config: () => request<ConfigSummary>("/api/config"),
   scenarios: () => request<Scenario[]>("/api/demo/scenarios"),
+  scenarioCatalog: () => request<ScenarioCatalog>("/api/demo/catalog"),
+  scenario: (key: string) => request<Scenario>(`/api/demo/scenario${qs({ key })}`),
   startDemo: (body: {
     scenario: string;
     target: string;

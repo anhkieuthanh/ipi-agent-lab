@@ -956,17 +956,44 @@ def sandbox_summary() -> dict[str, Any]:
     }
 
 
+def _scenario_view(s: Any) -> dict[str, Any]:
+    return {
+        "key": s.key, "title": s.title, "story": s.story, "channel": s.channel,
+        "technique": s.technique, "goal": s.goal, "goal_text": demo.GOAL_TEXT[s.goal],
+        "payload_id": s.payload_id, "carrier_task_id": s.carrier_task_id,
+        "query": demo.carrier_query(s.carrier_task_id), "payload_text": demo.payload_text(s),
+        "attack": demo.payload_brief(s),
+    }
+
+
 def scenarios() -> list[dict[str, Any]]:
-    out = []
-    for s in demo.SCENARIOS:
-        out.append({
-            "key": s.key, "title": s.title, "story": s.story, "channel": s.channel,
-            "technique": s.technique, "goal": s.goal, "goal_text": demo.GOAL_TEXT[s.goal],
-            "payload_id": s.payload_id, "carrier_task_id": s.carrier_task_id,
-            "query": demo.carrier_query(s.carrier_task_id), "payload_text": demo.payload_text(s),
-            "attack": demo.payload_brief(s),
-        })
-    return out
+    return [_scenario_view(s) for s in demo.SCENARIOS]
+
+
+def scenario_detail(key: str) -> dict[str, Any]:
+    """Một kịch bản — chọn sẵn hoặc tự chọn (`custom:…`). KeyError nếu không ghép được."""
+    return _scenario_view(demo.scenario(key))
+
+
+def scenario_catalog() -> dict[str, Any]:
+    """Các bộ ghép được cho bộ chọn kịch bản tự do, kèm nhãn payload và câu hỏi của tác vụ chở."""
+    corpus = {p["id"]: p for p in demo.load_corpus()}
+    carriers = demo.load_carriers()
+    rows = demo.catalog(list(corpus.values()), carriers)
+    used = {r[3] for r in rows}
+    payloads = {}
+    for pid in sorted(used):
+        p = corpus[pid]
+        payloads[pid] = {
+            "lang": p.get("lang"),
+            "variant": (p.get("technique") or {}).get("variant"),
+            "source": (p.get("source") or {}).get("kind"),
+        }
+    return {
+        "rows": [list(r) for r in rows],
+        "payloads": payloads,
+        "carriers": {c["id"]: c["user_query_vi"] for c in carriers},
+    }
 
 
 

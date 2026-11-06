@@ -158,7 +158,64 @@ SCENARIOS: tuple[Scenario, ...] = (
 )
 
 
+#: Tiền tố khóa kịch bản tự chọn: `custom:<kênh>:<kỹ thuật>:<mục tiêu>:<payload_id>:<tác vụ chở>`.
+CUSTOM_PREFIX = "custom:"
+
+
+def custom_key(channel: str, technique: str, goal: str, payload_id: str, carrier: str) -> str:
+    return CUSTOM_PREFIX + ":".join((channel, technique, goal, payload_id, carrier))
+
+
+def catalog(
+    corpus: Sequence[dict[str, Any]] | None = None,
+    carriers: Sequence[dict[str, Any]] | None = None,
+) -> list[tuple[str, str, str, str, str]]:
+    """Mọi bộ (kênh, kỹ thuật, mục tiêu, payload_id, tác vụ chở) ghép được — đúng tập cặp mà ma trận
+    lấy mẫu (`select_payloads` + `_cell_pairs`), nên kịch bản tự chọn không ra ngoài bộ đo."""
+    corpus = corpus if corpus is not None else load_corpus()
+    carriers = carriers if carriers is not None else load_carriers()
+    cells = sorted({
+        (k, (p.get("technique") or {}).get("code"), p.get("goal"))
+        for p in corpus
+        for k in p.get("channels") or []
+    })
+    out: list[tuple[str, str, str, str, str]] = []
+    for channel, technique, goal in cells:
+        payloads = select_payloads(corpus, channel, technique, goal)
+        for pid, cid in _cell_pairs(payloads, channel, carriers, tasks_path=DEFAULT_TASKS_PATH):
+            out.append((channel, technique, goal, pid, cid))
+    return out
+
+
+def _custom_scenario(key: str) -> Scenario:
+    parts = key.removeprefix(CUSTOM_PREFIX).split(":")
+    if len(parts) != 5:
+        raise KeyError(f"khóa kịch bản tự chọn sai dạng {key!r}")
+    channel, technique, goal, payload_id, carrier = parts
+    corpus = load_corpus()
+    payloads = select_payloads(corpus, channel, technique, goal)
+    pairs = _cell_pairs(payloads, channel, load_carriers(), tasks_path=DEFAULT_TASKS_PATH)
+    if (payload_id, carrier) not in pairs:
+        raise KeyError(f"không ghép được {payload_id} với {carrier} trong {channel}·{technique}·{goal}")
+    return Scenario(
+        key=key,
+        title=f"{goal} · Tự chọn {payload_id} trên {carrier} ({channel}, {technique})",
+        story=(
+            f"Kịch bản tự chọn từ corpus: payload {payload_id} tiêm qua kênh {channel} khi nhân viên "
+            f"làm tác vụ {carrier}, nhắm mục tiêu {goal} ({GOAL_TEXT[goal]})."
+        ),
+        channel=channel,
+        technique=technique,
+        goal=goal,
+        payload_id=payload_id,
+        carrier_task_id=carrier,
+    )
+
+
 def scenario(key: str) -> Scenario:
+    """Kịch bản chọn sẵn theo khóa, hoặc kịch bản tự chọn (`custom:…`) đã kiểm ghép được."""
+    if key.startswith(CUSTOM_PREFIX):
+        return _custom_scenario(key)
     for s in SCENARIOS:
         if s.key == key:
             return s

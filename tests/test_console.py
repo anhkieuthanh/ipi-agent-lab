@@ -399,3 +399,15 @@ def test_danh_sach_run_kem_cau_hoi_va_nhom_payload(client):
     (item,) = g["items"]
     assert item["payload_id"] == "P-T2-G1-VI-001" and item["asr"]["x"] == 1
     assert item["by_target"]["A3"] == {"x": 1, "n": 3}
+
+
+def test_bo_chon_kich_ban_tu_do(client):
+    cat = client.get("/api/demo/catalog").json()
+    assert cat["rows"] and set(cat["carriers"]) >= {r[4] for r in cat["rows"]}
+    assert set(cat["payloads"]) == {r[3] for r in cat["rows"]}
+    key = "custom:" + ":".join(cat["rows"][0])
+    d = client.get("/api/demo/scenario", params={"key": key}).json()
+    assert d["key"] == key and d["payload_id"] == cat["rows"][0][3] and d["query"]
+    assert client.get("/api/demo/scenario", params={"key": "custom:K1:x"}).status_code == 404
+    assert client.get("/api/services/demo-check", params={"key": key}).status_code == 422
+    assert client.get("/api/services/demo-check", params={"scenario": key}).status_code == 200

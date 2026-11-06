@@ -41,6 +41,31 @@ def test_payload_brief_mo_xe_payload_cho_nguoi_xem():
     assert demo.payload_brief(demo.scenario("fake-supplier"))["tool"] is None
 
 
+def test_catalog_chua_kich_ban_chon_san_va_dung_khoa_tu_chon():
+    rows = demo.catalog()
+    assert len(rows) == len(set(rows))
+    for s in demo.SCENARIOS:
+        assert (s.channel, s.technique, s.goal, s.payload_id, s.carrier_task_id) in rows
+    row = rows[0]
+    s = demo.scenario(demo.custom_key(*row))
+    assert (s.channel, s.technique, s.goal, s.payload_id, s.carrier_task_id) == row
+    assert s.key.startswith(demo.CUSTOM_PREFIX)
+    assert demo.payload_brief(s)["placement"]
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "custom:K1:T2:G1:P-T2-G1-VI-001",  # thiếu trường
+        "custom:K1:T2:G1:P-T2-G1-VI-001:CT-99",  # tác vụ chở không có
+        "custom:K2a:T2:G2:P-T2-G1-VI-001:CT-05",  # payload không thuộc ô
+    ],
+)
+def test_khoa_tu_chon_khong_ghep_duoc_bi_tu_choi(key):
+    with pytest.raises(KeyError):
+        demo.scenario(key)
+
+
 def test_payload_text_da_thay_chi_thi():
     for s in demo.SCENARIOS:
         assert "{INSTRUCTION}" not in demo.payload_text(s)
