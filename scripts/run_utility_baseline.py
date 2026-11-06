@@ -122,6 +122,7 @@ def main() -> int:
     dry.add_argument("--allow-dirty", action="store_true", help="cho chạy trên cây chưa commit")
     parser.add_argument("--workers", type=int, default=1, help="số tiến trình chạy song song")
     parser.add_argument("--shard", help=argparse.SUPPRESS)  # "i/N", do tiến trình mẹ truyền
+    parser.add_argument("--since-ts", help=argparse.SUPPRESS)  # mốc chi phí phiên, do mẹ truyền
     args = parser.parse_args()
     if args.workers < 1:
         parser.error("--workers phải ≥ 1")
@@ -249,8 +250,15 @@ def _context(*, exp, benign, targets, batch_id, engine, commit, judge_log) -> Ru
     )
 
 
-def _spent(prices, batch_id: str) -> float:
-    return sum(spend_from_log(LOG, prices, run_ids=[batch_id]).values())
+def _log_ts() -> str:
+    """Mốc thời gian cùng định dạng trường `ts` của logs/llm_client.jsonl."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _spent(prices, batch_id: str, since_ts: str | None) -> float:
+    """Chi phí của PHIÊN chạy này: chạy tiếp một lô thì không cộng chi phí các phiên trước vào ngân
+    sách phiên (dự toán `--estimate-usd` là cho phần còn lại)."""
+    return sum(spend_from_log(LOG, prices, run_ids=[batch_id], since_ts=since_ts).values())
 
 
 def _append_manifest(batch_dir: Path, manifest: dict) -> None:
@@ -282,13 +290,14 @@ def _run_shard(*, args, exp, benign, targets, specs, batch_id, batch_dir, store,
         if stop.exists():
             print("DỪNG: có file STOP của lô.", flush=True)
             return EXIT_STOPPED
-        if guard.status(_spent(prices, batch_id)) == "stop":
+        if guard.status(_spent(prices, batch_id, args.since_ts)) == "stop":
             print("DỪNG trước run: chi phí lô vượt 120% dự toán hoặc chạm hạn mức tổng.", flush=True)
             return EXIT_BUDGET
         run_one(spec, ctx)
         print(
             f"[s{i} {k}/{len(todo)}] {spec.target_id} {spec.benign_query_id} r{spec.repeat_idx}"
-            f" · {_spent(prices, batch_id):.2f} USD · {(time.monotonic() - t0) / 60:.1f} phút",
+            f" · {_spent(prices, batch_id, args.since_ts):.2f} USD"
+            f" · {(time.monotonic() - t0) / 60:.1f} phút",
             flush=True,
         )
     return 0
@@ -296,6 +305,7 @@ def _run_shard(*, args, exp, benign, targets, specs, batch_id, batch_dir, store,
 
 def _run_batch(*, args, exp, benign, targets, repeats, query_ids, specs, batch_id, batch_dir,
                store, judge_log, tables_dir) -> int:
+    since = _log_ts()
     merged = merge_leftover_shards(store) if store.is_file() else []
     if merged:
         print(f"Đã gộp {len(merged)} shard còn sót của lần chạy trước vào {store.relative_to(ROOT)}.")
@@ -334,6 +344,8 @@ def _run_batch(*, args, exp, benign, targets, repeats, query_ids, specs, batch_i
         "estimate_usd": args.estimate_usd,
         "workers": args.workers if parallel else 1,
         "started_at_utc": _stamp(),
+        "spent_scope": "session",  # spent_usd chỉ tính phiên này, kể từ since_ts
+        "since_ts": since,
     }
     batch_dir.mkdir(parents=True, exist_ok=True)
     run = dict(exp=exp, benign=benign, batch_id=batch_id, judge_log=judge_log,
@@ -347,7 +359,7 @@ def _run_batch(*, args, exp, benign, targets, repeats, query_ids, specs, batch_i
     try:
         for i, spec in enumerate(todo, start=1):
             run_one(spec, ctx)
-            spent = _spent(prices, batch_id)
+            spent = _spent(prices, batch_id, since)
             status = guard.status(spent)
             print(
                 f"[{i}/{len(todo)}] {spec.target_id} {spec.benign_query_id} r{spec.repeat_idx}"
@@ -359,7 +371,7 @@ def _run_batch(*, args, exp, benign, targets, repeats, query_ids, specs, batch_i
                 break
     finally:
         manifest["finished_at_utc"] = _stamp()
-        manifest["spent_usd"] = _spent(prices, batch_id)
+        manifest["spent_usd"] = _spent(prices, batch_id, since)
         manifest["budget_status"] = status
         _append_manifest(batch_dir, manifest)
 
@@ -370,18 +382,20 @@ def _run_batch(*, args, exp, benign, targets, repeats, query_ids, specs, batch_i
 def _run_parallel(args, batch_dir, store, manifest, prices, guard, engine, n_todo, run) -> int:
     n, batch_id = args.workers, run["batch_id"]
     engine.dispose()  # mẹ không ghi store trong lúc con chạy; gộp thay file store ở cuối
-    child_argv = [sys.executable, str(Path(__file__).resolve()), *sys.argv[1:], "--batch-id", batch_id]
+    since = manifest["since_ts"]
+    child_argv = [sys.executable, str(Path(__file__).resolve()), *sys.argv[1:], "--batch-id", batch_id,
+                  "--since-ts", since]
     print(f"{n} tiến trình con, {n_todo} run", flush=True)
     res = run_sharded(batch_id=batch_id, batch_dir=batch_dir, store=store, n=n,
                       child_argv=child_argv, cwd=ROOT, log_path=LOG, prices=prices, guard=guard,
-                      sweep=sweep_stale_run_dirs)
+                      sweep=sweep_stale_run_dirs, since_ts=since)
     if not res.save_errors:
         try:
             _merge_judge_shards(run["judge_log"])
         except Exception as e:  # noqa: BLE001 — shard judge còn trên đĩa, lần chạy sau gộp tiếp
             res.save_errors.append(f"gộp judge.jsonl: {e!r}")
     try:
-        spent = _spent(prices, batch_id)
+        spent = _spent(prices, batch_id, since)
     except Exception as e:  # noqa: BLE001
         spent = None
         res.save_errors.append(f"đọc chi phí: {e!r}")

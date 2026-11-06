@@ -112,8 +112,11 @@ def run_sharded(
     prices: dict,
     guard,
     sweep=None,
+    since_ts: str | None = None,
 ) -> ShardResult:
-    """Chạy `child_argv + ["--shard", "i/n"]` trên n con, giám sát ngân sách, dọn, gộp vào `store`."""
+    """Chạy `child_argv + ["--shard", "i/n"]` trên n con, giám sát ngân sách, dọn, gộp vào `store`.
+
+    `since_ts`: chỉ tính chi phí từ mốc này (chạy tiếp một lô — không cộng chi phí phiên trước)."""
     from rag.ingest import RagConfig, clone_base_collection, connect, count_points, purge_injected
     from tools.create_ticket import TicketConfig
     from tools.registry import ToolRegistry
@@ -152,7 +155,7 @@ def run_sharded(
         print(f"{n} tiến trình con; log: {batch_dir / 'shard-<i>.log'}", flush=True)
         while any(p.poll() is None for p, _ in procs):
             time.sleep(MONITOR_S)
-            spent = sum(spend_from_log(log_path, prices, run_ids=[batch_id]).values())
+            spent = sum(spend_from_log(log_path, prices, run_ids=[batch_id], since_ts=since_ts).values())
             over = guard.status(spent) == "stop"
             if (over or any(p.poll() == EXIT_BUDGET for p, _ in procs)) and not stop.exists():
                 res.status = "stop"

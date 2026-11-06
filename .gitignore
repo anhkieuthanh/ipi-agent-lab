@@ -29,3 +29,5 @@ data/canary_hits.db
 
 # Lượt demo trực tiếp (STT-82) — trình diễn, không phải dữ liệu thực nghiệm.
 results/demo/
+# Log tiến trình con của lô song song: ghi đè mỗi phiên, theo dõi sẽ làm cây "dirty" khi chạy tiếp lô.
+results/**/shard-*.log
