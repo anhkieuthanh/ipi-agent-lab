@@ -13,5 +13,21 @@
     "finished_at_utc": "20261106T065824Z",
     "spent_usd": 3.8224128,
     "budget_status": "alert"
+  },
+  {
+    "task": "STT-37",
+    "vt": "VT-14",
+    "batch_id": "usr-baseline-20261106T031457Z",
+    "tag": "soattay1106",
+    "lab_git_commit": "d80116ff188e6804a9bc95e504592c0b5071ceef",
+    "judge_model": "claude-sonnet-5-5",
+    "judge_prompt_hash": "9cf5ed4c9c6d7b8a35a367e527dfe37028c35c5e0abde4e7c4dc54d6028e8cc8",
+    "max_tool_result_chars": 12000,
+    "n_judged_this_session": 1,
+    "n_reused_current_prompt": 174,
+    "started_at_utc": "20261106T073908Z",
+    "finished_at_utc": "20261106T073913Z",
+    "spent_usd": 3.8490648,
+    "budget_status": "stop"
   }
 ]

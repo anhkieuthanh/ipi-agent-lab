@@ -120,9 +120,11 @@ def main() -> int:
     run_id = f"{args.batch_id}-rejudge-{args.tag}"
     client = LLMClient(JUDGE_ID, config_path=MODELS, log_path=LOG, run_id=run_id)
     state = {"status": "ok"}
+    # Ngân sách theo PHIÊN: chạy tiếp cùng --tag thì không cộng chi phí các phiên trước.
+    since = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     def after_each(i: int, n: int) -> bool:
-        spent = sum(spend_from_log(LOG, prices, run_ids=[run_id]).values())
+        spent = sum(spend_from_log(LOG, prices, run_ids=[run_id], since_ts=since).values())
         state["status"] = guard.status(spent)
         if i % 20 == 0 or i == n or state["status"] != "ok":
             print(f"[{i}/{n}] judge · {spent:.2f} USD · {state['status']}", flush=True)
@@ -155,7 +157,9 @@ def main() -> int:
         "n_reused_current_prompt": seeded,
         "started_at_utc": started,
         "finished_at_utc": _stamp(),
-        "spent_usd": sum(spend_from_log(LOG, prices, run_ids=[run_id]).values()),
+        "spent_usd": sum(spend_from_log(LOG, prices, run_ids=[run_id], since_ts=since).values()),
+        "spent_scope": "session",
+        "since_ts": since,
         "budget_status": state["status"],
     }
     path = batch_dir / f"judge_rejudge_{args.tag}_manifest.json"
