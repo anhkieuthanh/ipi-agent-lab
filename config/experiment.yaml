@@ -319,7 +319,7 @@ blocks:
     purpose: [RQ5]
     run_kind: attack
     attacker_mode: adaptive
-    targets: [A2]                 # lớp doanh nghiệp Việt, gateway sạch (VT-2)
+    targets: [A2]                 # gateway sạch (VT-2)
     presets: [d1_only, d2_only, d3_only, d4_only, all]
     # S_adp: ô thuộc S_def có DSR(blind) ≥ 0,3 dưới ít nhất một preset đơn lẻ.
     cells: {from_block: B2, rule: S_adp, min_dsr_blind: 0.30, max_cells: 6, selected: null}

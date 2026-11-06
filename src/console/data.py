@@ -31,7 +31,7 @@ if str(ROOT / "src") not in sys.path:
 from console import demo  # noqa: E402
 from console import tracedata as td  # noqa: E402
 from eval.metrics import utility_summary  # noqa: E402
-from obs.cost import load_prices, spend_from_log  # noqa: E402
+from obs.cost import CostConfigError, load_prices, spend_from_log  # noqa: E402
 from obs.trace import BLOCKED_BY  # noqa: E402
 
 MODELS_PATH = ROOT / "config" / "models.yaml"
@@ -394,15 +394,20 @@ def budget(cache_targets: Sequence[str] = ("A1", "A2", "A3", "judge")) -> dict[s
     total = os.getenv("COST_BUDGET_USD_TOTAL", "").strip()
     spent: float | None = None
     by: dict[str, float] = {}
+    error: str | None = None
     if LOG_PATH.is_file():
-        by = _spend_cached(tuple(cache_targets))
-        spent = sum(by.values())
+        try:
+            by = _spend_cached(tuple(cache_targets))
+            spent = sum(by.values())
+        except CostConfigError as exc:  # target còn thiếu đơn giá: hiện lỗi, không sập trang
+            error = str(exc)
     return {
         "total_usd": float(total) if total else None,
         "alert_pct": float(os.getenv("COST_BUDGET_USD_ALERT_PCT", "80") or 80),
         "spent_usd": spent,
         "by_target": by,
         "source": "logs/llm_client.jsonl",
+        "error": error,
     }
 
 

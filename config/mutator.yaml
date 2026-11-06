@@ -43,7 +43,7 @@ rule:
 # Lưu ý: khác trục `attacker_mode: adaptive` của vòng B5 (runner) — đây chỉ là nguồn sinh payload.
 model:
   enabled: true
-  attacker_model: attacker      # khối trong config/models.yaml (pin claude-opus-5, v-models-1.1)
+  attacker_model: attacker      # khối trong config/models.yaml (pin claude-opus-5, v-models-1.2)
   variants_per_payload: 2       # số lần gọi model mỗi payload; bản trùng/placeholder-vỡ bị loại
 
 # ── Lọc trùng theo embedding ────────────────────────────────────────────────────

@@ -130,8 +130,7 @@ def main() -> int:
     batch_dir.mkdir(parents=True, exist_ok=True)
     engine = open_store(batch_dir / "trace.sqlite")
 
-    prices = load_prices(MODELS, ["A1", *TARGETS])
-    prices[ATTACKER_ID] = prices["A1"]  # attacker và A1 cùng claude-opus-5 (models.yaml)
+    prices = load_prices(MODELS, [*TARGETS, ATTACKER_ID])
     guard = budget_from_env(args.estimate_usd)
     models = {t: LLMClient(t, config_path=MODELS, log_path=LOG, run_id=batch_id) for t in TARGETS}
     attacker = LLMAdaptiveAttacker(

@@ -51,7 +51,6 @@ function TargetTile({ m }: { m: Model }) {
         </span>
       </div>
       <Mono className="mt-3 block truncate text-[15px] font-semibold text-slate-900">{m.model_id}</Mono>
-      <div className="mt-0.5 text-[12.5px] text-slate-500">{m.label}</div>
       <dl className="mt-4 space-y-1 border-t border-slate-200/70 pt-3 text-[12px]">
         <div className="flex justify-between gap-2">
           <dt className="text-slate-500">Kênh gọi</dt>
@@ -75,7 +74,7 @@ function ModelsCard({ d, tag }: { d: ConfigSummary; tag?: string }) {
         title="Mô hình đích"
         subtitle={
           <>
-            Bộ model đã chốt theo phụ lục GVHD, khóa bằng <Mono>{tag ?? "v-models-1.1"}</Mono>. Đơn giá USD/Mtok (vào / ra).
+            Bộ model đã chốt theo phụ lục GVHD, khóa bằng <Mono>{tag ?? "v-models-1.2"}</Mono>. Đơn giá USD/Mtok (vào / ra).
           </>
         }
         icon={<Cpu size={16} />}

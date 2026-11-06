@@ -66,9 +66,9 @@ export const GLOSSARY: Group[] = [
     label: "Mô hình đích",
     prefix: "A",
     items: [
-      { code: "A1", name: "Frontier", desc: "claude-opus-5 — “model mạnh có sập bẫy không?”." },
-      { code: "A2", name: "Lớp doanh nghiệp Việt", desc: "glm-5.2 — bối cảnh triển khai tại Việt Nam." },
-      { code: "A3", name: "Lớp rẻ", desc: "glm-5.3-flash — nhóm đối chiếu." },
+      { code: "A1", name: "glm-5.3", desc: "Model đích." },
+      { code: "A2", name: "glm-5.2", desc: "Model đích." },
+      { code: "A3", name: "deepseek-v4.1-flash-1017", desc: "Model đích." },
     ],
   },
   {

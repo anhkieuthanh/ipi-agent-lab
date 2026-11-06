@@ -6,7 +6,9 @@ vượt 120% dự toán thì dừng ngay; hạn mức lấy từ `.env`.
 - Đơn giá đọc từ `pricing_usd_per_mtok` của từng target trong `config/models.yaml`. Còn `null`
   thì `load_prices` từ chối — không chạy lô nào khi bảng giá còn TODO.
 - Chi phí đã tiêu cộng từ `logs/llm_client.jsonl` (mỗi lời gọi thành công một dòng), lọc theo
-  `run_id` của lô hoặc mốc thời gian bắt đầu lô.
+  `run_id` của lô hoặc mốc thời gian bắt đầu lô. Mỗi dòng tính theo đơn giá của model ghi trong
+  dòng đó nếu model ấy còn trong `config/models.yaml`: target đổi model (A1 claude-opus-5 → glm-5.3
+  ở `v-models-1.2`) thì lời gọi cũ vẫn tính giá model cũ. Model cũ đã rời config thì dùng giá target.
 - `BudgetGuard.status()` trả `ok` / `alert` / `stop`:
     * `stop` khi tiêu > `stop_ratio` × dự toán lô (mặc định 1,2) hoặc chạm hạn mức tổng;
     * `alert` khi tiêu ≥ `alert_pct`% dự toán lô.
@@ -26,6 +28,7 @@ import yaml
 __all__ = [
     "CostConfigError",
     "Price",
+    "PriceTable",
     "load_prices",
     "spend_from_log",
     "BudgetGuard",
@@ -48,28 +51,49 @@ class Price:
         ) / 1e6
 
 
+class PriceTable(dict):
+    """Đơn giá theo target (khóa dict) kèm `by_model`: đơn giá theo `model_id` của mọi khối có giá."""
+
+    def __init__(self, *args: Any, by_model: dict[str, Price] | None = None, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.by_model: dict[str, Price] = dict(by_model or {})
+
+
+def _price_of(block: dict[str, Any]) -> Price | None:
+    p = block.get("pricing_usd_per_mtok") or {}
+    if p.get("input") is None or p.get("output") is None:
+        return None
+    return Price(float(p["input"]), float(p["output"]))
+
+
 def load_prices(
     config_path: str | Path = "config/models.yaml", targets: Iterable[str] | None = None
-) -> dict[str, Price]:
-    """Đọc đơn giá; `targets` = các target lô sẽ dùng, kể cả `judge` (mặc định: tất cả)."""
+) -> PriceTable:
+    """Đọc đơn giá; `targets` = các target lô sẽ dùng, kể cả `judge`, `attacker` (mặc định: tất cả)."""
     with Path(config_path).open("r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
-    # Khối `judge` tính như một target: lô có judge cần đơn giá judge (STT-37).
+    # Khối `judge`, `attacker` tính như một target: lô có judge/attacker cần đơn giá của nó (STT-37).
     all_targets = dict(cfg.get("targets") or {})
-    if cfg.get("judge"):
-        all_targets["judge"] = cfg["judge"]
+    for block in ("judge", "attacker"):
+        if cfg.get(block):
+            all_targets[block] = cfg[block]
     wanted = list(targets) if targets is not None else list(all_targets)
 
-    prices: dict[str, Price] = {}
+    by_model = {
+        spec["model_id"]: price
+        for spec in all_targets.values()
+        if spec.get("model_id") and (price := _price_of(spec)) is not None
+    }
+    prices = PriceTable(by_model=by_model)
     missing: list[str] = []
     for t in wanted:
         if t not in all_targets:
             raise CostConfigError(f"target '{t}' không có trong {config_path}")
-        p = all_targets[t].get("pricing_usd_per_mtok") or {}
-        if p.get("input") is None or p.get("output") is None:
+        price = _price_of(all_targets[t])
+        if price is None:
             missing.append(t)
             continue
-        prices[t] = Price(float(p["input"]), float(p["output"]))
+        prices[t] = price
     if missing:
         raise CostConfigError(
             f"Chưa có đơn giá cho {missing} (pricing_usd_per_mtok trong {config_path}, STT-15). "
@@ -98,8 +122,10 @@ def spend_from_log(
 ) -> dict[str, float]:
     """Tổng USD theo target từ log JSONL của `LLMClient`.
 
-    `since_ts` so chuỗi ISO-8601 UTC cùng định dạng trường `ts` của log.
+    Dòng log có `model` nằm trong `prices.by_model` (khi `prices` là `PriceTable`) tính theo giá
+    model đó; không thì theo giá target. `since_ts` so chuỗi ISO-8601 UTC cùng định dạng trường `ts`.
     """
+    by_model: dict[str, Price] = getattr(prices, "by_model", {})
     run_filter = set(run_ids) if run_ids is not None else None
     totals: dict[str, float] = {}
     for rec in _iter_log(log_path):
@@ -112,7 +138,8 @@ def spend_from_log(
         target = rec.get("target_id")
         if target not in prices:
             continue
-        totals[target] = totals.get(target, 0.0) + prices[target].cost(
+        price = by_model.get(rec.get("model"), prices[target])
+        totals[target] = totals.get(target, 0.0) + price.cost(
             rec.get("tokens_in"), rec.get("tokens_out")
         )
     return totals

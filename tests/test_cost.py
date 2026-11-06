@@ -21,7 +21,7 @@ CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "models.yaml"
 def _config_with_prices(tmp_path, prices):
     cfg = yaml.safe_load(CONFIG_PATH.read_text("utf-8"))
     # Xóa trắng giá của config thật: test chỉ thấy đúng giá nó đặt.
-    for block in [*cfg["targets"].values(), cfg["judge"]]:
+    for block in [*cfg["targets"].values(), cfg["judge"], cfg["attacker"]]:
         block["pricing_usd_per_mtok"] = {"input": None, "output": None}
     for target, (pin, pout) in prices.items():
         cfg["targets"][target]["pricing_usd_per_mtok"] = {"input": pin, "output": pout}
@@ -129,3 +129,24 @@ def test_load_prices_tinh_khoi_judge_nhu_target(tmp_path):
     cfg["judge"]["pricing_usd_per_mtok"] = {"input": 3.0, "output": 15.0}
     path.write_text(yaml.safe_dump(cfg, allow_unicode=True), "utf-8")
     assert load_prices(path, targets=["A2", "judge"])["judge"] == Price(3.0, 15.0)
+
+
+def test_spend_from_log_tinh_theo_gia_model_trong_dong_log(tmp_path):
+    # Target đổi model (A1 claude-opus-5 → glm-5.3, v-models-1.2): lời gọi cũ giữ giá model cũ.
+    path = _config_with_prices(tmp_path, {"A1": (1.0, 1.0)})
+    cfg = yaml.safe_load(path.read_text("utf-8"))
+    cfg["attacker"]["pricing_usd_per_mtok"] = {"input": 5.0, "output": 25.0}
+    path.write_text(yaml.safe_dump(cfg, allow_unicode=True), "utf-8")
+    prices = load_prices(path, targets=["A1", "attacker"])
+    assert prices.by_model[cfg["attacker"]["model_id"]] == Price(5.0, 25.0)
+
+    log = tmp_path / "llm.jsonl"
+    base = {"ts": "2026-11-06T00:00:00Z", "run_id": "r", "target_id": "A1", "ok": True,
+            "tokens_in": 1_000_000, "tokens_out": 0}
+    rows = [
+        {**base, "model": cfg["attacker"]["model_id"]},  # lời gọi A1 cũ: giá opus 5,0
+        {**base, "model": cfg["targets"]["A1"]["model_id"]},  # A1 mới: giá A1 1,0
+        {**base, "model": "model-da-roi-config"},  # không còn trong config: giá target
+    ]
+    log.write_text("\n".join(json.dumps(r) for r in rows), "utf-8")
+    assert spend_from_log(log, prices) == {"A1": pytest.approx(7.0)}
