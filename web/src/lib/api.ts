@@ -161,6 +161,8 @@ export type RunDetail = {
   verdict: Verdict | null;
   payload: Record<string, unknown> | null;
   payload_text: string | null;
+  /** Câu nhân viên gửi agent (tra theo carrier_task_id / benign_query_id). */
+  user_query: { id: string; text: string } | null;
   steps: Step[];
   final_answer: Marked | null;
   tool_actions: ToolAction[];

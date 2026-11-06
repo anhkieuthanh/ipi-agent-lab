@@ -489,6 +489,45 @@ def live_steps(live: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return out
 
 
+def _collect_queries(node: Any, out: dict[str, str]) -> None:
+    if isinstance(node, dict):
+        if isinstance(node.get("id"), str) and isinstance(node.get("user_query_vi"), str):
+            out[node["id"]] = node["user_query_vi"]
+        for v in node.values():
+            _collect_queries(v, out)
+    elif isinstance(node, list):
+        for v in node:
+            _collect_queries(v, out)
+
+
+_QUERY_CACHE: dict[tuple, dict[str, str]] = {}
+
+
+def _queries() -> dict[str, str]:
+    """`id` → `user_query_vi` của tác vụ chở và câu lành tính (hai file bộ đo đã khóa, chỉ đọc)."""
+    paths = (ROOT / "data" / "carrier_tasks.json", ROOT / "data" / "benign_queries.json")
+    key = tuple(p.stat().st_mtime_ns if p.is_file() else None for p in paths)
+    if key not in _QUERY_CACHE:
+        out: dict[str, str] = {}
+        for p in paths:
+            if p.is_file():
+                _collect_queries(json.loads(p.read_text(encoding="utf-8")), out)
+        _QUERY_CACHE.clear()
+        _QUERY_CACHE[key] = out
+    return _QUERY_CACHE[key]
+
+
+def user_query(run: Any) -> dict[str, Any] | None:
+    """Câu nhân viên gửi agent. Trace không lưu tin nhắn người dùng: harness gửi đúng `user_query_vi`
+    của câu lành tính (run lành tính) hoặc của tác vụ chở (run tấn công) — tra lại theo mã."""
+    qid = run.get("benign_query_id") if run.get("run_kind") == "benign" else None
+    qid = qid or run.get("carrier_task_id")
+    if not qid:
+        return None
+    text = _queries().get(str(qid))
+    return {"id": qid, "text": text} if text else None
+
+
 def run_detail(cache: RunCache, run_id: str) -> dict[str, Any] | None:
     df = cache.runs()
     hit = df[df["run_id"] == run_id] if not df.empty else df
@@ -511,6 +550,7 @@ def run_detail(cache: RunCache, run_id: str) -> dict[str, Any] | None:
         "verdict": verdict.__dict__ if verdict else None,
         "payload": payload,
         "payload_text": _payload_text(payload, run["channel"]),
+        "user_query": user_query(run),
         "steps": step_out,
         "final_answer": {"text": final, "spans": _spans(final, needles, canaries)} if final else None,
         "tool_actions": [a.__dict__ for a in actions],

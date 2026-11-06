@@ -324,3 +324,14 @@ def test_manifest_single_session_and_resumed_cost(tmp_path):
     assert data._manifest(tmp_path / "trace.sqlite", "batch")["spent_usd"] == 0.25
     path.write_text(json.dumps([session, "invalid", {**session, "spent_usd": 0.5}]))
     assert data._manifest(tmp_path / "trace.sqlite", "batch")["spent_usd"] == 0.75
+
+
+def test_user_query_from_locked_data_files():
+    benign = data.user_query({"run_kind": "benign", "benign_query_id": "BQ-U2-006",
+                              "carrier_task_id": "CT-03"})
+    assert benign["id"] == "BQ-U2-006" and "872343098" in benign["text"]
+    attack = data.user_query({"run_kind": "attack", "benign_query_id": None,
+                              "carrier_task_id": "CT-01"})
+    assert attack["id"] == "CT-01" and attack["text"]
+    assert data.user_query({"run_kind": "attack", "carrier_task_id": None}) is None
+    assert data.user_query({"run_kind": "attack", "carrier_task_id": "CT-99"}) is None

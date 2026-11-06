@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, FileWarning, Info, Mail, Map as MapIcon, Target, Wrench } from "lucide-react";
+import { ArrowLeft, FileWarning, Info, Mail, Map as MapIcon, MessageSquare, Target, Wrench } from "lucide-react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { TraceInspector, ToolActions, TraceLegend } from "@/components/Trace";
@@ -57,6 +57,25 @@ export function RunDetailPage() {
               Scorer chấm đạt G2 nhưng chưa tìm thấy lời gọi tool khớp gợi ý từ payload.
               Đây là dấu hiệu cần kiểm tra trace, chưa đủ để kết luận hành vi có do payload hay không.
             </Callout>
+          )}
+
+          {d.user_query && (
+            <Card>
+              <CardHeader
+                title="Câu hỏi của nhân viên"
+                subtitle={
+                  attack
+                    ? `Tác vụ chở ${d.user_query.id} — yêu cầu hợp lệ; nhân viên không thấy payload`
+                    : `Câu lành tính ${d.user_query.id}`
+                }
+                icon={<MessageSquare size={16} className="text-brand-600" />}
+              />
+              <div className="px-5 pb-4">
+                <blockquote className="rounded-lg border-l-4 border-brand-300 bg-slate-50 px-4 py-3 text-[14px] leading-relaxed text-slate-800">
+                  {d.user_query.text}
+                </blockquote>
+              </div>
+            </Card>
           )}
 
           <Card>
