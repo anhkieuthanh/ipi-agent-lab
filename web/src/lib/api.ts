@@ -169,12 +169,49 @@ export type InjectedContext = {
   rug_pull: boolean;
 };
 
+/** Một bằng chứng chấm: bước + tool (null = câu trả lời cuối), dữ liệu gửi đi và phản hồi. */
+export type EvidenceItem = {
+  step: number | null;
+  tool: string | null;
+  args: Marked | null;
+  result: Marked | null;
+  channel?: string;
+  store?: string;
+  level?: string | null;
+  reason?: string;
+  severity?: string | null;
+  counted?: boolean;
+  marker?: string;
+};
+
+type GoalEv = {
+  hit: boolean;
+  rescored: boolean;
+  items: EvidenceItem[];
+  /** G1 */ channel?: string | null;
+  has_canaries?: boolean;
+  /** G2 */ severity?: string | null;
+  expected_tool?: string | null;
+  /** G3 */ marker?: string | null;
+};
+
+/** Bằng chứng chấm G1/G2/G3 — scorer chấm lại trên các bước đã lưu (`console.evidence`). */
+export type Evidence =
+  | {
+      goal: string;
+      goals: Record<"G1" | "G2" | "G3", GoalEv>;
+      outcome: { stored: string | null; rescored: string | null };
+      mismatch: string[];
+    }
+  | { error: string };
+
 export type RunDetail = {
   run: RunRow & Record<string, unknown>;
   verdict: Verdict | null;
   payload: Record<string, unknown> | null;
   payload_text: string | null;
   injected_context: InjectedContext | null;
+  evidence: Evidence | null;
   /** Câu nhân viên gửi agent (tra theo carrier_task_id / benign_query_id). */
   user_query: { id: string; text: string } | null;
   steps: Step[];

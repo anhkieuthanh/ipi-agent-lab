@@ -888,6 +888,7 @@ def run_detail(cache: RunCache, run_id: str) -> dict[str, Any] | None:
         "payload": payload,
         "payload_text": _payload_text(payload, run["channel"]),
         "injected_context": _injected_context(run, payload),
+        "evidence": _evidence(run, steps, payload),
         "user_query": user_query(run),
         "steps": step_out,
         "final_answer": {"text": final, "spans": _spans(final, needles, canaries)} if final else None,
@@ -896,6 +897,17 @@ def run_detail(cache: RunCache, run_id: str) -> dict[str, Any] | None:
         if run["env_hash"] and run["harness_version"] else None,
     })
 
+
+def _evidence(run: pd.Series, steps: list[Any], payload: dict | None) -> dict | None:
+    """Bằng chứng chấm G1/G2/G3 (`console.evidence`) — chỉ run tấn công."""
+    if run["run_kind"] != "attack" or not run["carrier_task_id"]:
+        return None
+    from console.evidence import goal_evidence
+
+    try:
+        return goal_evidence(run.to_dict(), steps, payload)
+    except Exception as e:  # noqa: BLE001 — run ngoài bộ đo hiện hành: báo, không làm hỏng trang
+        return {"error": f"{type(e).__name__}: {e}"}
 
 
 def _injected_context(run: pd.Series, payload: dict | None) -> dict | None:
