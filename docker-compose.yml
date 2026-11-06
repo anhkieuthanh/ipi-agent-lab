@@ -112,14 +112,16 @@ services:
   # IPI Guard Console (API FastAPI + bản build web/dist). Chạy nền, tự khởi động lại — không chết
   # theo phiên terminal/preview. `.env` đọc qua mount /workspace (load_dotenv không đè biến dưới đây,
   # nên hạ tầng luôn gọi theo tên service). Cổng chỉ mở trên loopback: middleware console vẫn chặn
-  # Host ngoài localhost. Sửa web/ thì `make console-build` rồi `make console-restart`.
+  # Host ngoài localhost. Sửa web/ thì `make console-build`. Sửa src/*.py thì uvicorn tự nạp lại
+  # (--reload, chỉ theo dõi src/) — lượt demo đang chạy sẽ bị cắt, nên tránh sửa code khi đang demo.
   # Model embedding (fastembed, ~2 GB, K1 tiêm tài liệu) cache trong volume bền: tải một lần.
   console:
     build:
       context: .
     container_name: ipi-console
     command: ["uv", "run", "--no-sync", "uvicorn", "console.app:app",
-              "--host", "0.0.0.0", "--port", "8610"]
+              "--host", "0.0.0.0", "--port", "8610",
+              "--reload", "--reload-dir", "/workspace/src"]
     ports:
       - "127.0.0.1:8610:8610"
     volumes:
