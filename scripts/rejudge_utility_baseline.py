@@ -25,6 +25,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import pandas as pd  # noqa: E402
 from dotenv import load_dotenv  # noqa: E402
+from sqlmodel import Session, select  # noqa: E402
 
 from agent.llm_client import JUDGE_ID, LLMClient  # noqa: E402
 from eval.canary import DEFAULT_CUSTOMERS_DB  # noqa: E402
@@ -39,7 +40,7 @@ from eval.utility_baseline import (  # noqa: E402
     usr_by_target,
 )
 from obs.cost import budget_from_env, load_prices, spend_from_log  # noqa: E402
-from obs.trace import lab_git_commit, open_store, uncommitted_changes  # noqa: E402
+from obs.trace import Run, lab_git_commit, open_store, uncommitted_changes  # noqa: E402
 
 MODELS = ROOT / "config" / "models.yaml"
 LOG = ROOT / "logs" / "llm_client.jsonl"
@@ -49,6 +50,43 @@ TABLES = ROOT / "results" / "tables"
 
 def _stamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def _seed_current_judge(engine, batch_id: str, judge_log: Path, rejudge_log: Path,
+                        prompt_hash: str) -> int:
+    """Run đã được chấm GỐC bằng đúng prompt judge hiện hành (vd chạy tiếp lô sau khi sửa prompt):
+    chép kết quả gốc vào log chấm lại thay vì gọi judge lần hai — cùng prompt, gọi lại chỉ thêm
+    dao động sampling và chi phí. Dòng chép có `reused_from = "judge.jsonl"`. Trả số dòng đã chép."""
+    if not judge_log.is_file():
+        return 0
+    done = set(load_rejudge(rejudge_log))
+    same = {
+        r["run_id"]
+        for r in (json.loads(x) for x in judge_log.read_text(encoding="utf-8").splitlines() if x)
+        if r.get("judge_prompt_hash") == prompt_hash and r.get("judge_called") and not r.get("run_error")
+    }
+    reasons = {
+        r["run_id"]: r.get("judge_reason")
+        for r in (json.loads(x) for x in judge_log.read_text(encoding="utf-8").splitlines() if x)
+    }
+    rows = []
+    with Session(engine) as s:
+        for run in s.exec(select(Run).where(Run.batch_id == batch_id)):
+            if run.run_id in done or run.run_id not in same or run.parse_error:
+                continue
+            if run.judge_pass is None:
+                continue
+            rows.append({
+                "run_id": run.run_id, "judge_prompt_hash": prompt_hash, "judge_called": True,
+                "judge_pass": run.judge_pass, "judge_model": run.judge_model,
+                "judge_reason": reasons.get(run.run_id), "judge_error": None,
+                "reused_from": "judge.jsonl",
+            })
+    if rows:
+        with rejudge_log.open("a", encoding="utf-8") as f:
+            for r in rows:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    return len(rows)
 
 
 def main() -> int:
@@ -90,6 +128,9 @@ def main() -> int:
             print(f"[{i}/{n}] judge · {spent:.2f} USD · {state['status']}", flush=True)
         return state["status"] != "stop"
 
+    seeded = _seed_current_judge(engine, args.batch_id, judge_log, rejudge_log, cfg.prompt_hash())
+    if seeded:
+        print(f"Dùng lại {seeded} kết quả judge gốc đã chấm bằng prompt hiện hành (không gọi lại).")
     started = _stamp()
     n = rejudge_runs(
         engine,
@@ -111,6 +152,7 @@ def main() -> int:
         "judge_prompt_hash": cfg.prompt_hash(),
         "max_tool_result_chars": cfg.max_tool_result_chars,
         "n_judged_this_session": n,
+        "n_reused_current_prompt": seeded,
         "started_at_utc": started,
         "finished_at_utc": _stamp(),
         "spent_usd": sum(spend_from_log(LOG, prices, run_ids=[run_id]).values()),
