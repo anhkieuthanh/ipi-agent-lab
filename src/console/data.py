@@ -876,7 +876,9 @@ def run_detail(cache: RunCache, run_id: str) -> dict[str, Any] | None:
     canaries = json.loads(run["run_canaries"] or "[]")
     steps = td.load_steps(store, run_id)
     step_out = step_views(steps, run["final_answer"], needles, canaries)
-    actions = demo.tool_actions(store, run_id, run["payload_id"]) if run["payload_id"] else []
+    actions = (
+        demo.tool_actions(store, run_id, run["payload_id"], canaries) if run["payload_id"] else []
+    )
     verdict = demo.verdict(run) if run["run_kind"] == "attack" else None
     info = {c: run[c] for c in run.index if c not in ("run_canaries",)}
     final = run["final_answer"]

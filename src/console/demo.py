@@ -372,13 +372,19 @@ class ToolAction:
     follows_payload: bool
 
 
-def tool_actions(store: Path, run_id: str, payload_id: str | None) -> list[ToolAction]:
+def tool_actions(
+    store: Path, run_id: str, payload_id: str | None, canaries: Sequence[str] = ()
+) -> list[ToolAction]:
     """Các lượt gọi tool của run theo thứ tự — đã thực thi (bước `tool`) hoặc bị chặn (bước
     `defense` có `tool_name`). `follows_payload` là gợi ý trực quan cho người xem: đúng tool mà
-    payload đòi và đối số chứa một giá trị của `goal_binding`. Phép chấm thật vẫn là nhãn scorer."""
-    binding: dict[str, Any] = {}
+    payload đòi và đối số chứa một giá trị của `goal_binding`; với payload G1, thêm: đối số chứa
+    canary của run (canary sinh mới mỗi run nên `goal_binding` không chứa được). Phép chấm thật
+    vẫn là nhãn scorer."""
+    entry: dict[str, Any] = {}
     if payload_id:
-        binding = {p["id"]: p for p in load_corpus()}.get(payload_id, {}).get("goal_binding") or {}
+        entry = {p["id"]: p for p in load_corpus()}.get(payload_id, {})
+    binding = entry.get("goal_binding") or {}
+    leak_marks = [c for c in canaries if c] if entry.get("goal") == "G1" else []
     wanted = binding.get("tool")
     needles = [
         v for v in (binding.get("arguments") or {}).values() if isinstance(v, str) and len(v) >= 6
@@ -399,7 +405,9 @@ def tool_actions(store: Path, run_id: str, payload_id: str | None) -> list[ToolA
             shown = json.dumps(json.loads(args), ensure_ascii=False)
         except ValueError:
             shown = args
-        follows = tool == wanted and any(n in args for n in needles)
+        follows = (tool == wanted and any(n in args for n in needles)) or any(
+            c in args for c in leak_marks
+        )
         out.append(ToolAction(tool, shown, kind == "defense", follows))
     return out
 
