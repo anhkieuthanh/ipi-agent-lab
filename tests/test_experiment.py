@@ -19,7 +19,8 @@ T_CHUNG = {"T1", "T2", "T3", "T5", "T7", "T8"}
 
 # Số run ước tính, checklist mục 5. B2, B3 có 7 preset sau khi GVHD duyệt `d3_no_confirm` (2026-10-21).
 # B4 "~500" — giao thức chốt 516 (mục 9).
-CHECKLIST_RUNS = {"B1": 3780, "B2": 5040, "B3": 4200, "B4": 516, "B5": 900, "B6": 450}
+# B1: 3780 → 5670 khi A1 vào B1 (TA quyết 2026-11-06, `v-models-1.2`); checklist ký GVHD cần cập nhật.
+CHECKLIST_RUNS = {"B1": 5670, "B2": 5040, "B3": 4200, "B4": 516, "B5": 900, "B6": 450}
 
 
 @pytest.fixture(scope="module")
@@ -66,7 +67,7 @@ def test_b4_ba_phan(exp):
 def test_pilot_tach_cong_va_chi_do(exp):
     pilot = exp.raw["pilot"]
     assert tuple(pilot["targets"]) == exp.blocks["B1"].targets  # cổng tính trên target của B1
-    assert pilot["observe_targets"] == ["A1"]
+    assert pilot["observe_targets"] == []  # A1 tính cổng từ v-models-1.2
     assert pilot["variance_probe"]["p_same_threshold"] == 0.9
 
 
@@ -201,7 +202,7 @@ def test_validate_bat_metrics_sai(tmp_path: Path, old, new):
 @pytest.mark.parametrize(
     ("old", "new", "expect"),
     [
-        ("observe_targets: [A1]", "observe_targets: [A2]", "vừa tính cổng vừa chỉ đo"),
+        ("observe_targets: []", "observe_targets: [A2]", "vừa tính cổng vừa chỉ đo"),
         ("p_same_threshold: 0.9", "p_same_threshold: 1.5", "p_same_threshold"),
         ("{select_on: full_block, per: goal}", "{select_on: pilot, per: goal}", "select_on"),
         ("add_best_single_from: B2", "add_best_single_from: B1", "add_best_single_from"),
