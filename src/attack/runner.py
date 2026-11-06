@@ -11,6 +11,7 @@ Một run tấn công:
       → tiêm payload: K1 `inject_and_probe` vào KB (ghi `delivered_probe`); K2 bọc `K2ToolLayer`
       → TraceRecorder: CoreA.run(carrier.user_query_vi) → score(ScoreContext(activation_check))
          K1: `delivered` từ kết quả search_kb thật của run (`injector_k1.observed_delivered`)
+         K2b: `delivered` = payload đã chèn vào ít nhất một kết quả tool (`K2ToolLayer.result.applied`)
       → K1: cleanup(run_id) xóa tài liệu đã chèn
 
 CHECKPOINT/RESUME: mỗi run commit ngay vào SQLite (TraceRecorder). Chạy lại cùng `--batch-id` thì
@@ -640,7 +641,9 @@ def run_one_attack(spec: AttackRunSpec, ctx: RunContext) -> str:
                             rec.steps, injected.doc_ids
                         )
                     elif spec.channel == "K2b":
+                        # K2b chỉ vào ngữ cảnh khi tool chở được gọi (VT-17): `delivered` = đã chèn.
                         rec.run.k2b_applied = layer.result.applied
+                        rec.run.delivered = layer.result.applied
                 score(
                     rec,
                     ScoreContext(

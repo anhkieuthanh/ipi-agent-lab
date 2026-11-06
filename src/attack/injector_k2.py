@@ -22,11 +22,12 @@ agent dùng NGUYÊN XI qua Protocol `{list_tools, call_tool}` (src/interfaces.py
 Chuỗi payload và điểm chở lấy TỪ `src/attack/payloads/render.py` (đã kiểm `max_payload_chars`) và
 `config/channel_render.yaml` — KHÔNG hard-code độ dài/vị trí/trường chở ở đây (quy tắc cứng #4).
 
-`delivered` TRÊN K2 LUÔN `True`
-------------------------------
-K2 không qua retriever: payload vào context bảo đảm (Y_TUONG_DU_AN.md — `D = N` ở K2a/K2b). Cờ
-`delivered` vẫn ghi để trace đồng nhất với K1, nhưng là hằng `True`, KHÔNG phải phép đo top-k. Nó
-không bao giờ đồng nghĩa "phòng thủ chặn" — việc phân định defense/model_refusal là của scorer.
+`delivered` TRÊN K2
+------------------
+K2a: payload nằm trong mô tả tool, vào context ở mọi lượt — `delivered` hằng `True`, `D = N`.
+K2b: payload chỉ vào context khi tool chở được gọi (VT-17). `result.delivered` ở đây vẫn là `True` lúc
+dựng lớp; runner ghi đè `runs.delivered = result.applied` sau khi run xong. Không phải phép đo top-k,
+và không bao giờ đồng nghĩa "phòng thủ chặn" — việc phân định defense/model_refusal là của scorer.
 
 TẠI SAO BỌC NGOÀI THAY VÌ SỬA REGISTRY
 --------------------------------------
@@ -76,7 +77,7 @@ class InjectionResult:
     target_tool: str
     payload_text: str
     rug_pull: bool = False
-    delivered: bool = True             # hằng True trên K2 (xem docstring module)
+    delivered: bool = True             # True lúc dựng; K2b runner ghi đè bằng `applied` (docstring module)
     applied: bool = False              # K2b đã thực chèn vào ít nhất một kết quả chưa (cho runner soi)
 
     def trace_fields(self) -> dict[str, Any]:

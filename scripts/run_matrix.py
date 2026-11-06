@@ -46,6 +46,7 @@ blind. Mỗi lúc chỉ một lô (`obs.worker.batch_lock`, chung khóa với `c
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import signal
 import sys
@@ -131,6 +132,7 @@ def main() -> int:
     dry.add_argument("--allow-dirty", action="store_true", help="cho chạy trên cây chưa commit")
     parser.add_argument("--workers", type=int, default=1, help="số tiến trình chạy song song")
     parser.add_argument("--shard", help=argparse.SUPPRESS)  # "i/N", do tiến trình mẹ truyền
+    parser.add_argument("--since-ts", help=argparse.SUPPRESS)  # mốc chi phí phiên, do mẹ truyền
     args = parser.parse_args()
     if args.workers < 1:
         parser.error("--workers phải ≥ 1")
@@ -304,11 +306,11 @@ def _run_shard(*, args, exp, corpus, carriers, specs, targets, calib, batch_id, 
         if stop.exists():
             print("DỪNG: có file STOP của lô.", flush=True)
             return EXIT_STOPPED
-        if guard.status(sum(spend_from_log(LOG, prices, run_ids=[batch_id]).values())) == "stop":
+        if guard.status(_spent(prices, batch_id, args.since_ts)) == "stop":
             print("DỪNG trước run: chi phí lô vượt 120% dự toán hoặc chạm hạn mức tổng.", flush=True)
             return EXIT_BUDGET
         run_one_attack(spec, ctx)
-        spent = sum(spend_from_log(LOG, prices, run_ids=[batch_id]).values())
+        spent = _spent(prices, batch_id, args.since_ts)
         print(
             f"[s{i} {k}/{len(todo)}] {spec.target_id} {spec.channel}·{spec.technique}·{spec.goal}"
             f" {spec.payload_id} r{spec.repeat_idx} · {spent:.2f} USD"
@@ -320,6 +322,7 @@ def _run_shard(*, args, exp, corpus, carriers, specs, targets, calib, batch_id, 
 
 def _run_batch(*, args, exp, corpus, carriers, specs, targets, calib, batch_id, batch_dir, store,
                runs_csv) -> int:
+    since = _log_ts()
     merged = merge_leftover_shards(store) if store.is_file() else []
     if merged:
         print(f"Đã gộp {len(merged)} shard còn sót của lần chạy trước vào {store.relative_to(ROOT)}.")
@@ -327,6 +330,11 @@ def _run_batch(*, args, exp, corpus, carriers, specs, targets, calib, batch_id, 
     done = done_specs(engine, batch_id)
     todo = [s for s in specs if s not in done]
     print(f"{batch_id}: {len(specs)} run theo kế hoạch, {len(done)} đã có, còn {len(todo)}")
+    plan_sha = _plan_sha(specs)
+    drift = _plan_drift(batch_dir, plan_sha, done, specs)
+    if drift:
+        print(f"Không chạy tiếp lô: {drift}")
+        return 2
 
     commit = _check_commit(args)
     if commit is None:
@@ -360,6 +368,9 @@ def _run_batch(*, args, exp, corpus, carriers, specs, targets, calib, batch_id, 
         "estimate_usd": args.estimate_usd,
         "workers": args.workers if parallel else 1,
         "started_at_utc": _stamp(),
+        "plan_sha256": plan_sha,
+        "spent_scope": "session",  # spent_usd chỉ tính phiên này, kể từ since_ts
+        "since_ts": since,
     }
     batch_dir.mkdir(parents=True, exist_ok=True)
     if calib:
@@ -374,7 +385,7 @@ def _run_batch(*, args, exp, corpus, carriers, specs, targets, calib, batch_id, 
     try:
         for i, spec in enumerate(todo, start=1):
             run_one_attack(spec, ctx)
-            spent = sum(spend_from_log(LOG, prices, run_ids=[batch_id]).values())
+            spent = _spent(prices, batch_id, since)
             status = guard.status(spent)
             print(
                 f"[{i}/{len(todo)}] {spec.target_id} {spec.channel}·{spec.technique}·{spec.goal}"
@@ -387,12 +398,49 @@ def _run_batch(*, args, exp, corpus, carriers, specs, targets, calib, batch_id, 
                 break
     finally:
         manifest["finished_at_utc"] = _stamp()
-        manifest["spent_usd"] = sum(spend_from_log(LOG, prices, run_ids=[batch_id]).values())
+        manifest["spent_usd"] = _spent(prices, batch_id, since)
         manifest["budget_status"] = status
         _append_manifest(batch_dir, manifest)
 
     print(f"  runs: {export_runs_csv(engine, batch_id, runs_csv).relative_to(ROOT)}")
     return 3 if status == "stop" else 0
+
+
+def _log_ts() -> str:
+    """Mốc thời gian cùng định dạng trường `ts` của logs/llm_client.jsonl."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _spent(prices, batch_id: str, since_ts: str | None) -> float:
+    """Chi phí của PHIÊN chạy này: chạy tiếp một lô thì không cộng chi phí các phiên trước vào ngân
+    sách phiên (`--estimate-usd` là dự toán cho phần còn lại)."""
+    return sum(spend_from_log(LOG, prices, run_ids=[batch_id], since_ts=since_ts).values())
+
+
+def _plan_sha(specs) -> str:
+    """Dấu của kế hoạch lô: sha256 của danh sách spec đã sắp xếp."""
+    lines = sorted(repr(s) for s in specs)  # AttackRunSpec là dataclass: repr tất định theo trường
+    return hashlib.sha256("\n".join(lines).encode("utf-8")).hexdigest()
+
+
+def _plan_drift(batch_dir: Path, plan_sha: str, done, specs) -> str | None:
+    """Lý do từ chối chạy tiếp khi kế hoạch đã đổi so với phiên trước (VT-20), None nếu khớp.
+
+    Kế hoạch đổi (corpus, carrier, preset hay tham số khối bị sửa giữa hai phiên) thì `done_specs`
+    không khớp kế hoạch mới: lô chạy lại run đã có và trộn hai mẫu. Hai dấu hiệu: run đã có nằm ngoài
+    kế hoạch hiện tại; `plan_sha256` của phiên trước khác phiên này."""
+    outside = len(set(done) - set(specs))
+    if outside:
+        return (f"{outside} run đã có không thuộc kế hoạch hiện tại — kế hoạch đã đổi giữa hai phiên. "
+                "Mở lô mới hoặc trả cấu hình/corpus về như phiên trước.")
+    path = batch_dir / "manifest.json"
+    if path.is_file():
+        prior = [m.get("plan_sha256") for m in json.loads(path.read_text(encoding="utf-8"))]
+        prior = [x for x in prior if x]
+        if prior and prior[-1] != plan_sha:
+            return (f"plan_sha256 phiên trước {prior[-1][:12]}… khác phiên này {plan_sha[:12]}… — "
+                    "kế hoạch đã đổi. Mở lô mới hoặc trả cấu hình/corpus về như phiên trước.")
+    return None
 
 
 def _append_manifest(batch_dir: Path, manifest: dict) -> None:
@@ -407,11 +455,13 @@ def _run_parallel(args, batch_id, batch_dir, store, runs_csv, manifest, prices, 
                   n_todo) -> int:
     n = args.workers
     engine.dispose()  # mẹ không ghi store trong lúc con chạy; gộp thay file store ở cuối
-    child_argv = [sys.executable, str(Path(__file__).resolve()), *sys.argv[1:], "--batch-id", batch_id]
+    since = manifest["since_ts"]
+    child_argv = [sys.executable, str(Path(__file__).resolve()), *sys.argv[1:], "--batch-id", batch_id,
+                  "--since-ts", since]
     print(f"{n} tiến trình con, {n_todo} run", flush=True)
     res = run_sharded(batch_id=batch_id, batch_dir=batch_dir, store=store, n=n,
                       child_argv=child_argv, cwd=ROOT, log_path=LOG, prices=prices, guard=guard,
-                      sweep=sweep_stale_run_dirs)
+                      sweep=sweep_stale_run_dirs, since_ts=since)
     if not res.save_errors:
         try:
             tmp = runs_csv.with_name(f"{runs_csv.name}.tmp")
@@ -420,7 +470,7 @@ def _run_parallel(args, batch_id, batch_dir, store, runs_csv, manifest, prices, 
         except Exception as e:  # noqa: BLE001
             res.save_errors.append(f"xuất runs.csv: {e!r}")
     try:
-        spent = sum(spend_from_log(LOG, prices, run_ids=[batch_id]).values())
+        spent = _spent(prices, batch_id, since)
     except Exception as e:  # noqa: BLE001
         spent = None
         res.save_errors.append(f"đọc chi phí: {e!r}")

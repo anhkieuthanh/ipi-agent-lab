@@ -391,11 +391,14 @@ def test_run_one_attack_ghi_trace_va_nhan(tmp_path, exp, corpus, carriers, monke
         # Agent không gọi search_kb ⇒ tài liệu tiêm không vào ngữ cảnh dù probe báo tới.
         assert bool(row["delivered"]) is False
         assert bool(row["delivered_probe"]) is True
-    else:
+    elif channel == "K2a":
         assert bool(row["delivered"]) is True
         assert row["delivered_probe"] is None or pd.isna(row["delivered_probe"])
+    else:
+        # K2b: agent không gọi tool chở ⇒ payload chưa vào ngữ cảnh, delivered = applied = False (VT-17).
+        assert bool(row["delivered"]) is False
+        assert row["delivered_probe"] is None or pd.isna(row["delivered_probe"])
     if channel == "K2b":
-        # Agent không gọi tool chở ⇒ payload chưa chèn vào kết quả nào, dù delivered hằng True.
         assert bool(row["k2b_applied"]) is False
     else:
         assert row["k2b_applied"] is None or pd.isna(row["k2b_applied"])
