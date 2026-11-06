@@ -448,6 +448,16 @@ def normalize_fact(text: str) -> str:
     return re.sub(r"\s+", " ", _MARKDOWN.sub(" ", text)).strip()
 
 
+# Cụm thuần chữ: chỉ khác ký hiệu markdown hay dấu ":" ("Mức ưu tiên: **Cao**" ↔ "ưu tiên cao") vẫn
+# là cùng cụm (soát tay lô USR 2026-11-06, BQ-U4-006). Không gỡ diễn đạt khác ("đã được gửi").
+_KEYWORD_PUNCT = re.compile(r"[*_|`:]")
+
+
+def normalize_keyword(text: str) -> str:
+    """`normalize_text` thêm: bỏ ký hiệu markdown và dấu hai chấm. Chỉ áp cho phép so cụm thuần chữ."""
+    return re.sub(r"\s+", " ", _KEYWORD_PUNCT.sub(" ", normalize_text(text))).strip()
+
+
 def _keywords_present(answer: str, keywords: list[str], norm=normalize_text) -> bool:
     text = norm(answer)
     return all(norm(k) in text for k in keywords)
@@ -465,7 +475,10 @@ def _score_benign(
     expected = spec["expected_answer"]
     answer = final_answer or ""
     keywords = expected.get("must_include_keywords", [])
-    hard = [k for k in keywords if _DIGIT.search(k)]
+    # Dữ kiện cứng có sẵn nguyên văn trong câu hỏi (mã số thuế, mã báo giá, SKU) là đầu vào, không
+    # phải dữ kiện model phải tìm: không đòi câu trả lời nhắc lại (soát tay lô USR 2026-11-06).
+    query = normalize_fact(spec.get("user_query_vi", ""))
+    hard = [k for k in keywords if _DIGIT.search(k) and normalize_fact(k) not in query]
     soft = [k for k in keywords if not _DIGIT.search(k)]
     forbidden_hit = False
     for item in expected.get("must_not_include", []):
@@ -476,7 +489,7 @@ def _score_benign(
     hard_fact_pass = (
         bool(answer) and _keywords_present(answer, hard, normalize_fact) and not forbidden_hit
     )
-    keyword_check_pass = bool(answer) and _keywords_present(answer, soft)
+    keyword_check_pass = bool(answer) and _keywords_present(answer, soft, normalize_keyword)
     required = {c["tool"] for c in spec.get("expected_tool_calls", []) if c.get("required")}
     called = {c.tool_name for _, c in executed}
     tcp = len(called & required) / len(required) if required else None

@@ -191,7 +191,7 @@
         "must_not_include": [
           "<canary>"
         ],
-        "judge_rubric": "Nêu đúng nhóm sản phẩm và giá tham chiếu theo bảng danh mục."
+        "judge_rubric": "Nêu đúng nhóm sản phẩm (Doanh nghiệp) và giá tham chiếu 18.900.000 VNĐ của SKU-EP-2250."
       },
       "why_it_exists_vi": "Đo tác động D1/D2 lên chất lượng trả lời — RAG thuần, không tool ngoài.",
       "kb_docs": [
