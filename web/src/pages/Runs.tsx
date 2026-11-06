@@ -17,6 +17,21 @@ export function RunsPage() {
   const q = sp.get("q") ?? "";
   const runKind = ["attack", "benign"].includes(sp.get("run_kind") ?? "") ? sp.get("run_kind")! : "";
   const outcome = sp.get("outcome") ?? "";
+  // Lọc sẵn khi đi từ trang Tấn công (bấm vào một ô / kỹ thuật / model).
+  const drill = {
+    channel: sp.getAll("channel"),
+    technique: sp.get("technique") ?? "",
+    goal: sp.get("goal") ?? "",
+    target: sp.get("target") ?? "",
+    blocked_by: sp.get("blocked_by") ?? "",
+  };
+  const drillChips = [
+    ...drill.channel.map((c) => ({ key: "channel", label: `${c} · ${CHANNEL_LABEL[c] ?? c}` })),
+    ...(drill.technique ? [{ key: "technique", label: drill.technique }] : []),
+    ...(drill.goal ? [{ key: "goal", label: `${drill.goal} · ${GOAL_LABEL[drill.goal] ?? ""}` }] : []),
+    ...(drill.target ? [{ key: "target", label: `Model ${drill.target}` }] : []),
+    ...(drill.blocked_by ? [{ key: "blocked_by", label: `Chặn bởi ${drill.blocked_by}` }] : []),
+  ];
   const requestedPage = Number(sp.get("page") ?? 1);
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage - 1 : 0;
   const [search, setSearch] = useState(q);
@@ -27,13 +42,29 @@ export function RunsPage() {
     Object.entries(next).forEach(([key, value]) => value ? n.set(key, value) : n.delete(key));
     setSp(n, { replace: resetPage });
   }
-  function clearFilters() { updateFilters({ q: "", run_kind: "", outcome: "" }); }
+  function clearFilters() {
+    const n = new URLSearchParams(sp);
+    ["q", "run_kind", "outcome", "page", "channel", "technique", "goal", "target", "blocked_by"].forEach((k) => n.delete(k));
+    setSp(n, { replace: true });
+  }
+  function dropDrill(key: string) {
+    const n = new URLSearchParams(sp);
+    n.delete(key);
+    n.delete("page");
+    setSp(n, { replace: true });
+  }
+  const anyFilter = !!(q || runKind || outcome || drillChips.length);
 
   const query = useQuery({
-    queryKey: ["runs", params, search, runKind, outcome, page], refetchInterval: 15_000,
+    queryKey: ["runs", params, search, runKind, outcome, page, drill], refetchInterval: 15_000,
     placeholderData: keepPreviousData,
     queryFn: () =>
-      api.runs({ ...params, q: search || undefined, run_kind: runKind || undefined, outcome: outcome || undefined, limit: PAGE, offset: page * PAGE }),
+      api.runs({
+        ...params, q: search || undefined, run_kind: runKind || undefined, outcome: outcome || undefined,
+        channel: drill.channel.length ? drill.channel : undefined, technique: drill.technique || undefined,
+        goal: drill.goal || undefined, target: drill.target || undefined, blocked_by: drill.blocked_by || undefined,
+        limit: PAGE, offset: page * PAGE,
+      }),
   });
 
   const data = query.data;
@@ -91,8 +122,23 @@ export function RunsPage() {
             ].filter((o) => !runKind || !o.value || o.value === "blocked" || (runKind === "attack" ? ["success", "failed"].includes(o.value) : ["pass", "fail"].includes(o.value)))}
             className="w-52"
           />
-          {(q || runKind || outcome) && <button className="filter-clear" onClick={clearFilters}>Xóa bộ lọc</button>}
+          {anyFilter && <button className="filter-clear" onClick={clearFilters}>Xóa bộ lọc</button>}
         </div>
+        {drillChips.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-5 py-3 text-[12.5px]">
+            <span className="text-slate-500">Lọc thêm:</span>
+            {drillChips.map((c, i) => (
+              <button
+                key={`${c.key}-${i}`}
+                onClick={() => dropDrill(c.key)}
+                className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-slate-700 hover:bg-slate-200"
+                title="Bỏ bộ lọc này"
+              >
+                {c.label} <span aria-hidden className="text-slate-400">×</span>
+              </button>
+            ))}
+          </div>
+        )}
       </Card>
 
       {query.isLoading && <Loading />}
@@ -101,7 +147,7 @@ export function RunsPage() {
         <Card>
           <div className="result-summary" role="status">{int(data.total)} run khớp bộ lọc{query.isFetching || q !== search ? " · đang cập nhật…" : ""}</div>
           {data.items.length === 0 ? (
-            <Empty title="Không có run nào khớp" icon={<ListTree size={20} />} action={(q || runKind || outcome) ? <button className="filter-clear" onClick={clearFilters}>Xóa bộ lọc</button> : undefined}>Thử thay đổi bộ lọc hoặc chọn lô khác ở thanh phạm vi.</Empty>
+            <Empty title="Không có run nào khớp" icon={<ListTree size={20} />} action={anyFilter ? <button className="filter-clear" onClick={clearFilters}>Xóa bộ lọc</button> : undefined}>Thử thay đổi bộ lọc hoặc chọn lô khác ở thanh phạm vi.</Empty>
           ) : (
             <>
               <div className="max-w-full overflow-x-auto"><table className="table-base" aria-busy={query.isFetching || q !== search}><caption className="sr-only">Danh sách run trong phạm vi đã chọn</caption>

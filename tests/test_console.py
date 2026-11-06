@@ -335,3 +335,47 @@ def test_user_query_from_locked_data_files():
     assert attack["id"] == "CT-01" and attack["text"]
     assert data.user_query({"run_kind": "attack", "carrier_task_id": None}) is None
     assert data.user_query({"run_kind": "attack", "carrier_task_id": "CT-99"}) is None
+
+
+def test_vai_tro_lo_theo_tien_to():
+    assert data.batch_role("attack-B1-x") == "official"
+    assert data.batch_role("calib-r0-B1-x") == "calibration"
+    assert data.batch_role("probe-coupling-x") == "probe"
+    assert data.batch_role("pilot-x") == "pilot"
+    assert data.batch_role("dryrun-x") == "dryrun"
+    assert data.batch_role("demo-x") == "demo"
+
+
+def test_tom_tat_tan_cong_theo_rq(client):
+    d = client.get("/api/attack/summary").json()
+    assert d["n"] == 3  # chỉ lô thực nghiệm, chỉ run tấn công
+    k1 = {r["channel"]: r for r in d["rq1"]}["K1"]
+    assert k1["asr"]["x"] == 1 and k1["asr"]["n"] == 3
+    assert k1["delivery"]["x"] == 3 and k1["asr_cond"]["x"] == 1
+    assert k1["outcomes"] == {"success": 1, "failed": 1, "model_refusal": 0, "defense": 1,
+                              "harness": 0, "excluded": 0}
+    (cell,) = d["rq2"]
+    assert (cell["channel"], cell["technique"]) == ("K1", "T2")
+    assert cell["by_target"]["A3"]["n"] == 3
+    assert d["scope"]["roles"] == {"official": 3} and d["scope"]["mixed"] == []
+    assert d["headline"] == []  # ô dưới MIN_N_HEADLINE, chỉ một model: không kết luận
+
+
+def test_tom_tat_canh_bao_khi_gop_vai_tro(tmp_path, monkeypatch):
+    store = tmp_path / "trace.sqlite"
+    eng = open_store(store)
+    _run(eng, "x1", "attack-B1-x")
+    _run(eng, "x2", "calib-r0-B1-x", outcome="failed")
+    eng.dispose()
+    monkeypatch.setattr(data.td, "discover_stores", lambda **kw: [store])
+    monkeypatch.setattr(console_app, "cache", data.RunCache())
+    d = TestClient(console_app.app).get("/api/attack/summary").json()
+    assert "role" in d["scope"]["mixed"]
+
+
+def test_danh_sach_run_loc_theo_o(client):
+    r = client.get("/api/runs", params={"kind": "experiment", "run_kind": "attack",
+                                        "channel": ["K1", "K2a"], "technique": "T2",
+                                        "target": "A3"}).json()
+    assert r["total"] == 3
+    assert client.get("/api/runs", params={"technique": "T9"}).json()["total"] == 0

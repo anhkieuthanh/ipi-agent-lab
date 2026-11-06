@@ -294,6 +294,39 @@ export class ApiError extends Error {
   }
 }
 
+/** Tỉ lệ kèm Wilson 95%: x/n. */
+export type CiRate = { x: number; n: number; p: number | null; lo: number | null; hi: number | null };
+export type Outcomes = {
+  success: number;
+  failed: number;
+  model_refusal: number;
+  defense: number;
+  harness: number;
+  excluded: number;
+};
+export type ScopeProfile = {
+  n_batches: number;
+  roles: Record<string, number>;
+  prompt_variants: Record<string, number>;
+  harness_versions: Record<string, number>;
+  targets: Record<string, number>;
+  presets: Record<string, number>;
+  mixed: ("role" | "prompt_variant" | "harness_version")[];
+};
+export type Headline =
+  | { kind: "top_cell"; channel: string; technique: string; asr: CiRate }
+  | { kind: "k1_vs_k2"; k1: CiRate; k2: CiRate; k1_delivery: CiRate; k1_cond: CiRate }
+  | { kind: "worst_model"; target_id: string; asr: CiRate };
+export type AttackSummary = {
+  scope: ScopeProfile;
+  n: number;
+  outcomes?: Outcomes;
+  rq1: { channel: string; members: string[]; asr: CiRate; delivery: CiRate; asr_cond: CiRate; outcomes: Outcomes }[];
+  rq2: { channel: string; technique: string; asr: CiRate; by_target: Record<string, CiRate>; outcomes: Outcomes }[];
+  targets: { target_id: string; asr: CiRate; outcomes: Outcomes }[];
+  headline: Headline[];
+};
+
 export type Params = Record<string, string | number | string[] | undefined | null>;
 
 export function qs(params: Params = {}): string {
@@ -363,6 +396,7 @@ export const api = {
   gates: () => request<Gate[]>("/api/gates"),
   batches: (p: Params = {}) => request<Batch[]>(`/api/batches${qs(p)}`),
   asr: (p: Params) => request<{ by: string[]; rows: AsrRow[] }>(`/api/attack/asr${qs(p)}`),
+  attackSummary: (p: Params) => request<AttackSummary>(`/api/attack/summary${qs(p)}`),
   defensePoints: (p: Params) =>
     request<{ by: string; points: DefensePoint[] }>(`/api/defense/points${qs(p)}`),
   presets: () => request<Preset[]>("/api/defense/presets"),

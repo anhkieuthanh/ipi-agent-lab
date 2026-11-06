@@ -14,6 +14,8 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import threading
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
 
@@ -31,11 +33,20 @@ load_dotenv(data.ROOT / ".env")
 WEB_DIST = data.ROOT / "web" / "dist"
 ALLOWED_HOSTS = {"localhost", "127.0.0.1", "[::1]", "testserver"}
 
+@asynccontextmanager
+async def _lifespan(_: FastAPI):
+    """Nạp trace store ngay khi khởi động (lần đầu vài giây: dò biến thể prompt theo commit), để
+    request đầu tiên của giao diện không phải chờ."""
+    threading.Thread(target=lambda: cache.runs(), name="warm-cache", daemon=True).start()
+    yield
+
+
 app = FastAPI(title="IPI Guard Console", version="1.0.0", docs_url="/api/docs",
-              openapi_url="/api/openapi.json")
+              openapi_url="/api/openapi.json", lifespan=_lifespan)
 cache = data.RunCache()
 jobs = JobManager()
 monitor = services.Monitor()
+
 
 Batches = Annotated[list[str] | None, Query(alias="batch")]
 Kinds = Annotated[list[str] | None, Query(alias="kind")]
@@ -127,6 +138,17 @@ def attack_asr(
     return {"by": cols, "rows": data.asr(runs, cols)}
 
 
+@app.get("/api/attack/summary")
+def attack_summary(
+    batch: Batches = None,
+    kind: Kinds = None,
+    target: str | None = None,
+    goal: str | None = None,
+) -> dict:
+    """Trang Tấn công theo RQ1/RQ2: K1 so với K2, kỹ thuật theo kênh và model, kết cục, kết luận."""
+    return data.attack_summary(scoped(batch, kind, target_id=target, goal=goal))
+
+
 @app.get("/api/defense/points")
 def defense_points(batch: Batches = None, kind: Kinds = None, by: str = "target_id") -> dict:
     if by not in {"target_id", "goal", "channel"}:
@@ -152,12 +174,17 @@ def runs(
     outcome: str | None = None,
     target: str | None = None,
     preset: str | None = None,
+    channel: Annotated[list[str] | None, Query()] = None,
+    technique: str | None = None,
+    goal: str | None = None,
+    blocked_by: str | None = None,
     q: str | None = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> dict:
     df = data.select(cache.runs(), batches=batch, kinds=kind or data.KINDS, run_kind=run_kind,
-                     outcome=outcome, target_id=target, preset=preset)
+                     outcome=outcome, target_id=target, preset=preset, channel=channel,
+                     technique=technique, goal=goal, blocked_by=blocked_by)
     return data.run_list(df, q=q, limit=limit, offset=offset)
 
 

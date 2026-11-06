@@ -80,6 +80,15 @@ export const DEFENSE_LABEL: Record<string, string> = {
   D4: "Egress Filter",
 };
 
+export const ROLE_LABEL: Record<string, string> = {
+  official: "chính thức",
+  calibration: "hiệu chỉnh",
+  probe: "thăm dò",
+  pilot: "pilot",
+  dryrun: "chạy thử",
+  demo: "demo",
+};
+
 export const KIND_LABEL: Record<string, string> = {
   experiment: "Thực nghiệm",
   dryrun: "Chạy thử",

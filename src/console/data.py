@@ -42,7 +42,7 @@ GOALS = ("G1", "G2", "G3")
 
 #: Cột của bảng run gửi cho giao diện (bỏ cột dài: final_answer, defense_config, run_canaries).
 RUN_COLUMNS = (
-    "run_id", "batch_id", "kind", "run_kind", "created_at", "target_id", "model_id", "preset",
+    "run_id", "batch_id", "kind", "role", "prompt_variant", "run_kind", "created_at", "target_id", "model_id", "preset",
     "enabled", "channel", "technique", "goal", "carrier_task_id", "benign_query_id", "payload_id",
     "attacker_mode", "outcome", "blocked_by", "delivered", "g1_hit", "g2_hit", "g3_hit",
     "g2_severity", "parse_error", "n_steps", "tokens_in", "tokens_out", "latency_ms",
@@ -85,6 +85,49 @@ def batch_kind(batch_id: str) -> str:
     return "experiment"
 
 
+#: Vai trò của lô theo tiền tố — lô hiệu chỉnh, thăm dò và pilot đổi điều kiện giữa các vòng nên
+#: không so thẳng được với lô chính thức của khối.
+ROLE_LABEL = {
+    "official": "Chính thức",
+    "calibration": "Hiệu chỉnh",
+    "probe": "Thăm dò",
+    "pilot": "Pilot",
+    "dryrun": "Chạy thử",
+    "demo": "Demo",
+}
+
+
+def batch_role(batch_id: str) -> str:
+    for prefix, role in (("demo-", "demo"), ("dryrun-", "dryrun"), ("calib-", "calibration"),
+                         ("probe-", "probe"), ("pilot-", "pilot")):
+        if batch_id.startswith(prefix):
+            return role
+    return "official"
+
+
+#: (env_hash, harness_version) → biến thể; một cặp không đổi kết quả nên giữ suốt tiến trình.
+_VARIANT_CACHE: dict[tuple, str | None] = {}
+
+
+def _prompt_variants(df: pd.DataFrame) -> pd.Series:
+    """Biến thể system prompt của từng run, dò ngược từ (env_hash, harness_version)."""
+    pairs = df[["env_hash", "harness_version"]].drop_duplicates()
+    lookup = _VARIANT_CACHE
+    for env_hash, harness in pairs.itertuples(index=False):
+        if (env_hash, harness) in lookup:
+            continue
+        try:
+            lookup[(env_hash, harness)] = (
+                demo.variant_of(env_hash, harness) if env_hash and harness else None
+            )
+        except Exception:  # noqa: BLE001 — thiếu file prompt cũ không được làm hỏng cả bảng
+            lookup[(env_hash, harness)] = None
+    return pd.Series(
+        [lookup.get((e, h)) for e, h in zip(df["env_hash"], df["harness_version"], strict=True)],
+        index=df.index, dtype=object,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Nạp run — cache theo mtime của store
 # ---------------------------------------------------------------------------
@@ -123,6 +166,8 @@ class RunCache:
                 df = td.load_runs(list(stores.values()), presets) if stores else pd.DataFrame()
                 if not df.empty:
                     df["kind"] = df["batch_id"].map(batch_kind)
+                    df["role"] = df["batch_id"].map(batch_role)
+                    df["prompt_variant"] = _prompt_variants(df)
                 self._df, self._paths, self._key = df, stores, key
             return self._df
 
@@ -214,6 +259,7 @@ def batches(cache: RunCache, kinds: Sequence[str] = KINDS) -> list[dict[str, Any
             "batch_id": batch_id,
             "store": store,
             "kind": batch_kind(batch_id),
+            "role": batch_role(batch_id),
             "run_kinds": sorted(cell["run_kind"].unique()),
             "targets": sorted(cell["target_id"].dropna().unique()),
             "presets": sorted(cell["preset"].dropna().unique()),
@@ -376,6 +422,142 @@ def overview(cache: RunCache, runs: pd.DataFrame) -> dict[str, Any]:
 
 def asr(runs: pd.DataFrame, by: Sequence[str]) -> list[dict[str, Any]]:
     return records(td.asr_table(runs, by))
+
+
+# Trang Tấn công theo câu hỏi nghiên cứu: RQ1 (K1 so với K2), RQ2 (kỹ thuật mạnh nhất từng kênh, ổn
+# định khi đổi model), kết cục từng ô. Cùng định nghĩa với `td.asr_table`: chỉ run tấn công, mẫu số
+# loại `parse_error`.
+
+#: Ô cần ít nhất chừng này run hợp lệ mới được nêu ở kết luận tự sinh.
+MIN_N_HEADLINE = 20
+
+
+def _ci_rate(x: int, n: int) -> dict[str, Any]:
+    lo, hi = td.wilson(x, n) if n else (None, None)
+    return {"x": x, "n": n, "p": x / n if n else None, "lo": lo, "hi": hi}
+
+
+def _outcomes(df: pd.DataFrame) -> dict[str, int]:
+    clean_df = df[~df["parse_error"]]
+    blocked = clean_df[clean_df["outcome"] == "blocked"]
+    return {
+        "success": int((clean_df["outcome"] == "success").sum()),
+        "failed": int((clean_df["outcome"] == "failed").sum()),
+        "model_refusal": int((blocked["blocked_by"] == "model_refusal").sum()),
+        "defense": int((blocked["blocked_by"] == "defense").sum()),
+        "harness": int((blocked["blocked_by"] == "harness").sum()),
+        "excluded": int(df["parse_error"].sum()),
+    }
+
+
+def _scope_profile(runs: pd.DataFrame) -> dict[str, Any]:
+    """Phạm vi đang gộp những điều kiện nào — để cảnh báo khi số liệu lẫn điều kiện khác nhau."""
+    def counts(col: str) -> dict[str, int]:
+        if col not in runs or runs.empty:
+            return {}
+        vc = runs[col].astype(object).where(runs[col].notna(), "∅").astype(str).value_counts()
+        return {str(k): int(v) for k, v in vc.items()}
+
+    roles = counts("role")
+    # Biến thể chỉ dò được khi template ở commit đó còn khớp; run cũ ra ∅ — không tính là khác biệt.
+    variants = counts("prompt_variant")
+    harness = counts("harness_version")
+    mixed = []
+    if len(roles) > 1:
+        mixed.append("role")
+    if len([v for v in variants if v != "∅"]) > 1:
+        mixed.append("prompt_variant")
+    if len(harness) > 1:
+        mixed.append("harness_version")
+    return {
+        "n_batches": int(runs["batch_id"].nunique()) if not runs.empty else 0,
+        "roles": roles,
+        "prompt_variants": variants,
+        "harness_versions": harness,
+        "targets": counts("target_id"),
+        "presets": counts("preset"),
+        "mixed": mixed,
+    }
+
+
+def attack_summary(runs: pd.DataFrame) -> dict[str, Any]:
+    attack = runs[runs["run_kind"] == "attack"] if not runs.empty else runs
+    profile = _scope_profile(attack)
+    if attack.empty:
+        return {"scope": profile, "n": 0, "rq1": [], "rq2": [], "targets": [], "headline": []}
+    clean_df = attack[~attack["parse_error"]]
+    targets = sorted(clean_df["target_id"].dropna().astype(str).unique())
+
+    # RQ1 — K1 với K2 (gộp K2a+K2b) và từng phân kênh. K2 vào ngữ cảnh chắc chắn; K1 phải được
+    # truy hồi trước, nên đọc kèm tỉ lệ tới được agent và ASR có điều kiện.
+    groups = [("K1", ["K1"]), ("K2", ["K2a", "K2b"]), ("K2a", ["K2a"]), ("K2b", ["K2b"])]
+    rq1 = []
+    for label, chans in groups:
+        cell = clean_df[clean_df["channel"].isin(chans)]
+        if cell.empty:
+            continue
+        success = cell["outcome"] == "success"
+        delivered = cell["delivered"].fillna(0).astype(bool)
+        n, d = len(cell), int(delivered.sum())
+        rq1.append({
+            "channel": label,
+            "members": chans,
+            "asr": _ci_rate(int(success.sum()), n),
+            "delivery": _ci_rate(d, n),
+            "asr_cond": _ci_rate(int((success & delivered).sum()), d),
+            "outcomes": _outcomes(attack[attack["channel"].isin(chans)]),
+        })
+
+    # RQ2 — kỹ thuật trên từng kênh, kèm ASR theo từng model để xem độ ổn định.
+    rq2 = []
+    for (channel, technique), cell in attack.groupby(["channel", "technique"], sort=True):
+        c = cell[~cell["parse_error"]]
+        by_target = {}
+        for t in targets:
+            ct = c[c["target_id"] == t]
+            if len(ct):
+                by_target[t] = _ci_rate(int((ct["outcome"] == "success").sum()), len(ct))
+        rq2.append({
+            "channel": channel,
+            "technique": technique,
+            "asr": _ci_rate(int((c["outcome"] == "success").sum()), len(c)),
+            "by_target": by_target,
+            "outcomes": _outcomes(cell),
+        })
+
+    by_model = []
+    for t in targets:
+        ct = clean_df[clean_df["target_id"] == t]
+        by_model.append({"target_id": t, "asr": _ci_rate(int((ct["outcome"] == "success").sum()),
+                                                         len(ct)),
+                         "outcomes": _outcomes(attack[attack["target_id"] == t])})
+
+    # Kết luận tự sinh — chỉ từ ô đủ mẫu, xếp theo cận dưới CI để ô nhỏ may mắn không đứng đầu.
+    headline = []
+    ranked = sorted((r for r in rq2 if r["asr"]["n"] >= MIN_N_HEADLINE and r["asr"]["x"] > 0),
+                    key=lambda r: r["asr"]["lo"] or 0, reverse=True)
+    if ranked:
+        top = ranked[0]
+        headline.append({"kind": "top_cell", "channel": top["channel"],
+                         "technique": top["technique"], "asr": top["asr"]})
+    k = {r["channel"]: r for r in rq1}
+    if "K1" in k and "K2" in k:
+        headline.append({"kind": "k1_vs_k2", "k1": k["K1"]["asr"], "k2": k["K2"]["asr"],
+                         "k1_delivery": k["K1"]["delivery"], "k1_cond": k["K1"]["asr_cond"]})
+    exposed = [m for m in by_model if m["asr"]["n"] >= MIN_N_HEADLINE]
+    if len(exposed) > 1:
+        worst = max(exposed, key=lambda m: m["asr"]["p"] or 0)
+        headline.append({"kind": "worst_model", "target_id": worst["target_id"],
+                         "asr": worst["asr"]})
+    return clean({
+        "scope": profile,
+        "n": int(len(attack)),
+        "outcomes": _outcomes(attack),
+        "rq1": rq1,
+        "rq2": rq2,
+        "targets": by_model,
+        "headline": headline,
+    })
 
 
 def defense_points(runs: pd.DataFrame, by: str = "target_id") -> list[dict[str, Any]]:
