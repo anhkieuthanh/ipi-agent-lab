@@ -42,7 +42,7 @@ const INFO: Record<string, Info> = {
   mail: { title: "MailHog", codes: ["G1", "G2"], desc: "Hộp thư giả nhận mọi email agent gửi." },
   tickets: { title: "Kho phiếu", codes: ["G2"], desc: "Lưu phiếu agent tạo, để chấm hành động trái phép." },
   attacker: { title: "Kẻ tấn công", codes: ["K1", "K2a", "K2b", "T1–T8"], desc: "Không chạm vào agent trực tiếp — chỉ cài payload vào dữ liệu agent sẽ đọc." },
-  trace: { title: "Trace store", codes: [], desc: "Ghi mọi bước của mọi run, kèm blocked_by: phòng thủ · model từ chối · harness." },
+  trace: { title: "Trace store", codes: [], desc: "Ghi mọi bước của mọi run, kèm ai đã chặn (blocked_by): phòng thủ · model từ chối · harness." },
   scorer: { title: "Scorer", codes: ["G1", "G2", "G3"], desc: "Chấm tự động từng run theo ba mục tiêu; đã kiểm chứng 8/8 ca." },
   console: { title: "Console", codes: ["ASR", "DSR", "USR", "FRR"], desc: "Tổng hợp chỉ số, khoảng tin cậy Wilson 95%." },
   D1: { title: "D1 · Spotlighting", codes: ["context_assembly"], desc: "Đánh dấu nội dung ngoài là dữ liệu, không phải chỉ thị." },

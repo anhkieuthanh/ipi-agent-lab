@@ -99,7 +99,7 @@ export const NODES: Box[] = [
   { id: "mail", x: DATA_X, y: ROWS[3], w: DATA_W, h: ROW_H, title: "MailHog", sub: "bồn G1/G2 · email", tone: "sink", icon: Inbox },
   { id: "tickets", x: DATA_X, y: ROWS[4], w: DATA_W, h: ROW_H, title: "Kho phiếu", sub: "bồn G2 · ghi nội bộ", tone: "sink", icon: ClipboardList },
   { id: "attacker", x: 740, y: 18, w: 300, h: 52, title: "Kẻ tấn công", sub: "cài payload T1–T8 vào dữ liệu", tone: "attack", icon: Skull },
-  { id: "trace", x: AGENT_X, y: 540, w: AGENT_W, h: 54, title: "Trace store", sub: "mọi bước · blocked_by", tone: "measure", icon: History },
+  { id: "trace", x: AGENT_X, y: 540, w: AGENT_W, h: 54, title: "Trace store", sub: "mọi bước · ai đã chặn", tone: "measure", icon: History },
   { id: "scorer", x: TOOL_X, y: 540, w: TOOL_W, h: 54, title: "Scorer", sub: "chấm G1 · G2 · G3", tone: "measure", icon: ClipboardCheck },
   { id: "console", x: DATA_X, y: 540, w: DATA_W, h: 54, title: "Console", sub: "ASR · DSR · USR · FRR", tone: "measure", icon: LayoutDashboard },
 ];

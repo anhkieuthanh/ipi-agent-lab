@@ -149,6 +149,12 @@ def attack_summary(
     return data.attack_summary(scoped(batch, kind, target_id=target, goal=goal))
 
 
+@app.get("/api/defense/summary")
+def defense_summary(batch: Batches = None, kind: Kinds = None) -> dict:
+    """Trang Phòng thủ theo RQ3/RQ4: nền theo model, hiệu quả từng cấu hình, tổ hợp so với đơn lẻ."""
+    return data.defense_summary(scoped(batch, kind))
+
+
 @app.get("/api/defense/points")
 def defense_points(batch: Batches = None, kind: Kinds = None, by: str = "target_id") -> dict:
     if by not in {"target_id", "goal", "channel"}:
@@ -186,6 +192,24 @@ def runs(
                      outcome=outcome, target_id=target, preset=preset, channel=channel,
                      technique=technique, goal=goal, blocked_by=blocked_by)
     return data.run_list(df, q=q, limit=limit, offset=offset)
+
+
+@app.get("/api/runs/by-payload")
+def runs_by_payload(
+    batch: Batches = None,
+    kind: Kinds = None,
+    target: str | None = None,
+    preset: str | None = None,
+    channel: Annotated[list[str] | None, Query()] = None,
+    technique: str | None = None,
+    goal: str | None = None,
+    q: str | None = None,
+) -> dict:
+    df = data.select(cache.runs(), batches=batch, kinds=kind or data.KINDS, target_id=target,
+                     preset=preset, channel=channel, technique=technique, goal=goal)
+    if q and not df.empty:
+        df = df[df["payload_id"].astype(str).str.lower().str.contains(q.lower(), regex=False)]
+    return data.payload_groups(df)
 
 
 @app.get("/api/runs/{run_id}")

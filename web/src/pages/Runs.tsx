@@ -1,11 +1,13 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import clsx from "clsx";
 import { ListTree, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import { Badge, Card, Empty, ErrorBox, Loading, Mono, OutcomeBadge, PageHeader, Select } from "@/components/ui";
-import { api } from "@/lib/api";
-import { CHANNEL_LABEL, GOAL_LABEL, int, presetLabel, when } from "@/lib/format";
+import { OutcomeBar, OutcomeLegend, Rate } from "@/components/Analysis";
+import { Badge, Card, Empty, ErrorBox, Loading, Mono, OutcomeBadge, PageHeader, Segmented, Select } from "@/components/ui";
+import { api, type Params } from "@/lib/api";
+import { BLOCKED_LABEL, CHANNEL_LABEL, GOAL_LABEL, TECHNIQUE_LABEL, int, presetLabel, when } from "@/lib/format";
 import { KindIcon } from "@/lib/icons";
 import { useScope } from "@/lib/scope";
 
@@ -17,6 +19,7 @@ export function RunsPage() {
   const q = sp.get("q") ?? "";
   const runKind = ["attack", "benign"].includes(sp.get("run_kind") ?? "") ? sp.get("run_kind")! : "";
   const outcome = sp.get("outcome") ?? "";
+  const view: "run" | "payload" = sp.get("view") === "payload" ? "payload" : "run";
   // Lọc sẵn khi đi từ trang Tấn công (bấm vào một ô / kỹ thuật / model).
   const drill = {
     channel: sp.getAll("channel"),
@@ -30,7 +33,7 @@ export function RunsPage() {
     ...(drill.technique ? [{ key: "technique", label: drill.technique }] : []),
     ...(drill.goal ? [{ key: "goal", label: `${drill.goal} · ${GOAL_LABEL[drill.goal] ?? ""}` }] : []),
     ...(drill.target ? [{ key: "target", label: `Model ${drill.target}` }] : []),
-    ...(drill.blocked_by ? [{ key: "blocked_by", label: `Chặn bởi ${drill.blocked_by}` }] : []),
+    ...(drill.blocked_by ? [{ key: "blocked_by", label: `Chặn bởi ${BLOCKED_LABEL[drill.blocked_by] ?? drill.blocked_by}` }] : []),
   ];
   const requestedPage = Number(sp.get("page") ?? 1);
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage - 1 : 0;
@@ -39,7 +42,12 @@ export function RunsPage() {
   function updateFilters(next: Record<string, string>, resetPage = true) {
     const n = new URLSearchParams(sp);
     if (resetPage) n.delete("page");
-    Object.entries(next).forEach(([key, value]) => value ? n.set(key, value) : n.delete(key));
+    Object.entries(next).forEach(([key, value]) => {
+      n.delete(key);
+      if (!value) return;
+      if (key === "channel") value.split(",").forEach((v) => n.append(key, v));
+      else n.set(key, value);
+    });
     setSp(n, { replace: resetPage });
   }
   function clearFilters() {
@@ -57,6 +65,7 @@ export function RunsPage() {
 
   const query = useQuery({
     queryKey: ["runs", params, search, runKind, outcome, page, drill], refetchInterval: 15_000,
+    enabled: view === "run",
     placeholderData: keepPreviousData,
     queryFn: () =>
       api.runs({
@@ -122,7 +131,51 @@ export function RunsPage() {
             ].filter((o) => !runKind || !o.value || o.value === "blocked" || (runKind === "attack" ? ["success", "failed"].includes(o.value) : ["pass", "fail"].includes(o.value)))}
             className="w-52"
           />
+          {(!runKind || runKind === "attack") && (
+            <>
+              <Select
+                label="Kênh"
+                value={drill.channel.length === 1 ? drill.channel[0] : drill.channel.length ? "__multi" : ""}
+                onChange={(v) => updateFilters({ channel: v === "__multi" ? drill.channel.join(",") : v })}
+                options={[
+                  { value: "", label: "Tất cả" },
+                  ...(drill.channel.length > 1 ? [{ value: "__multi", label: drill.channel.join(" + ") }] : []),
+                  ...Object.entries(CHANNEL_LABEL).map(([k, l]) => ({ value: k, label: `${k} · ${l}` })),
+                ]}
+                className="w-48"
+              />
+              <Select
+                label="Kỹ thuật"
+                value={drill.technique}
+                onChange={(v) => updateFilters({ technique: v })}
+                options={[{ value: "", label: "Tất cả" }, ...Object.entries(TECHNIQUE_LABEL).map(([k, l]) => ({ value: k, label: `${k} · ${l}` }))]}
+                className="w-52"
+              />
+              <Select
+                label="Mục tiêu"
+                value={drill.goal}
+                onChange={(v) => updateFilters({ goal: v })}
+                options={[{ value: "", label: "Tất cả" }, ...Object.entries(GOAL_LABEL).map(([k, l]) => ({ value: k, label: `${k} · ${l}` }))]}
+                className="w-48"
+              />
+            </>
+          )}
+          <Select
+            label="Model"
+            value={drill.target}
+            onChange={(v) => updateFilters({ target: v })}
+            options={[{ value: "", label: "Tất cả" }, { value: "A1", label: "A1" }, { value: "A2", label: "A2" }, { value: "A3", label: "A3" }]}
+            className="w-28"
+          />
           {anyFilter && <button className="filter-clear" onClick={clearFilters}>Xóa bộ lọc</button>}
+          <div className="ml-auto">
+            <span className="label mb-1 block">Cách xem</span>
+            <Segmented
+              value={view}
+              onChange={(v) => updateFilters({ view: v === "run" ? "" : v }, false)}
+              options={[{ value: "run", label: "Từng run" }, { value: "payload", label: "Theo payload" }]}
+            />
+          </div>
         </div>
         {drillChips.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-5 py-3 text-[12.5px]">
@@ -141,9 +194,10 @@ export function RunsPage() {
         )}
       </Card>
 
-      {query.isLoading && <Loading />}
-      {query.error && <ErrorBox error={query.error} />}
-      {data && (
+      {view === "payload" && <PayloadView params={params} drill={drill} search={search} />}
+      {view === "run" && query.isLoading && <Loading />}
+      {view === "run" && query.error && <ErrorBox error={query.error} />}
+      {view === "run" && data && (
         <Card>
           <div className="result-summary" role="status">{int(data.total)} run khớp bộ lọc{query.isFetching || q !== search ? " · đang cập nhật…" : ""}</div>
           {data.items.length === 0 ? (
@@ -192,6 +246,11 @@ export function RunsPage() {
                         ) : (
                           <Mono>{r.benign_query_id}</Mono>
                         )}
+                        {r.user_query && (
+                          <div className="mt-0.5 max-w-[420px] truncate text-[12px] italic text-slate-400" title={r.user_query}>
+                            “{r.user_query}”
+                          </div>
+                        )}
                       </td>
                       <td className="text-[13px]">
                         <div className="text-slate-700">{r.target_id}</div>
@@ -236,5 +295,94 @@ export function RunsPage() {
         </Card>
       )}
     </>
+  );
+}
+
+type Drill = { channel: string[]; technique: string; goal: string; target: string; blocked_by: string };
+
+/** Run tấn công gom theo payload: cùng một payload thắng ở model nào. */
+function PayloadView({ params, drill, search }: { params: Params; drill: Drill; search: string }) {
+  const [sp] = useSearchParams();
+  const q = useQuery({
+    queryKey: ["runs-by-payload", params, drill, search],
+    placeholderData: keepPreviousData,
+    queryFn: () =>
+      api.runsByPayload({
+        ...params, q: search || undefined,
+        channel: drill.channel.length ? drill.channel : undefined, technique: drill.technique || undefined,
+        goal: drill.goal || undefined, target: drill.target || undefined,
+      }),
+  });
+  if (q.isLoading) return <Loading />;
+  if (q.error) return <ErrorBox error={q.error} />;
+  const d = q.data!;
+  const toRuns = (pid: string, target?: string) => {
+    const n = new URLSearchParams(sp);
+    n.delete("view");
+    n.delete("page");
+    n.set("run_kind", "attack");
+    n.set("q", pid);
+    if (target) n.set("target", target);
+    return `/runs?${n}`;
+  };
+  return (
+    <Card>
+      <div className="result-summary" role="status">
+        {int(d.total)} payload · xếp theo số lần tấn công thành công{d.total > d.items.length ? ` · hiện ${d.items.length} đầu` : ""}
+      </div>
+      {d.items.length === 0 ? (
+        <Empty title="Không có payload nào khớp" icon={<ListTree size={20} />}>Thử bỏ bớt bộ lọc.</Empty>
+      ) : (
+        <>
+          <div className="max-w-full overflow-x-auto">
+            <table className="table-base">
+              <thead>
+                <tr>
+                  <th>Payload</th>
+                  <th>Kênh · kỹ thuật · mục tiêu</th>
+                  <th className="w-52">Tỉ lệ thành công</th>
+                  {d.targets.map((t) => <th key={t} className="text-center">{t}</th>)}
+                  <th className="w-40">Kết cục</th>
+                </tr>
+              </thead>
+              <tbody>
+                {d.items.map((r) => (
+                  <tr key={r.payload_id} className="hover:bg-slate-50/70">
+                    <td>
+                      <Link to={toRuns(r.payload_id)} className="font-mono text-[12.5px] font-medium text-brand-600 hover:underline">
+                        {r.payload_id}
+                      </Link>
+                    </td>
+                    <td className="text-[12.5px] text-slate-600">
+                      {r.channels.join(", ")} · {r.technique} · {r.goal} {r.goal ? GOAL_LABEL[r.goal] : ""}
+                    </td>
+                    <td><Rate r={r.asr} /></td>
+                    {d.targets.map((t) => {
+                      const v = r.by_target[t];
+                      return (
+                        <td key={t} className="text-center">
+                          {v ? (
+                            <Link
+                              to={toRuns(r.payload_id, t)}
+                              title={`${v.x}/${v.n}`}
+                              className={clsx("num inline-block min-w-12 rounded px-1.5 py-0.5 text-[12.5px]",
+                                v.x > 0 ? "bg-attack-50 font-semibold text-attack-700" : "text-slate-400")}
+                            >
+                              {v.x}/{v.n}
+                            </Link>
+                          ) : <span className="text-slate-300">—</span>}
+                        </td>
+                      );
+                    })}
+                    <td><OutcomeBar o={r.outcomes} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="border-t border-slate-100 px-5 py-3"><OutcomeLegend /></div>
+        </>
+      )}
+    </Card>
   );
 }

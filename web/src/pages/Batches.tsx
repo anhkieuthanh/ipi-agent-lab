@@ -16,7 +16,7 @@ function Result({ b }: { b: Batch }) {
     return (
       <div className="w-36">
         <div className="mb-1 flex justify-between text-[12.5px]">
-          <span className="text-slate-500">ASR</span>
+          <span className="text-slate-500" title="ASR">Tấn công đạt</span>
           <span className="num font-medium text-slate-800">
             {pct(p, 0)} · {b.n_success}/{b.n_attack}
           </span>
@@ -29,7 +29,7 @@ function Result({ b }: { b: Batch }) {
   return (
     <div className="w-36">
       <div className="mb-1 flex justify-between text-[12.5px]">
-        <span className="text-slate-500">USR</span>
+        <span className="text-slate-500" title="USR">Lành tính đạt</span>
         <span className="num font-medium text-slate-800">
           {pct(p, 0)} · {b.n_pass}/{b.n_benign}
         </span>

@@ -19,6 +19,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import type { RunDetail, Step } from "@/lib/api";
+import { BLOCKED_LABEL } from "@/lib/format";
 
 import { type DefenseCode, HookLegend, type PointStatus, SystemMap, hookStatusFromSteps } from "./SystemMap";
 
@@ -141,7 +142,7 @@ export function buildFrames(d: RunDetail, codes: string[]): Frame[] {
     tone: "verdict",
     active: ["loop", "to-trace", "trace", "trace-scorer", "scorer", "scorer-console", "console"],
     status: hookStatusFromSteps(d.steps, codes),
-    notes: d.run.blocked_by ? [`blocked_by = ${d.run.blocked_by}`] : [],
+    notes: d.run.blocked_by ? [`Bị chặn bởi: ${BLOCKED_LABEL[d.run.blocked_by] ?? d.run.blocked_by}`] : [],
   });
   return frames;
 }

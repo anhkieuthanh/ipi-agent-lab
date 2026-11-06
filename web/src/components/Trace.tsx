@@ -220,7 +220,7 @@ export function TraceLegend() {
       <span className="flex items-center gap-1.5">
         <span className="h-2.5 w-2.5 rounded-sm bg-canary-500" /> Canary
       </span>
-      <span className="text-slate-400">· viền đậm = bước quyết định blocked_by</span>
+      <span className="text-slate-400">· viền đậm = bước khiến run bị chặn</span>
     </div>
   );
 }

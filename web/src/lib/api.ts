@@ -103,6 +103,8 @@ export type Preset = { name: string; codes: string[]; params: Record<string, unk
 
 export type RunRow = {
   run_id: string;
+  /** Câu nhân viên gửi agent (tra theo mã, xem /api/runs/{id}). */
+  user_query?: string | null;
   batch_id: string;
   kind: string;
   run_kind: "attack" | "benign";
@@ -327,6 +329,33 @@ export type AttackSummary = {
   headline: Headline[];
 };
 
+export type DefenseCell = { asr: CiRate; usr: CiRate; frr: CiRate; outcomes: Outcomes | null };
+export type DefenseSummary = {
+  scope: ScopeProfile;
+  presets: Preset[];
+  measured: string[];
+  has_defense_runs: boolean;
+  baseline: ({ target_id: string } & DefenseCell)[];
+  effects: ({ target_id: string; preset: string; d_asr: number | null; d_usr: number | null; asr_cut: number | null } & DefenseCell)[];
+  rq3: { target_id: string; all: DefenseCell; best_single: string; single: DefenseCell; gain: number; usr_cost: number | null }[];
+  frr_by_task: { preset: string; carrier_task_id: string | null; frr: CiRate }[];
+};
+
+export type PayloadGroups = {
+  total: number;
+  targets: string[];
+  items: {
+    payload_id: string;
+    channels: string[];
+    technique: string | null;
+    goal: string | null;
+    lang: string | null;
+    asr: CiRate;
+    by_target: Record<string, { x: number; n: number }>;
+    outcomes: Outcomes;
+  }[];
+};
+
 export type Params = Record<string, string | number | string[] | undefined | null>;
 
 export function qs(params: Params = {}): string {
@@ -396,11 +425,13 @@ export const api = {
   gates: () => request<Gate[]>("/api/gates"),
   batches: (p: Params = {}) => request<Batch[]>(`/api/batches${qs(p)}`),
   asr: (p: Params) => request<{ by: string[]; rows: AsrRow[] }>(`/api/attack/asr${qs(p)}`),
+  defenseSummary: (p: Params) => request<DefenseSummary>(`/api/defense/summary${qs(p)}`),
   attackSummary: (p: Params) => request<AttackSummary>(`/api/attack/summary${qs(p)}`),
   defensePoints: (p: Params) =>
     request<{ by: string; points: DefensePoint[] }>(`/api/defense/points${qs(p)}`),
   presets: () => request<Preset[]>("/api/defense/presets"),
   runs: (p: Params) => request<{ total: number; items: RunRow[] }>(`/api/runs${qs(p)}`),
+  runsByPayload: (p: Params) => request<PayloadGroups>(`/api/runs/by-payload${qs(p)}`),
   run: (id: string) => request<RunDetail>(`/api/runs/${encodeURIComponent(id)}`),
   config: () => request<ConfigSummary>("/api/config"),
   scenarios: () => request<Scenario[]>("/api/demo/scenarios"),

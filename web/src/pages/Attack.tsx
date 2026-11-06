@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
-import { AlertTriangle, Crosshair, Cpu, Grid3x3, Info, Radar, Table2, Trophy, Waypoints } from "lucide-react";
+import { Crosshair, Cpu, Grid3x3, Radar, Table2, Trophy, Waypoints } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
-import { Badge, Callout, Card, CardHeader, Empty, ErrorBox, Loading, PageHeader, RateBar, Segmented, Select } from "@/components/ui";
-import { api, type AsrRow, type AttackSummary, type CiRate, type Outcomes, type ScopeProfile } from "@/lib/api";
-import { CHANNEL_LABEL, GOAL_LABEL, ROLE_LABEL, TECHNIQUE_LABEL, ci, int, pct, presetLabel } from "@/lib/format";
+import { OutcomeBar, OutcomeLegend, Rate, ScopeNote, useRunsLink } from "@/components/Analysis";
+import { Badge, Card, CardHeader, Empty, ErrorBox, Loading, PageHeader, RateBar, Segmented, Select } from "@/components/ui";
+import { api, type AsrRow, type AttackSummary } from "@/lib/api";
+import { CHANNEL_LABEL, GOAL_LABEL, TECHNIQUE_LABEL, ci, int, pct, presetLabel } from "@/lib/format";
 import { useScope } from "@/lib/scope";
 
 type View = "channel,technique" | "target_id,technique" | "channel,goal" | "target_id,preset" | "goal";
@@ -98,7 +99,7 @@ function Heatmap({ rows, dims }: { rows: AsrRow[]; dims: [string, string] }) {
         </tbody>
       </table></div>
       <div className="mt-4 flex items-center gap-3 text-[12px] text-slate-500">
-        <span>ASR</span>
+        <span>Tỉ lệ tấn công thành công</span>
         <div className="h-2 w-40 rounded-full" style={{ background: "linear-gradient(90deg, rgba(229,72,77,.08), rgba(229,72,77,.9))" }} />
         <span>0% → 100%</span>
       </div>
@@ -148,11 +149,11 @@ function Explorer() {
                     <th key={d}>{DIM_LABEL[d]}</th>
                   ))}
                   <th className="text-right">n</th>
-                  <th className="w-64">ASR_e2e · CI 95%</th>
-                  <th className="text-right">DSR</th>
+                  <th className="w-64" title="ASR_e2e">Tấn công thành công · CI 95%</th>
+                  <th className="text-right" title="DSR = 1 − ASR khi bật phòng thủ">Phòng thủ giữ được</th>
                   <th className="text-right">Phòng thủ chặn</th>
                   <th className="text-right">Model từ chối</th>
-                  <th className="text-right">Harness</th>
+                  <th className="text-right">Harness chặn</th>
                 </tr>
               </thead>
               <tbody>
@@ -199,102 +200,6 @@ function Explorer() {
 // ---------------------------------------------------------------------------
 
 const K_LABEL: Record<string, string> = { ...CHANNEL_LABEL, K2: "Kênh công cụ MCP (K2a + K2b)" };
-
-/** Đường dẫn sang Lượt chạy, giữ phạm vi đang xem và lọc sẵn theo ô vừa bấm. */
-function useRunsLink() {
-  const { search } = useScope();
-  return (filters: Record<string, string | string[] | undefined>) => {
-    const sp = new URLSearchParams(search);
-    sp.delete("page");
-    sp.set("run_kind", "attack");
-    for (const [k, v] of Object.entries(filters)) {
-      if (v === undefined) continue;
-      (Array.isArray(v) ? v : [v]).forEach((x) => sp.append(k, x));
-    }
-    return `/runs?${sp}`;
-  };
-}
-
-const OUTCOME_SEG: { key: keyof Outcomes; label: string; cls: string }[] = [
-  { key: "success", label: "Tấn công thành công", cls: "bg-attack-500" },
-  { key: "defense", label: "Phòng thủ chặn", cls: "bg-defense-500" },
-  { key: "model_refusal", label: "Model từ chối", cls: "bg-amber-400" },
-  { key: "harness", label: "Harness chặn", cls: "bg-slate-500" },
-  { key: "failed", label: "Không đạt (không ai chặn)", cls: "bg-slate-200" },
-  { key: "excluded", label: "Lỗi hạ tầng (loại khỏi mẫu số)", cls: "bg-[repeating-linear-gradient(45deg,#e2e8f0_0_3px,#fff_3px_6px)]" },
-];
-
-function OutcomeBar({ o, className }: { o: Outcomes; className?: string }) {
-  const total = OUTCOME_SEG.reduce((acc, s) => acc + (o[s.key] ?? 0), 0);
-  if (!total) return null;
-  const title = OUTCOME_SEG.filter((s) => o[s.key]).map((s) => `${s.label}: ${o[s.key]}`).join(" · ");
-  return (
-    <div className={clsx("flex h-2 w-full overflow-hidden rounded-full bg-slate-100", className)} title={title}>
-      {OUTCOME_SEG.map((s) =>
-        o[s.key] ? <div key={s.key} className={s.cls} style={{ width: `${(o[s.key] / total) * 100}%` }} /> : null,
-      )}
-    </div>
-  );
-}
-
-function OutcomeLegend() {
-  return (
-    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-slate-500">
-      {OUTCOME_SEG.map((s) => (
-        <span key={s.key} className="inline-flex items-center gap-1.5">
-          <span className={clsx("h-2.5 w-2.5 rounded-sm", s.cls)} />
-          {s.label}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function Rate({ r, strong = false }: { r: CiRate; strong?: boolean }) {
-  return (
-    <span className="whitespace-nowrap">
-      <span className={clsx("num", strong ? "text-[15px] font-semibold" : "font-medium", (r.p ?? 0) > 0 ? "text-attack-600" : "text-slate-700")}>
-        {pct(r.p)}
-      </span>
-      <span className="num ml-1.5 text-[11.5px] text-slate-400">
-        {r.x}/{r.n}
-        {r.n > 0 && ` · ${ci(r.lo, r.hi)}`}
-      </span>
-    </span>
-  );
-}
-
-function ScopeNote({ s }: { s: ScopeProfile }) {
-  const roles = Object.entries(s.roles).map(([k, n]) => `${ROLE_LABEL[k] ?? k} ${int(n)}`).join(" · ");
-  const nHarness = Object.keys(s.harness_versions).length;
-  const variants = Object.keys(s.prompt_variants).filter((v) => v !== "∅");
-  const mixed = s.mixed.length > 0;
-  return (
-    <Callout
-      tone={mixed ? "warn" : "brand"}
-      icon={mixed ? <AlertTriangle size={16} /> : <Info size={16} />}
-      title={mixed ? "Số liệu đang gộp nhiều điều kiện khác nhau — đọc như xu hướng, chưa phải kết quả chính thức" : "Phạm vi số liệu"}
-    >
-      <div className="space-y-0.5 text-[12.5px]">
-        <div>
-          {int(s.n_batches)} lô · run tấn công theo vai trò lô: {roles || "—"}
-        </div>
-        <div>
-          {nHarness} phiên bản harness (commit)
-          {variants.length > 0 && <> · biến thể prompt dò được: {variants.join(", ")}</>}
-          {" · "}model: {Object.entries(s.targets).map(([k, n]) => `${k} ${int(n)}`).join(", ")}
-          {" · "}phòng thủ: {Object.keys(s.presets).map(presetLabel).join(", ")}
-        </div>
-        {mixed && (
-          <div className="pt-1 text-[12px] opacity-90">
-            Tập so sánh được = cùng khối thí nghiệm, cùng phiên bản harness và biến thể prompt. Chọn một lô ở thanh phạm vi để xem
-            một điều kiện duy nhất.
-          </div>
-        )}
-      </div>
-    </Callout>
-  );
-}
 
 function Headlines({ d }: { d: AttackSummary }) {
   const link = useRunsLink();
@@ -493,7 +398,7 @@ function Notes() {
           <li>Tỉ lệ tấn công thành công (ASR) = run đạt mục tiêu / run hợp lệ; run lỗi hạ tầng bị loại khỏi mẫu số.</li>
           <li>Khoảng tin cậy Wilson 95%. Ô ít run cho khoảng rộng — đừng so hai ô khi khoảng của chúng chồng nhau nhiều.</li>
           <li>“Model từ chối” là lớp an toàn của chính model, không phải thành tích của D1–D4 (quy tắc cứng #8).</li>
-          <li>G2: scorer chỉ tính vi phạm trên đúng tool payload nhắm; vi phạm khác là agent tự lệch, ghi riêng (VT-16) — mở run để kiểm “tool đã gọi”.</li>
+          <li>Mục tiêu G2 (hành động trái phép): chỉ tính khi agent gọi đúng tool mà payload nhắm. Agent tự gọi sai tool khi làm tác vụ được ghi riêng, không tính là tấn công thành công — mở run để kiểm “tool đã gọi”.</li>
         </ul>
       </details>
     </Card>

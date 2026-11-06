@@ -589,6 +589,120 @@ def defense_points(runs: pd.DataFrame, by: str = "target_id") -> list[dict[str, 
     return out
 
 
+# Trang Phòng thủ theo RQ3/RQ4: mỗi cấu hình so với "tắt phòng thủ" của CÙNG model — giảm bao nhiêu
+# tấn công, mất bao nhiêu hữu dụng; tổ hợp D1–D4 so với cơ chế đơn lẻ tốt nhất; chặn nhầm theo tác vụ.
+
+_SINGLE_PRESETS = ("d1_only", "d2_only", "d3_only", "d4_only")
+
+
+def _benign_task_map() -> dict[str, str]:
+    """`benign_query_id` → `carrier_task_id` từ data/benign_queries.json (bộ đo đã khóa, chỉ đọc)."""
+    path = ROOT / "data" / "benign_queries.json"
+    out: dict[str, str] = {}
+
+    def walk(node: Any) -> None:
+        if isinstance(node, dict):
+            if isinstance(node.get("id"), str) and isinstance(node.get("carrier_task_id"), str):
+                out[node["id"]] = node["carrier_task_id"]
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    if path.is_file():
+        walk(json.loads(path.read_text(encoding="utf-8")))
+    return out
+
+
+def _defense_cell(attack: pd.DataFrame, benign: pd.DataFrame) -> dict[str, Any]:
+    a = attack[~attack["parse_error"]]
+    b = benign[~benign["parse_error"]]
+    frr_x = int(((b["outcome"] == "blocked") & (b["blocked_by"] == "defense")).sum())
+    return {
+        "asr": _ci_rate(int((a["outcome"] == "success").sum()), len(a)),
+        "usr": _ci_rate(int((b["outcome"] == "pass").sum()), len(b)),
+        "frr": _ci_rate(frr_x, len(b)),
+        "outcomes": _outcomes(attack) if len(attack) else None,
+    }
+
+
+def _delta(cur: dict[str, Any], base: dict[str, Any] | None, key: str) -> float | None:
+    if base is None or cur[key]["p"] is None or base[key]["p"] is None:
+        return None
+    return cur[key]["p"] - base[key]["p"]
+
+
+def defense_summary(runs: pd.DataFrame) -> dict[str, Any]:
+    profile = _scope_profile(runs)
+    configured = presets()
+    if runs.empty:
+        return {"scope": profile, "presets": configured, "measured": [], "baseline": [],
+                "effects": [], "rq3": [], "frr_by_task": [], "has_defense_runs": False}
+    targets = sorted(runs["target_id"].dropna().astype(str).unique())
+    measured = sorted(runs["preset"].dropna().astype(str).unique())
+    cells: dict[tuple[str, str], dict[str, Any]] = {}
+    for (target, preset), cell in runs.groupby(["target_id", "preset"], sort=True):
+        cells[(str(target), str(preset))] = _defense_cell(
+            cell[cell["run_kind"] == "attack"], cell[cell["run_kind"] == "benign"]
+        )
+
+    baseline = [{"target_id": t, **cells[(t, "off")]} for t in targets if (t, "off") in cells]
+    effects = []
+    for (t, preset), c in sorted(cells.items()):
+        if preset == "off":
+            continue
+        base = cells.get((t, "off"))
+        asr_off = base["asr"]["p"] if base else None
+        effects.append({
+            "target_id": t,
+            "preset": preset,
+            **c,
+            "d_asr": _delta(c, base, "asr"),
+            "d_usr": _delta(c, base, "usr"),
+            # Phần tấn công bị cắt so với lúc tắt phòng thủ (1 − ASR_bật / ASR_tắt).
+            "asr_cut": (1 - c["asr"]["p"] / asr_off)
+            if asr_off and c["asr"]["p"] is not None else None,
+        })
+
+    # RQ3 — tổ hợp `all` so với cơ chế đơn lẻ có ASR thấp nhất, cùng model.
+    rq3 = []
+    for t in targets:
+        combo = cells.get((t, "all"))
+        singles = [(p, cells[(t, p)]) for p in _SINGLE_PRESETS
+                   if (t, p) in cells and cells[(t, p)]["asr"]["p"] is not None]
+        if combo is None or not singles or combo["asr"]["p"] is None:
+            continue
+        best_name, best = min(singles, key=lambda x: x[1]["asr"]["p"])
+        rq3.append({
+            "target_id": t, "all": combo, "best_single": best_name, "single": best,
+            "gain": best["asr"]["p"] - combo["asr"]["p"],
+            "usr_cost": (combo["usr"]["p"] - best["usr"]["p"])
+            if combo["usr"]["p"] is not None and best["usr"]["p"] is not None else None,
+        })
+
+    # RQ4 — chặn nhầm theo tác vụ chở (giả thuyết H4: D3 chặn nhầm ở CT-05, CT-06).
+    task_of = _benign_task_map()
+    benign = runs[(runs["run_kind"] == "benign") & (runs["preset"] != "off") & ~runs["parse_error"]]
+    frr_by_task = []
+    if not benign.empty:
+        benign = benign.assign(task=benign["benign_query_id"].map(task_of))
+        for (preset, task), cell in benign.groupby(["preset", "task"], sort=True):
+            x = int(((cell["outcome"] == "blocked") & (cell["blocked_by"] == "defense")).sum())
+            frr_by_task.append({"preset": preset, "carrier_task_id": task,
+                                "frr": _ci_rate(x, len(cell))})
+    return clean({
+        "scope": profile,
+        "presets": configured,
+        "measured": measured,
+        "has_defense_runs": any(p != "off" for p in measured),
+        "baseline": baseline,
+        "effects": effects,
+        "rq3": rq3,
+        "frr_by_task": frr_by_task,
+    })
+
+
 def presets() -> list[dict[str, Any]]:
     cfg = td.load_defenses()
     out = []
@@ -617,7 +731,41 @@ def run_list(
         runs = runs[mask.any(axis=1)]
     total = len(runs)
     page = runs.sort_values("created_at", ascending=False).iloc[offset: offset + limit]
-    return {"total": total, "items": records(page, RUN_COLUMNS)}
+    items = records(page, RUN_COLUMNS)
+    queries = _queries()
+    for it in items:
+        qid = it.get("benign_query_id") if it.get("run_kind") == "benign" else None
+        it["user_query"] = queries.get(str(qid or it.get("carrier_task_id")))
+    return {"total": total, "items": items}
+
+
+def payload_groups(runs: pd.DataFrame, *, limit: int = 200) -> dict[str, Any]:
+    """Run tấn công gom theo payload: payload nào thắng ở model nào. Xếp theo số lần thành công."""
+    attack = runs[runs["run_kind"] == "attack"] if not runs.empty else runs
+    if attack.empty:
+        return {"total": 0, "targets": [], "items": []}
+    targets = sorted(attack["target_id"].dropna().astype(str).unique())
+    items = []
+    for pid, cell in attack.groupby("payload_id", sort=False):
+        c = cell[~cell["parse_error"]]
+        first = cell.iloc[0]
+        by_target = {}
+        for t in targets:
+            ct = c[c["target_id"] == t]
+            if len(ct):
+                by_target[t] = {"x": int((ct["outcome"] == "success").sum()), "n": len(ct)}
+        items.append({
+            "payload_id": pid,
+            "channels": sorted(cell["channel"].dropna().astype(str).unique()),
+            "technique": first["technique"],
+            "goal": first["goal"],
+            "lang": first["lang"],
+            "asr": _ci_rate(int((c["outcome"] == "success").sum()), len(c)),
+            "by_target": by_target,
+            "outcomes": _outcomes(cell),
+        })
+    items.sort(key=lambda r: (r["asr"]["x"], r["asr"]["p"] or 0), reverse=True)
+    return clean({"total": len(items), "targets": targets, "items": items[:limit]})
 
 
 def _spans(text: str | None, needles: Sequence[str], canaries: Sequence[str]) -> list[dict]:

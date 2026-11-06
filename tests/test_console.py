@@ -379,3 +379,23 @@ def test_danh_sach_run_loc_theo_o(client):
                                         "target": "A3"}).json()
     assert r["total"] == 3
     assert client.get("/api/runs", params={"technique": "T9"}).json()["total"] == 0
+
+
+def test_tom_tat_phong_thu_so_voi_tat(client):
+    d = client.get("/api/defense/summary").json()
+    assert d["has_defense_runs"] is True and set(d["measured"]) == {"off", "all"}
+    (base,) = d["baseline"]
+    assert base["target_id"] == "A3" and base["asr"]["x"] == 1 and base["asr"]["n"] == 2
+    (eff,) = d["effects"]
+    assert eff["preset"] == "all" and eff["asr"]["p"] == 0.0
+    assert eff["d_asr"] == -0.5 and eff["asr_cut"] == 1.0
+    assert eff["outcomes"]["defense"] == 1
+
+
+def test_danh_sach_run_kem_cau_hoi_va_nhom_payload(client):
+    r = client.get("/api/runs", params={"run_kind": "attack", "kind": "experiment"}).json()
+    assert all(it["user_query"] for it in r["items"])  # CT-05 có trong carrier_tasks.json
+    g = client.get("/api/runs/by-payload", params={"kind": "experiment"}).json()
+    (item,) = g["items"]
+    assert item["payload_id"] == "P-T2-G1-VI-001" and item["asr"]["x"] == 1
+    assert item["by_target"]["A3"] == {"x": 1, "n": 3}
