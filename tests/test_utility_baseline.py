@@ -132,12 +132,12 @@ def _run(ctx: RunContext, run_id: str) -> Run:
 # ---------------------------------------------------------------------------
 
 
-def test_config_utility_baseline_360_run():
+def test_config_utility_baseline_540_run():
     exp = load_experiment()
     unit = exp.unit(UNIT_ID)
-    assert unit.targets == ("A1", "A2") and unit.presets == ("off",)
+    assert unit.targets == ("A1", "A2", "A3") and unit.presets == ("off",)
     assert unit.repeats == 3 and unit.run_kind == "benign"
-    assert exp.planned_runs(UNIT_ID) == 360
+    assert exp.planned_runs(UNIT_ID) == 540
 
 
 def test_plan_runs_tat_dinh_lap_ngoai_xao_trong():

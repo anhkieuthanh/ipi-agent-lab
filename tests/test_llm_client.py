@@ -359,7 +359,7 @@ def test_reasoning_extracted_when_model_returns_it(tmp_path):
 
 
 def test_reasoning_effort_tu_config_gui_kem_request(tmp_path):
-    # A1/A2 đặt reasoning_effort: medium trong models.yaml; A3 không đặt thì không gửi khóa.
+    # A1–A3 đặt reasoning_effort: medium trong models.yaml; khối không đặt (sandbox) thì không gửi khóa.
     seen = []
 
     def handler(request):
@@ -367,7 +367,11 @@ def test_reasoning_effort_tu_config_gui_kem_request(tmp_path):
         return httpx.Response(200, json=_completion(model="glm-5.2", content="ok"))
 
     http = httpx.Client(transport=httpx.MockTransport(handler))
-    _client(tmp_path, http, target="A2").chat([{"role": "user", "content": "hi"}])
     _client(tmp_path, http, target="A3").chat([{"role": "user", "content": "hi"}])
+    sandbox = LLMClient(
+        target_id="sandbox", config_path=CONFIG_PATH, log_path=None, http_client=http,
+        sandbox_channel="gateway", sandbox_model="qwen-4-plus",
+    )
+    sandbox.chat([{"role": "user", "content": "hi"}])
     assert seen[0]["reasoning_effort"] == "medium"
     assert "reasoning_effort" not in seen[1]

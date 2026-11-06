@@ -259,7 +259,7 @@ def test_validate_bat_task_type_sai(tmp_path: Path, old, new, expect):
 
 def test_utility_baseline_ngoai_sau_khoi_va_khong_chan(exp):
     assert "utility_baseline" not in exp.blocks
-    assert exp.planned_runs("utility_baseline") == 360
+    assert exp.planned_runs("utility_baseline") == 540
     assert unresolved(exp, "utility_baseline") == []
     with pytest.raises(KeyError):
         exp.unit("B9")

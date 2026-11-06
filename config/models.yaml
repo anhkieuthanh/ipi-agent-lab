@@ -57,6 +57,8 @@ targets:
     model_env: TARGET_MODEL_A3
     # Đổi từ glm-5.3-flash (timeout/429 liên tục trên gateway, 2026-11-03), GVHD duyệt 2026-11-03.
     model_id: deepseek-v4.1-flash-1017
+    # Suy luận mức medium như A1/A2 (TA quyết 2026-11-06).
+    reasoning_effort: medium
     # Giá TẠM: dùng lại đơn giá glm-5.3-flash, chưa tra dashboard gateway cho model mới — chi phí A3
     # trong log/manifest có thể lệch giá thật cho tới khi thay bằng giá dashboard.
     pricing_usd_per_mtok: {input: 0.60, output: 1.80}
