@@ -44,6 +44,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_PATH = REPO_ROOT / "config" / "experiment.yaml"
 
 RQS = tuple(f"RQ{i}" for i in range(1, 7))
+#: Cách bốc payload của một ô. `all`: mọi payload khớp ô. `contextual_first`: ô có payload
+#: `contextual: true` chỉ bốc lớp đó (cách B của `v-attack-1.1`, GVHD duyệt 2026-11-09).
+CORPUS_SELECTIONS = ("all", "contextual_first")
 #: Khóa gốc mang một lượt chạy ngoài sáu khối, cùng trường như một phần của khối (không `purpose`).
 EXTRA_UNITS = ("utility_baseline",)
 
@@ -55,6 +58,7 @@ _TOP_KEYS = frozenset(
         "fixed",
         "pilot",
         "calibration",
+        "corpus_selection",
         "run_order",
         "stopping",
         "refusal",
@@ -123,6 +127,10 @@ class Experiment:
     @property
     def fixed(self) -> dict[str, Any]:
         return self.raw["fixed"]
+
+    @property
+    def corpus_selection(self) -> str:
+        return self.raw.get("corpus_selection") or "all"
 
     def contract_path(self, name: str) -> Path:
         return REPO_ROOT / self.raw["contracts"][name]
@@ -259,6 +267,9 @@ def validate(exp: Experiment) -> list[str]:
             date.fromisoformat(str(fixed["reference_date"]))
         except ValueError:
             problems.append("fixed.reference_date không đúng dạng YYYY-MM-DD")
+
+    if exp.corpus_selection not in CORPUS_SELECTIONS:
+        problems.append(f"corpus_selection: '{exp.corpus_selection}' ngoài {CORPUS_SELECTIONS}")
 
     pilot = raw.get("pilot") or {}
     gate = pilot.get("asr_gate")

@@ -126,6 +126,34 @@ def _covered_cells(corpus, carriers):
     return out
 
 
+def test_cach_b_o_co_payload_gan_ngu_canh_chi_boc_lop_do(corpus):
+    cells = {
+        (ch, (p.get("technique") or {}).get("code"), p.get("goal"))
+        for p in corpus if p.get("contextual") for ch in p.get("channels") or []
+    }
+    assert cells
+    for ch, t, g in cells:
+        every = R.select_payloads(corpus, ch, t, g)
+        picked = R.select_payloads(corpus, ch, t, g, selection="contextual_first")
+        assert picked and all(p.get("contextual") for p in picked)
+        assert {p["id"] for p in picked} < {p["id"] for p in every} or all(
+            p.get("contextual") for p in every
+        )
+    # Ô không có payload gắn ngữ cảnh: giữ payload cũ.
+    plain = [
+        p for p in corpus
+        if not p.get("contextual") and (
+            ch := (p.get("channels") or [None])[0],
+            (p.get("technique") or {}).get("code"), p.get("goal"),
+        ) not in cells
+    ]
+    p0 = plain[0]
+    key = (p0["channels"][0], p0["technique"]["code"], p0["goal"])
+    assert R.select_payloads(corpus, *key, selection="contextual_first") == R.select_payloads(
+        corpus, *key
+    )
+
+
 def test_plan_block_so_run_khop_cong_thuc(exp, corpus, carriers):
     # Một ô đã phủ chắc chắn: K1·T1·G2. Giới hạn vào nó, 1 target, n=4 ⇒ đúng 4 run.
     specs = R.plan_block(
@@ -196,7 +224,9 @@ def test_plan_calibration_phu_moi_o_va_moi_payload(exp, corpus, carriers):
     covered = _covered_cells(corpus, carriers)
     assert {(s.channel, s.technique, s.goal) for s in specs} == set(covered)
     eligible = {
-        p["id"] for ch, t, g in covered for p in R.select_payloads(corpus, ch, t, g)
+        p["id"]
+        for ch, t, g in covered
+        for p in R.select_payloads(corpus, ch, t, g, selection=exp.corpus_selection)
     }
     assert {s.payload_id for s in specs} == eligible
     assert len(set(specs)) == len(specs)

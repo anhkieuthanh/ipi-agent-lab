@@ -17,10 +17,10 @@ from seed_db import ANCHOR_DATE
 # Tập kỹ thuật chung của ba phân kênh — checklist mục 4.
 T_CHUNG = {"T1", "T2", "T3", "T5", "T7", "T8"}
 
-# Số run ước tính, checklist mục 5. B2, B3 có 7 preset sau khi GVHD duyệt `d3_no_confirm` (2026-10-21).
-# B4 "~500" — giao thức chốt 516 (mục 9).
-# B1: 3780 → 5670 khi A1 vào B1 (TA quyết 2026-11-06, `v-models-1.2`); checklist ký GVHD cần cập nhật.
-CHECKLIST_RUNS = {"B1": 5670, "B2": 5040, "B3": 4200, "B4": 516, "B5": 900, "B6": 450}
+# Số run, checklist mục 5. B2, B3 có 7 preset sau khi GVHD duyệt `d3_no_confirm` (2026-10-21).
+# Quy mô rút gọn GVHD duyệt 2026-11-09: N = 10 ở B1, B2; B3 lặp 2; B4 cắt; B5 3 ô × 5 chuỗi; B6 bỏ
+# HN-CC, HN-OW trên A2 × 20 mẫu.
+CHECKLIST_RUNS = {"B1": 1890, "B2": 840, "B3": 1680, "B5": 225, "B6": 40}
 
 
 @pytest.fixture(scope="module")
@@ -33,10 +33,10 @@ def test_nap_duoc_va_doi_chieu_sach(exp):
 
 
 def test_du_sau_khoi(exp):
-    assert list(exp.blocks) == ["B1", "B2", "B3", "B4", "B5", "B6"]
+    assert list(exp.blocks) == ["B1", "B2", "B3", "B5", "B6"]
 
 
-@pytest.mark.parametrize("block_id", ["B1", "B2", "B3", "B4", "B5", "B6"])
+@pytest.mark.parametrize("block_id", sorted(CHECKLIST_RUNS))
 def test_so_run_khop_checklist(exp, block_id):
     assert exp.planned_runs(block_id) == CHECKLIST_RUNS[block_id]
 
@@ -54,14 +54,15 @@ def test_d3_no_confirm_o_b2_b3_khong_la_ung_vien_don_le(exp):
     assert not "d3_no_confirm".endswith("_only")
 
 
-def test_b4_ba_phan(exp):
-    parts = exp.blocks["B4"].parts
-    assert list(parts) == ["rq12", "rq3", "rq4"]
-    assert all(p.targets == ("A1",) for p in parts.values())
-    assert {ch: set(ts) for ch, ts in parts["rq12"].techniques_by_channel.items()} == {
-        ch: T_CHUNG for ch in ("K1", "K2a", "K2b")
-    }
-    assert [exp._planned(p) for p in parts.values()] == [216, 180, 120]
+def test_b4_da_cat_va_b6_bo_hn_cc(exp):
+    # GVHD duyệt 2026-11-09: A1 đã vào B1 nên bỏ tập xác nhận A1; RQ6 chỉ còn HN-OW.
+    assert "B4" not in exp.blocks
+    assert exp.blocks["B6"].harnesses == ("none", "HN-OW")
+    assert exp.blocks["B6"].conditional_harness_targets == {}
+
+
+def test_boc_payload_cach_b(exp):
+    assert exp.corpus_selection == "contextual_first"
 
 
 def test_pilot_tach_cong_va_chi_do(exp):
@@ -96,7 +97,7 @@ def test_khoi_b1_khong_con_truong_chua_chot(exp):
 
 def test_unresolved_bat_duoc_todo(exp):
     paths = unresolved(exp)
-    assert "blocks.B4.parts.rq3.cells.selected" in paths
+    assert "blocks.B2.cells.selected" in paths
     # B5 còn chặn bởi cells.selected (tập S_adp chọn sau B2); attacker_model đã chốt opus-5 (STT-57).
     assert "blocks.B5.cells.selected" in paths
     assert "blocks.B5.attacker_model" not in paths
@@ -105,7 +106,7 @@ def test_unresolved_bat_duoc_todo(exp):
 def test_tu_choi_khoa_la(tmp_path: Path):
     src = Path(load_experiment().path).read_text(encoding="utf-8")
     bad = tmp_path / "experiment.yaml"
-    bad.write_text(src.replace("    n_per_cell: 30\n", "    n_per_cel: 30\n", 1), encoding="utf-8")
+    bad.write_text(src.replace("    n_per_cell: 10\n", "    n_per_cel: 10\n", 1), encoding="utf-8")
     with pytest.raises(ExperimentConfigError, match="n_per_cel"):
         load_experiment(bad)
 
@@ -205,8 +206,7 @@ def test_validate_bat_metrics_sai(tmp_path: Path, old, new):
         ("observe_targets: []", "observe_targets: [A2]", "vừa tính cổng vừa chỉ đo"),
         ("p_same_threshold: 0.9", "p_same_threshold: 1.5", "p_same_threshold"),
         ("{select_on: full_block, per: goal}", "{select_on: pilot, per: goal}", "select_on"),
-        ("add_best_single_from: B2", "add_best_single_from: B1", "add_best_single_from"),
-        ("        n_per_cell: 4\n", "        n_per_cell: 4\n        purpose: [RQ1]\n", "khóa lạ"),
+        ("corpus_selection: contextual_first", "corpus_selection: random", "corpus_selection"),
     ],
 )
 def test_validate_bat_quyet_dinh_sai(tmp_path: Path, old, new, expect):

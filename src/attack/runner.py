@@ -194,9 +194,18 @@ def load_carriers(path: Path | str = DEFAULT_TASKS_PATH) -> list[dict[str, Any]]
 
 
 def select_payloads(
-    corpus: Iterable[dict[str, Any]], channel: str, technique: str, goal: str
+    corpus: Iterable[dict[str, Any]],
+    channel: str,
+    technique: str,
+    goal: str,
+    *,
+    selection: str = "all",
 ) -> list[dict[str, Any]]:
-    """Payload của ô (kênh × kỹ thuật × mục tiêu): khớp code kỹ thuật, mục tiêu, và khai kênh."""
+    """Payload của ô (kênh × kỹ thuật × mục tiêu): khớp code kỹ thuật, mục tiêu, và khai kênh.
+
+    `selection="contextual_first"`: ô có payload `contextual: true` chỉ trả lớp đó (cách B của
+    `v-attack-1.1`); ô chưa có thì trả payload cũ.
+    """
     out = [
         p
         for p in corpus
@@ -204,6 +213,11 @@ def select_payloads(
         and p.get("goal") == goal
         and channel in (p.get("channels") or [])
     ]
+    if selection == "contextual_first":
+        contextual = [p for p in out if p.get("contextual")]
+        out = contextual or out
+    elif selection != "all":
+        raise AttackRunnerError(f"selection '{selection}' ngoài ('all', 'contextual_first')")
     return sorted(out, key=lambda p: p["id"])
 
 
@@ -303,7 +317,9 @@ def plan_block(
             if techniques and technique not in techniques:
                 continue
             for goal in goals:
-                payloads = select_payloads(corpus, channel, technique, goal)
+                payloads = select_payloads(
+                    corpus, channel, technique, goal, selection=exp.corpus_selection
+                )
                 pairs = _cell_pairs(payloads, channel, carriers, tasks_path=tasks_path)
                 if not pairs:
                     empty.append(f"{channel}·{technique}·{goal}")
@@ -361,7 +377,9 @@ def plan_pilot(
     block = _technique_block(exp.unit(source_block))
     n = int(exp.raw["pilot"]["runs"])
     rng = random.Random(f"{seed}:pilot")
-    cell_pairs = _covered_cell_pairs(block, corpus, carriers, tasks_path=tasks_path)
+    cell_pairs = _covered_cell_pairs(
+        block, corpus, carriers, tasks_path=tasks_path, selection=exp.corpus_selection
+    )
     if not cell_pairs:
         raise AttackRunnerError(f"khối {source_block} không có ô nào phủ được — corpus trống")
 
@@ -408,7 +426,9 @@ def plan_calibration(
     """
     block = _technique_block(exp.unit(source_block))
     rng = random.Random(f"{seed}:calibration")
-    cell_pairs = _covered_cell_pairs(block, corpus, carriers, tasks_path=tasks_path)
+    cell_pairs = _covered_cell_pairs(
+        block, corpus, carriers, tasks_path=tasks_path, selection=exp.corpus_selection
+    )
     empty = [
         (c, t, g)
         for c, techs in block.techniques_by_channel.items()
@@ -440,13 +460,16 @@ def _covered_cell_pairs(
     carriers: Sequence[dict[str, Any]],
     *,
     tasks_path: Path | str,
+    selection: str = "all",
 ) -> dict[tuple[str, str, str], list[tuple[str, str]]]:
     """Ô (kênh × kỹ thuật × mục tiêu) có ít nhất một cặp (payload, tác vụ chở), kèm các cặp đó."""
     cell_pairs: dict[tuple[str, str, str], list[tuple[str, str]]] = {}
     for channel, techs in block.techniques_by_channel.items():
         for technique in techs:
             for goal in block.goals:
-                payloads = select_payloads(corpus, channel, technique, goal)
+                payloads = select_payloads(
+                    corpus, channel, technique, goal, selection=selection
+                )
                 pairs = _cell_pairs(payloads, channel, carriers, tasks_path=tasks_path)
                 if pairs:
                     cell_pairs[(channel, technique, goal)] = pairs
