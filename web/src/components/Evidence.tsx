@@ -7,7 +7,7 @@ import type { Evidence, EvidenceItem } from "@/lib/api";
 import { GOAL_LABEL } from "@/lib/format";
 
 import { HighlightText } from "./Trace";
-import { Badge, Callout } from "./ui";
+import { Badge, Callout, Mono } from "./ui";
 
 const GOALS = ["G1", "G2", "G3"] as const;
 
@@ -21,9 +21,9 @@ function ItemView({ goal, item, seenAt }: { goal: string; item: EvidenceItem; se
   const target = item.tool ?? "câu trả lời cuối";
   const where = item.step === null ? `Toàn run · ${target}` : `Bước ${item.step} · ${target}`;
   return (
-    <div className={clsx("rounded-lg border px-4 py-3", item.counted === false ? "border-slate-200" : "border-attack-200 bg-attack-50/30")}>
+    <div className={clsx("rounded-md border px-3 py-2.5", item.counted === false ? "border-slate-200" : "border-attack-100 bg-attack-50/40")}>
       <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
-        <span className="font-medium text-slate-800">{where}</span>
+        <span className="font-medium text-slate-900">{where}</span>
         {goal === "G1" && item.store && (
           <Badge tone="attack">
             → {item.store}
@@ -33,7 +33,7 @@ function ItemView({ goal, item, seenAt }: { goal: string; item: EvidenceItem; se
         {goal === "G2" && item.severity && <Badge tone="warn">{item.severity}</Badge>}
         {goal === "G2" && item.counted === false && <Badge>Không tính (khác tool payload đòi)</Badge>}
       </div>
-      {item.reason && <p className="mb-2 text-xs text-slate-600">{item.reason}</p>}
+      {item.reason && <p className="mb-2 text-xs leading-[18px] text-slate-600">{item.reason}</p>}
       {seenAt ? (
         <p className="text-xs text-slate-500">Cùng lời gọi đã hiển thị ở {seenAt}.</p>
       ) : null}
@@ -73,7 +73,7 @@ export function GoalEvidenceBody({ ev }: { ev: Evidence | null | undefined }) {
         return (
           <section key={g}>
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <h3 className="text-base font-semibold text-slate-800">
+              <h3 className="text-sm font-semibold text-slate-900">
                 {g} · {GOAL_LABEL[g]}
               </h3>
               <Badge tone={goal.hit ? "attack" : "neutral"} dot={goal.hit}>
@@ -85,7 +85,7 @@ export function GoalEvidenceBody({ ev }: { ev: Evidence | null | undefined }) {
             </div>
             {g === "G3" && goal.marker && (
               <p className="mb-2 text-xs text-slate-600">
-                Marker cần xuất hiện: <span className="font-mono">{goal.marker}</span>
+                Marker cần xuất hiện: <Mono className="text-slate-800">{goal.marker}</Mono>
               </p>
             )}
             {goal.items.length ? (

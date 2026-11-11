@@ -1,24 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import clsx from "clsx";
-import {
-  Boxes,
-  Cpu,
-  Crosshair,
-  Gauge,
-  ListChecks,
-  Lock,
-  type LucideIcon,
-  Shield,
-  ShieldCheck,
-  Swords,
-  Syringe,
-} from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 import { AssetPanel, type AssetCode } from "@/components/AssetPanel";
 import { ServicesCard } from "@/components/Services";
-import { MapLegend, NODES, SystemMap } from "@/components/SystemMap";
-import { Badge, Card, ErrorBox, Loading, Mono, PageHeader } from "@/components/ui";
+import { MapLegend, SystemMap } from "@/components/SystemMap";
+import { Badge, Card, CardHeader, ErrorBox, Loading, Mono, PageHeader, Tabs } from "@/components/ui";
 import { api } from "@/lib/api";
 import { GLOSSARY } from "@/lib/glossary";
 
@@ -51,69 +38,32 @@ const INFO: Record<string, Info> = {
   D4: { title: "D4 · Egress Filter", codes: ["pre_egress"], desc: "Soát dữ liệu trước khi rời hệ thống: canary, đích lạ, PII." },
 };
 
-const GROUP_ICON: Record<string, LucideIcon> = {
-  TS: Lock,
-  G: Crosshair,
-  K: Syringe,
-  T: Swords,
-  D: ShieldCheck,
-  A: Cpu,
-  CT: Boxes,
-  U: ListChecks,
-  M: Gauge,
-};
-
-const TILE: Record<string, string> = {
-  brand: "bg-brand-600 text-white",
-  attack: "bg-attack-50 text-attack-600",
-  sink: "bg-orange-50 text-orange-700",
-  measure: "bg-violet-50 text-violet-600",
-  user: "bg-cyan-50 text-cyan-700",
-  tool: "bg-slate-100 text-slate-700",
-  store: "bg-slate-100 text-slate-600",
-};
-
-/** Ô icon của thành phần đang chọn — cùng icon với thẻ trên sơ đồ; điểm D dùng khiên. */
-function SelectedIcon({ id }: { id: string }) {
-  const node = NODES.find((n) => n.id === id);
-  const Icon = node?.icon ?? Shield;
-  const tile = node ? TILE[node.tone] ?? "bg-brand-50 text-brand-600" : "bg-defense-50 text-defense-600";
-  return (
-    <span className={clsx("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", tile)}>
-      <Icon size={18} />
-    </span>
-  );
-}
-
-function ComponentTip({ id }: { id: string }) {
-  const info = INFO[id];
-  if (!info) return null;
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2.5">
-        <SelectedIcon id={id} />
-        <div className="text-base font-semibold text-slate-900">{info.title}</div>
-      </div>
-      {info.codes.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {info.codes.map((c) => (
-            <Badge key={c} tone={codeTone(c)}>
-              {c}
-            </Badge>
-          ))}
-        </div>
-      )}
-      <p className="text-xs leading-relaxed text-slate-600">{info.desc}</p>
-    </div>
-  );
-}
-
 function codeTone(code: string) {
   if (code.startsWith("G")) return "attack" as const;
   if (code.startsWith("D")) return "defense" as const;
   if (code.startsWith("K") || code.startsWith("T")) return "payload" as const;
   if (code.startsWith("A")) return "brand" as const;
   return "neutral" as const;
+}
+
+function ComponentTip({ id }: { id: string }) {
+  const info = INFO[id];
+  if (!info) return null;
+  return (
+    <div className="space-y-1.5">
+      <div className="text-sm font-semibold text-slate-900">{info.title}</div>
+      {info.codes.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {info.codes.map((c) => (
+            <Badge key={c} tone={codeTone(c)} className="font-mono">
+              {c}
+            </Badge>
+          ))}
+        </div>
+      )}
+      <p className="text-xs leading-[18px] text-slate-600">{info.desc}</p>
+    </div>
+  );
 }
 
 export function SystemPage() {
@@ -126,68 +76,66 @@ export function SystemPage() {
     <>
       <PageHeader title="Hệ thống" info="Rê chuột lên một thành phần hoặc điểm phòng thủ để xem giải thích." />
 
-      <Card>
-        <div className="px-4 pb-2 pt-4">
-          <SystemMap renderTip={(id) => <ComponentTip id={id} />} />
-        </div>
-        <div className="border-t border-slate-100 px-5 py-3">
-          <MapLegend />
-        </div>
-      </Card>
-
-      <div className="mt-6">
+      <div className="space-y-4">
         <Card>
-          <div className="flex flex-wrap gap-1 border-b border-slate-100 px-3 pt-3">
-            {GLOSSARY.map((g) => {
-              const Icon = GROUP_ICON[g.id] ?? ListChecks;
-              return (
-                <button
-                  key={g.id}
-                  onClick={() => setTab(g.id)}
-                  className={clsx(
-                    "flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-sm font-medium transition",
-                    tab === g.id ? "border-b-2 border-brand-600 text-brand-700" : "text-slate-500 hover:text-slate-800",
-                  )}
-                >
-                  <Icon size={14} />
-                  {g.label}
-                  <span className="font-mono text-2xs text-slate-400">{g.prefix}</span>
-                </button>
-              );
-            })}
+          <CardHeader title="Sơ đồ kiến trúc lab" subtitle="Luồng tác vụ, ba đường tiêm K1 · K2a · K2b, điểm móc phòng thủ D1–D4 và hệ đo." />
+          <div className="border-t border-slate-100 px-3 py-3">
+            <SystemMap renderTip={(id) => <ComponentTip id={id} />} />
           </div>
+          <div className="border-t border-slate-100 px-4 py-2.5">
+            <MapLegend />
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader title="Chú giải mã" subtitle="Một khái niệm, một ký hiệu — dùng thống nhất trên mọi trang." />
+          <Tabs
+            label="Nhóm mã"
+            value={tab}
+            onChange={setTab}
+            options={GLOSSARY.map((g) => ({ value: g.id, label: `${g.prefix} · ${g.label}` }))}
+          />
           {tab === "CT" ? (
             <CarrierTasks />
           ) : (
-          <div className="grid grid-cols-1 gap-2 p-4 md:grid-cols-2 xl:grid-cols-3">
-            {group.items.map((t) => {
-              const canClick = isTS;
-              const Tag = canClick ? "button" : "div";
-              return (
-                <Tag
-                  key={t.code}
-                  onClick={canClick ? () => setAsset(t.code as AssetCode) : undefined}
-                  title={canClick ? undefined : t.desc}
-                  className={clsx(
-                    "flex items-center gap-3 rounded-lg border border-slate-100 p-3 text-left",
-                    canClick ? "cursor-pointer hover:border-brand-300 hover:bg-brand-50/40" : "hover:border-slate-200",
-                  )}
-                >
-                  <Badge tone={codeTone(t.code)} className="h-fit shrink-0 font-mono">
-                    {t.code}
-                  </Badge>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold text-slate-800">{t.name}</div>
-                  </div>
-                  {canClick && <span className="shrink-0 text-xs font-medium text-brand-600">Chi tiết →</span>}
-                </Tag>
-              );
-            })}
-          </div>
+            <ul className="divide-y divide-slate-100">
+              {group.items.map((t) => {
+                const body = (
+                  <>
+                    <span className="w-16 shrink-0">
+                      <Badge tone={codeTone(t.code)} className="font-mono">
+                        {t.code}
+                      </Badge>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-slate-900">{t.name}</span>
+                      <span className="mt-0.5 block text-xs leading-[18px] text-slate-500">{t.desc}</span>
+                    </span>
+                  </>
+                );
+                return (
+                  <li key={t.code}>
+                    {isTS ? (
+                      <button
+                        type="button"
+                        onClick={() => setAsset(t.code as AssetCode)}
+                        className="flex w-full items-start gap-3 px-4 py-2.5 text-left transition-colors hover:bg-slate-50"
+                      >
+                        {body}
+                        <span className="inline-flex shrink-0 items-center gap-0.5 pt-0.5 text-xs font-medium text-brand-600">
+                          Chi tiết <ChevronRight size={12} aria-hidden="true" />
+                        </span>
+                      </button>
+                    ) : (
+                      <div className="flex items-start gap-3 px-4 py-2.5">{body}</div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </Card>
-      </div>
-      <div className="mt-6">
+
         <ServicesCard />
       </div>
       <AssetPanel code={asset} onClose={() => setAsset(null)} />
@@ -199,15 +147,19 @@ export function SystemPage() {
 function CarrierTasks() {
   const q = useQuery({ queryKey: ["config"], queryFn: api.config });
   if (q.isLoading) return <Loading />;
-  if (q.error) return <ErrorBox error={q.error} />;
+  if (q.error) return (
+    <div className="p-4">
+      <ErrorBox error={q.error} />
+    </div>
+  );
   const carriers = q.data!.carriers;
   return (
-    <div className="p-4">
-      <p className="mb-3 text-xs text-slate-500">
+    <>
+      <p className="max-w-[88ch] px-4 py-3 text-xs leading-[18px] text-slate-500">
         Tác vụ nhân viên giao cho agent; payload được cài vào dữ liệu mà tác vụ này đọc. Agent chỉ được
         gọi tool trong danh sách của tác vụ — D3 chặn tool ngoài danh sách.
       </p>
-      <div className="max-w-full overflow-x-auto rounded-lg border border-slate-200">
+      <div className="max-w-full overflow-x-auto border-t border-slate-100">
         <table className="table-base">
           <thead>
             <tr>
@@ -220,12 +172,12 @@ function CarrierTasks() {
           <tbody>
             {carriers.map((c) => (
               <tr key={c.id}>
-                <td className="whitespace-nowrap">
-                  <Mono className="font-medium">{c.id}</Mono>
+                <td className="whitespace-nowrap align-top">
+                  <Mono className="font-medium text-slate-800">{c.id}</Mono>
                 </td>
-                <td className="max-w-[460px] text-sm text-slate-600">
-                  <div className="font-medium text-slate-800">{c.name || c.id}</div>
-                  {c.query && <div className="mt-0.5 text-xs text-slate-500">{c.query}</div>}
+                <td className="min-w-[240px] max-w-[460px]">
+                  <div className="font-medium text-slate-900">{c.name || c.id}</div>
+                  {c.query && <div className="mt-0.5 text-xs leading-[18px] text-slate-500">{c.query}</div>}
                 </td>
                 <td>
                   <div className="flex flex-wrap gap-1">
@@ -239,9 +191,9 @@ function CarrierTasks() {
                 <td>
                   <div className="flex flex-wrap gap-1">
                     {c.allowed_tools?.map((t) => (
-                      <span key={t} className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-2xs text-slate-600">
+                      <Mono key={t} className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-600">
                         {t}
-                      </span>
+                      </Mono>
                     ))}
                   </div>
                 </td>
@@ -250,6 +202,6 @@ function CarrierTasks() {
           </tbody>
         </table>
       </div>
-    </div>
+    </>
   );
 }

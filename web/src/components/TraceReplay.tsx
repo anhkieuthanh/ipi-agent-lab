@@ -19,6 +19,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import type { RunDetail, Step } from "@/lib/api";
+import { Button } from "@/components/ui";
 import { BLOCKED_LABEL } from "@/lib/format";
 
 import { type DefenseCode, HookLegend, type PointStatus, SystemMap, hookStatusFromSteps } from "./SystemMap";
@@ -149,11 +150,11 @@ export function buildFrames(d: RunDetail, codes: string[]): Frame[] {
   return frames;
 }
 
-const TONE_STYLE: Record<Frame["tone"], string> = {
-  neutral: "border-brand-500 bg-brand-50/60",
-  payload: "border-payload-500 bg-payload-50",
-  block: "border-attack-500 bg-attack-50",
-  verdict: "border-slate-400 bg-slate-50",
+const TONE_BAR: Record<Frame["tone"], string> = {
+  neutral: "bg-brand-500",
+  payload: "bg-payload-500",
+  block: "bg-attack-500",
+  verdict: "bg-slate-400",
 };
 
 const TONE_ICON: Record<Frame["tone"], [LucideIcon, string]> = {
@@ -190,7 +191,6 @@ export function TraceReplay({ detail, codes, autoplay = false }: { detail: RunDe
   const f = frames[i];
   const [ToneIcon, toneInk] = TONE_ICON[f.tone];
   const defenses = Object.fromEntries((["D1", "D2", "D3", "D4"] as DefenseCode[]).map((c) => [c, codes.includes(c)]));
-  const btn = "flex h-8 w-8 items-center justify-center rounded-md text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50 disabled:opacity-40";
 
   return (
     <div>
@@ -198,31 +198,43 @@ export function TraceReplay({ detail, codes, autoplay = false }: { detail: RunDe
         <SystemMap defenses={defenses} hookStatus={f.status} active={f.active} />
       </div>
 
-      <div className="border-t border-slate-100 px-5 py-3">
+      <div className="border-t border-slate-100 px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
-          <button className={btn} onClick={() => { setPlaying(false); setI(0); }} disabled={i === 0} title="Về đầu">
-            <SkipBack size={14} />
-          </button>
-          <button
-            className={clsx(btn, "w-auto gap-1.5 px-3 text-xs font-medium text-brand-700 ring-brand-100")}
+          <Button
+            size="sm"
+            className="w-7 px-0"
+            onClick={() => { setPlaying(false); setI(0); }}
+            disabled={i === 0}
+            title="Về đầu"
+            aria-label="Về đầu"
+            icon={<SkipBack size={14} />}
+          />
+          <Button
+            size="sm"
             onClick={() => {
               if (i >= last) setI(0);
               setPlaying(!playing || i >= last);
             }}
+            icon={playing ? <Pause size={14} /> : i >= last ? <RotateCcw size={14} /> : <Play size={14} />}
           >
-            {playing ? <Pause size={14} /> : i >= last ? <RotateCcw size={14} /> : <Play size={14} />}
             {playing ? "Tạm dừng" : i >= last ? "Phát lại" : "Phát"}
-          </button>
-          <button className={btn} onClick={() => { setPlaying(false); setI(Math.min(i + 1, last)); }} disabled={i >= last} title="Bước sau">
-            <SkipForward size={14} />
-          </button>
+          </Button>
+          <Button
+            size="sm"
+            className="w-7 px-0"
+            onClick={() => { setPlaying(false); setI(Math.min(i + 1, last)); }}
+            disabled={i >= last}
+            title="Bước sau"
+            aria-label="Bước sau"
+            icon={<SkipForward size={14} />}
+          />
           <input
             type="range"
             min={0}
             max={last}
             value={i}
             onChange={(e) => { setPlaying(false); setI(Number(e.target.value)); }}
-            className="mx-2 min-w-[120px] flex-1 accent-brand-600"
+            className="mx-1 min-w-24 flex-1 accent-brand-600"
             aria-label="Khung phát lại"
           />
           <span className="num text-xs text-slate-500">
@@ -231,7 +243,7 @@ export function TraceReplay({ detail, codes, autoplay = false }: { detail: RunDe
           <select
             value={speed}
             onChange={(e) => setSpeed(Number(e.target.value))}
-            className="h-8 rounded-md border-slate-200 py-0 text-xs"
+            className="input num h-7 text-xs"
             aria-label="Tốc độ"
           >
             {SPEEDS.map((s) => (
@@ -242,24 +254,27 @@ export function TraceReplay({ detail, codes, autoplay = false }: { detail: RunDe
           </select>
         </div>
 
-        <div className={clsx("mt-3 rounded-lg border-l-4 px-4 py-2.5", TONE_STYLE[f.tone])}>
-          <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-            <ToneIcon size={15} className={clsx("shrink-0", toneInk)} />
-            {f.title}
+        <div className="mt-3 flex gap-3" aria-live="polite">
+          <span className={clsx("w-0.5 shrink-0 rounded-full", TONE_BAR[f.tone])} aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start gap-2 text-sm font-semibold text-slate-900">
+              <ToneIcon size={14} className={clsx("mt-0.5 shrink-0", toneInk)} aria-hidden="true" />
+              <span className="min-w-0 break-words">{f.title}</span>
+            </div>
+            {f.detail && <div className="mt-0.5 text-xs text-slate-600">{f.detail}</div>}
+            {f.notes.length > 0 && (
+              <ul className="mt-1.5 space-y-0.5 text-xs text-slate-600">
+                {f.notes.map((x) => (
+                  <li key={x} className="break-words font-mono">
+                    {x}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-          {f.detail && <div className="mt-0.5 text-xs text-slate-600">{f.detail}</div>}
-          {f.notes.length > 0 && (
-            <ul className="mt-1.5 space-y-0.5 text-xs text-slate-600">
-              {f.notes.map((x) => (
-                <li key={x} className="font-mono">
-                  {x}
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
 
-        <div className="mt-3">
+        <div className="mt-3 border-t border-slate-100 pt-3">
           <HookLegend statuses />
         </div>
       </div>

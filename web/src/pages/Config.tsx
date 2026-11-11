@@ -1,112 +1,108 @@
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
-import {
-  ArrowRight,
-  CircleAlert,
-  CircleCheck,
-  Cpu,
-  FileCode2,
-  FlaskConical,
-  Gavel,
-  Lock,
-  Save,
-  ShieldCheck,
-  Trash2,
-  WandSparkles,
-} from "lucide-react";
+import { ArrowRight, CircleAlert, CircleCheck, Lock, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { Badge, Button, Callout, Card, CardHeader, ErrorBox, Loading, Mono, PageHeader } from "@/components/ui";
 import { type ConfigSummary, type SandboxLimits, type SandboxModel, api } from "@/lib/api";
 import { DEFENSE_LABEL, TECHNIQUE_LABEL, usd } from "@/lib/format";
-import { DEFENSE_ICON } from "@/lib/icons";
 import { useSandboxModel } from "@/lib/sandbox";
 
 type Model = ConfigSummary["targets"][number];
-
-const AUX_ICON: Record<string, typeof Gavel> = { judge: Gavel, attacker: WandSparkles };
 
 function channelLabel(provider: string) {
   return provider === "anthropic" ? "API trực tiếp" : "Gateway";
 }
 
-function Price({ m }: { m: Model }) {
+/** Nhãn phiên bản đã pin — luôn hiện ở góc tiêu đề khối, chữ mono. */
+function PinTag({ tag }: { tag?: string }) {
+  if (!tag) return null;
   return (
-    <span className="num">
-      {usd(m.pricing?.input, 2)} / {usd(m.pricing?.output, 2)}
+    <span className="inline-flex h-6 items-center gap-1.5 rounded-md border border-slate-200 px-2 font-mono text-xs font-medium text-slate-800">
+      <Lock size={12} className="text-slate-400" aria-hidden="true" />
+      {tag}
     </span>
   );
 }
 
-function TargetTile({ m }: { m: Model }) {
+function PriceCells({ m }: { m: Model }) {
   return (
-    <div className="flex flex-col rounded-lg border border-slate-200 bg-slate-50/40 p-4">
-      <div className="flex items-center justify-between">
-        <Badge tone="brand" className="font-mono">
-          {m.id}
-        </Badge>
-        <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500">
-          <Lock size={12} /> Đã khóa
-        </span>
-      </div>
-      <Mono className="mt-3 block truncate text-md font-semibold text-slate-900">{m.model_id}</Mono>
-      <dl className="mt-4 space-y-1 border-t border-slate-200/70 pt-3 text-xs">
-        <div className="flex justify-between gap-2">
-          <dt className="text-slate-500">Kênh gọi</dt>
-          <dd className="text-slate-700">{channelLabel(m.provider)}</dd>
-        </div>
-        <div className="flex justify-between gap-2">
-          <dt className="text-slate-500">Giá vào / ra</dt>
-          <dd className="whitespace-nowrap text-slate-700">
-            <Price m={m} />
-          </dd>
-        </div>
-      </dl>
-    </div>
+    <>
+      <td className="num whitespace-nowrap text-right text-slate-700">{usd(m.pricing?.input, 2)}</td>
+      <td className="num whitespace-nowrap text-right text-slate-700">{usd(m.pricing?.output, 2)}</td>
+    </>
   );
 }
 
 function ModelsCard({ d, tag }: { d: ConfigSummary; tag?: string }) {
+  const pin = tag ?? "—";
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader
         title="Mô hình đích"
         subtitle={
           <>
-            Bộ model đã chốt theo phụ lục GVHD, khóa bằng <Mono>{tag ?? "v-models-1.2"}</Mono>. Đơn giá USD/Mtok (vào / ra).
+            Bộ model đã chốt theo phụ lục GVHD, khóa bằng <Mono>{pin}</Mono>. Đơn giá USD/Mtok (vào / ra).
           </>
         }
-        icon={<Cpu size={16} />}
+        action={<PinTag tag={pin} />}
       />
-      <div className="grid grid-cols-1 gap-3 p-5 md:grid-cols-3">
-        {d.targets.map((m) => (
-          <TargetTile key={m.id} m={m} />
-        ))}
-      </div>
-      <div className="border-t border-slate-100 px-5 py-3">
-        <div className="label mb-2">Model phụ trợ — không phải model đích</div>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          {d.aux_models.map((m) => {
-            const Icon = AUX_ICON[m.id] ?? Cpu;
-            return (
-              <div key={m.id} className="flex items-center gap-3 rounded-lg bg-slate-50 px-3 py-2">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface text-slate-500 ring-1 ring-slate-200">
-                  <Icon size={14} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <Mono className="block truncate font-medium text-slate-800">{m.model_id}</Mono>
-                  <div className="truncate text-xs text-slate-500">
-                    {m.label} · {channelLabel(m.provider)}
-                  </div>
-                </div>
-                <span className="shrink-0 whitespace-nowrap text-xs text-slate-600">
-                  <Price m={m} />
-                </span>
-              </div>
-            );
-          })}
-        </div>
+      <div className="max-w-full overflow-x-auto border-t border-slate-100">
+        <table className="table-base">
+          <thead>
+            <tr>
+              <th>Mã</th>
+              <th>Model ID</th>
+              <th>Kênh gọi</th>
+              <th className="text-right">Giá vào</th>
+              <th className="text-right">Giá ra</th>
+              <th>Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody>
+            {d.targets.map((m) => (
+              <tr key={m.id}>
+                <td>
+                  <Badge tone="brand" className="font-mono">
+                    {m.id}
+                  </Badge>
+                </td>
+                <td>
+                  <Mono className="whitespace-nowrap font-medium text-slate-900">{m.model_id}</Mono>
+                </td>
+                <td className="whitespace-nowrap text-slate-700">{channelLabel(m.provider)}</td>
+                <PriceCells m={m} />
+                <td>
+                  <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-slate-500">
+                    <Lock size={12} aria-hidden="true" /> Đã khóa
+                  </span>
+                </td>
+              </tr>
+            ))}
+            <tr>
+              <th colSpan={6} scope="colgroup" className="bg-slate-50 text-xs font-medium text-slate-500">
+                Model phụ trợ — không phải model đích
+              </th>
+            </tr>
+            {d.aux_models.map((m) => (
+              <tr key={m.id}>
+                <td>
+                  <Badge className="font-mono">{m.id}</Badge>
+                </td>
+                <td>
+                  <Mono className="block whitespace-nowrap font-medium text-slate-900">{m.model_id}</Mono>
+                  <div className="text-xs text-slate-500">{m.label}</div>
+                </td>
+                <td className="whitespace-nowrap text-slate-700">{channelLabel(m.provider)}</td>
+                <PriceCells m={m} />
+                <td>
+                  <span className="text-slate-300">—</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </Card>
   );
@@ -166,11 +162,10 @@ function SandboxCard({ limits }: { limits: SandboxLimits }) {
   const set = (k: keyof Draft) => (e: React.ChangeEvent<HTMLInputElement>) => setDraft({ ...draft, [k]: e.target.value });
 
   return (
-    <Card className="overflow-hidden">
+    <Card>
       <CardHeader
         title={limits.label ?? "Model thử ngoài bộ đo"}
         subtitle="Thay model đích cho lượt demo ở Phòng thí nghiệm — không đổi A1–A3."
-        icon={<FlaskConical size={16} />}
         action={
           saved ? (
             <Badge tone="warn" dot>
@@ -181,7 +176,7 @@ function SandboxCard({ limits }: { limits: SandboxLimits }) {
           )
         }
       />
-      <div className="space-y-5 p-5">
+      <div className="space-y-4 border-t border-slate-100 p-4">
         <Callout tone="warn" title="Chỉ dùng cho demo, không vào số liệu báo cáo">
           Run ghi <Mono>target_id = sandbox</Mono>, lô tiền tố <Mono>demo-sandbox-</Mono> trong store demo riêng. Không ghi gì
           vào <Mono>config/</Mono> hay <Mono>.env</Mono>; model chỉ lưu trong trình duyệt này.
@@ -194,22 +189,21 @@ function SandboxCard({ limits }: { limits: SandboxLimits }) {
               <button
                 key={c.id}
                 type="button"
+                aria-pressed={draft.channel === c.id}
                 onClick={() => setDraft({ ...draft, channel: c.id })}
                 className={clsx(
-                  "flex items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition",
-                  draft.channel === c.id
-                    ? "border-brand-500 bg-brand-50/60 ring-2 ring-brand-100"
-                    : "border-slate-200 hover:border-slate-300 hover:bg-slate-50",
+                  "flex items-start gap-2.5 rounded-md border px-3 py-2 text-left transition-colors",
+                  draft.channel === c.id ? "border-brand-500 bg-brand-50" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50",
                 )}
               >
                 <span
                   className={clsx(
-                    "mt-1 h-3.5 w-3.5 shrink-0 rounded-full border-2",
-                    draft.channel === c.id ? "border-brand-600 bg-brand-600 shadow-[inset_0_0_0_2px_white]" : "border-slate-300",
+                    "mt-1 h-3 w-3 shrink-0 rounded-full border",
+                    draft.channel === c.id ? "border-brand-500 bg-brand-500 ring-2 ring-inset ring-surface" : "border-slate-300",
                   )}
                 />
                 <span className="min-w-0">
-                  <span className="block text-sm font-medium text-slate-800">{c.label}</span>
+                  <span className="block text-sm font-medium text-slate-900">{c.label}</span>
                   <span
                     className={clsx(
                       "mt-0.5 inline-flex items-center gap-1 text-xs",
@@ -227,7 +221,7 @@ function SandboxCard({ limits }: { limits: SandboxLimits }) {
 
         <Field label="Model ID" error={show("model_id")} hint="Đúng tên model mà kênh gọi chấp nhận, vd qwen-4-plus.">
           <input
-            className={clsx("input font-mono", show("model_id") && "border-attack-400")}
+            className={clsx("input font-mono", show("model_id") && "border-attack-500")}
             value={draft.model_id}
             onChange={set("model_id")}
             placeholder="tên model"
@@ -236,7 +230,7 @@ function SandboxCard({ limits }: { limits: SandboxLimits }) {
           />
         </Field>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Giá vào (USD/Mtok)" error={show("price_in")}>
             <input className="input num" inputMode="decimal" value={draft.price_in} onChange={set("price_in")} placeholder="0.50" />
           </Field>
@@ -252,7 +246,7 @@ function SandboxCard({ limits }: { limits: SandboxLimits }) {
           <Callout tone="warn">Kênh này chưa có khóa: lượt demo sẽ báo lỗi cho tới khi bạn thêm biến vào .env.</Callout>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
           <Button
             variant="primary"
             icon={<Save size={15} />}
@@ -272,7 +266,7 @@ function SandboxCard({ limits }: { limits: SandboxLimits }) {
           {saved && !dirty && (
             <Link
               to="/lab"
-              className="ml-auto inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:text-brand-800"
+              className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline"
             >
               Chạy ở Phòng thí nghiệm <ArrowRight size={14} />
             </Link>
@@ -280,15 +274,6 @@ function SandboxCard({ limits }: { limits: SandboxLimits }) {
         </div>
       </div>
     </Card>
-  );
-}
-
-function DefenseTile({ code }: { code: string }) {
-  const Icon = DEFENSE_ICON[code] ?? ShieldCheck;
-  return (
-    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-defense-50 text-defense-600">
-      <Icon size={15} />
-    </span>
   );
 }
 
@@ -306,67 +291,80 @@ export function ConfigPage() {
         info="Hợp đồng thực nghiệm đã chốt, chỉ đọc — thay đổi đi qua config/ và tài liệu. Riêng model thử ngoài bộ đo đặt được ở đây, chỉ cho demo."
       />
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
-        <div className="xl:col-span-5">
-          <ModelsCard d={d} tag={meta.data?.model_tag} />
-        </div>
-        <div className="xl:col-span-2">
-          <SandboxCard limits={d.sandbox} />
-        </div>
+      <div className="space-y-4">
+        <ModelsCard d={d} tag={meta.data?.model_tag} />
 
-        <div className="flex flex-col gap-6 xl:col-span-3">
-          <Card>
-            <CardHeader
-              title="Cơ chế phòng thủ"
-              subtitle={`${d.presets.length} preset · tham số ở config/defenses.yaml`}
-              icon={<ShieldCheck size={16} />}
-            />
-            <div className="divide-y divide-slate-100">
-              {d.presets
-                .find((p) => p.name === "all")
-                ?.codes.map((code) => (
-                  <div key={code} className="flex items-center gap-3 px-5 py-3">
-                    <DefenseTile code={code} />
-                    <Badge tone="defense" className="font-mono">
-                      {code}
-                    </Badge>
-                    <span className="text-sm text-slate-700">{DEFENSE_LABEL[code]}</span>
-                  </div>
-                ))}
-            </div>
-            <div className="border-t border-slate-100 px-5 py-3">
-              <Link to="/defense" className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:text-brand-800">
-                Xem tham số ở trang Phòng thủ <ArrowRight size={14} />
-              </Link>
-            </div>
-          </Card>
+        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-5">
+          <div className="min-w-0 xl:col-span-2">
+            <SandboxCard limits={d.sandbox} />
+          </div>
 
-          <Card>
-            <CardHeader
-              title="Kho payload"
-              subtitle={
-                <>
-                  <b className="num text-slate-700">{d.payloads.total}</b> payload · khóa bằng <Mono>{meta.data?.attack_tag}</Mono>
-                </>
-              }
-              icon={<FileCode2 size={16} />}
-            />
-            <div className="grid grid-cols-2 gap-2 p-5 sm:grid-cols-4">
-              {Object.entries(d.payloads.by_technique).map(([t, n]) => (
-                <div key={t} className="rounded-lg bg-slate-50 px-3 py-2.5">
-                  <div className="flex items-baseline justify-between">
-                    <span className="font-mono text-xs font-semibold text-slate-700">{t}</span>
-                    <span className="num text-md font-semibold text-slate-900">{n}</span>
-                  </div>
-                  <div className="mt-0.5 truncate text-xs text-slate-500" title={TECHNIQUE_LABEL[t]}>
-                    {TECHNIQUE_LABEL[t] ?? ""}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
+          <div className="flex min-w-0 flex-col gap-4 xl:col-span-3">
+            <Card>
+              <CardHeader
+                title="Cơ chế phòng thủ"
+                subtitle={
+                  <>
+                    <span className="num">{d.presets.length}</span> preset · tham số ở <Mono>config/defenses.yaml</Mono>
+                  </>
+                }
+                action={
+                  <Link to="/defense" className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline">
+                    Xem tham số ở trang Phòng thủ <ArrowRight size={12} />
+                  </Link>
+                }
+              />
+              <ul className="divide-y divide-slate-100 border-t border-slate-100">
+                {d.presets
+                  .find((p) => p.name === "all")
+                  ?.codes.map((code) => (
+                    <li key={code} className="flex items-center gap-3 px-4 py-2">
+                      <span className="w-12 shrink-0">
+                        <Badge tone="defense" className="font-mono">
+                          {code}
+                        </Badge>
+                      </span>
+                      <span className="text-sm text-slate-800">{DEFENSE_LABEL[code]}</span>
+                    </li>
+                  ))}
+              </ul>
+            </Card>
+
+            <Card className="overflow-hidden">
+              <CardHeader
+                title="Kho payload"
+                subtitle={
+                  <>
+                    <b className="num font-semibold text-slate-800">{d.payloads.total}</b> payload · khóa bằng <Mono>{meta.data?.attack_tag}</Mono>
+                  </>
+                }
+                action={<PinTag tag={meta.data?.attack_tag} />}
+              />
+              <div className="max-w-full overflow-x-auto border-t border-slate-100">
+                <table className="table-base">
+                  <thead>
+                    <tr>
+                      <th>Kỹ thuật</th>
+                      <th>Tên</th>
+                      <th className="text-right">Số payload</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(d.payloads.by_technique).map(([t, n]) => (
+                      <tr key={t}>
+                        <td className="w-20">
+                          <Mono className="font-medium text-slate-800">{t}</Mono>
+                        </td>
+                        <td className="text-slate-700">{TECHNIQUE_LABEL[t] ?? ""}</td>
+                        <td className="num text-right font-medium text-slate-900">{n}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </div>
         </div>
-
       </div>
     </>
   );

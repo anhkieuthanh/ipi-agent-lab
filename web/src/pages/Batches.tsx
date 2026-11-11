@@ -1,41 +1,58 @@
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Layers } from "lucide-react";
+import { ChevronRight, Search } from "lucide-react";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import { Badge, Card, Empty, ErrorBox, Loading, PageHeader, RateBar, Segmented } from "@/components/ui";
+import { Badge, Button, Card, Empty, ErrorBox, Loading, PageHeader, RateBar, Segmented } from "@/components/ui";
 import { api, type Batch } from "@/lib/api";
 import { CHANNEL_LABEL, GOAL_LABEL, KIND_LABEL, int, kilo, pct, presetLabel, usd, when } from "@/lib/format";
-import { KindIcon } from "@/lib/icons";
 
 type Filter = "all" | Batch["kind"];
 
+/** Tỉ lệ luôn đi kèm tử số/mẫu số; lô không có mẫu thì ghi "Chưa đo", không hiện 0%. */
 function Result({ b }: { b: Batch }) {
-  if (b.n_attack) {
-    const p = b.n_success / b.n_attack;
-    return (
-      <div className="w-36">
-        <div className="mb-1 flex justify-between text-xs">
-          <span className="text-slate-500" title="ASR">Tấn công đạt</span>
-          <span className="num font-medium text-slate-800">
-            {pct(p, 0)} · {b.n_success}/{b.n_attack}
-          </span>
-        </div>
-        <RateBar p={p} tone="attack" />
-      </div>
-    );
-  }
-  const p = b.n_benign ? b.n_pass / b.n_benign : null;
+  const attack = b.n_attack > 0;
+  const n = attack ? b.n_attack : b.n_benign;
+  const k = attack ? b.n_success : b.n_pass;
+  const p = n ? k / n : null;
   return (
-    <div className="w-36">
-      <div className="mb-1 flex justify-between text-xs">
-        <span className="text-slate-500" title="USR">Lành tính đạt</span>
-        <span className="num font-medium text-slate-800">
-          {pct(p, 0)} · {b.n_pass}/{b.n_benign}
+    <div className="w-40">
+      <div className="mb-1 flex items-baseline justify-between gap-2 text-xs">
+        <span className="text-slate-500" title={attack ? "ASR" : "USR"}>
+          {attack ? "Tấn công đạt" : "Lành tính đạt"}
         </span>
+        {p === null ? (
+          <span className="text-slate-400">Chưa đo</span>
+        ) : (
+          <span className="num whitespace-nowrap text-slate-800">
+            <span className="font-medium">{pct(p, 0)}</span>
+            <span className="text-slate-500"> · {k}/{n}</span>
+          </span>
+        )}
       </div>
-      <RateBar p={p} tone="brand" />
+      <RateBar p={p} tone={attack ? "attack" : "brand"} />
     </div>
+  );
+}
+
+function Scenario({ b }: { b: Batch }) {
+  let title: string;
+  let sub: string;
+  if (b.scenario) {
+    title = `${b.scenario.goal} · ${GOAL_LABEL[b.scenario.goal]}`;
+    sub = `${CHANNEL_LABEL[b.scenario.channel] ?? b.scenario.channel} · ${b.scenario.technique} · ${b.scenario.carrier_task_id}`;
+  } else if (b.run_kinds.includes("attack")) {
+    title = `Tấn công${b.manifest?.block ? ` · khối ${b.manifest.block}` : ""}`;
+    sub = b.channels.join(", ") || "—";
+  } else {
+    title = "Bench hữu dụng";
+    sub = `${b.manifest?.task ? `${b.manifest.task} · ` : ""}câu lành tính`;
+  }
+  return (
+    <>
+      <div className="whitespace-nowrap text-slate-800">{title}</div>
+      <div className="whitespace-nowrap text-xs text-slate-500">{sub}</div>
+    </>
   );
 }
 
@@ -43,13 +60,22 @@ export function BatchesPage() {
   const [sp, setSp] = useSearchParams();
   const filter = (["all", "experiment", "dryrun", "demo"].includes(sp.get("type") ?? "") ? sp.get("type") : "all") as Filter;
   const [search, setSearch] = useState("");
-  const setFilter = (value: Filter) => { const n = new URLSearchParams(sp); if (value === "all") n.delete("type"); else n.set("type", value); setSp(n, { replace: true }); };
+  const setFilter = (value: Filter) => {
+    const n = new URLSearchParams(sp);
+    if (value === "all") n.delete("type");
+    else n.set("type", value);
+    setSp(n, { replace: true });
+  };
   const q = useQuery({ queryKey: ["batches"], refetchInterval: 15_000, queryFn: () => api.batches() });
   if (q.isLoading) return <Loading />;
   if (q.error) return <ErrorBox error={q.error} />;
   const all = q.data!;
   const count = (k: Filter) => (k === "all" ? all.length : all.filter((b) => b.kind === k).length);
-  const rows = all.filter((b) => (filter === "all" || b.kind === filter) && `${b.batch_id} ${b.targets.join(" ")}`.toLowerCase().includes(search.trim().toLowerCase()));
+  const rows = all.filter(
+    (b) =>
+      (filter === "all" || b.kind === filter) &&
+      `${b.batch_id} ${b.targets.join(" ")}`.toLowerCase().includes(search.trim().toLowerCase()),
+  );
 
   return (
     <>
@@ -68,104 +94,115 @@ export function BatchesPage() {
           />
         }
       />
-      <div className="batch-search-bar"><label><span>Tìm lô hoặc model</span><input className="input" type="search" placeholder="Nhập mã lô, A1, A2…" value={search} onChange={(e) => setSearch(e.target.value)} /></label><span role="status">{int(rows.length)} lô</span></div>
-      <Card>
-        {rows.length === 0 ? (
-          <Empty title="Không có lô phù hợp" icon={<Layers size={20} />} action={search ? <button className="filter-clear" onClick={() => setSearch("")}>Xóa tìm kiếm</button> : undefined}>Thử tìm bằng mã lô hoặc đổi bộ lọc.</Empty>
-        ) : (
-          <div className="max-w-full overflow-x-auto"><table className="table-base">
-            <thead>
-              <tr>
-                <th>Lô</th>
-                <th>Loại</th>
-                <th>Nội dung</th>
-                <th>Model · phòng thủ</th>
-                <th className="text-right">Run</th>
-                <th>Kết quả</th>
-                <th className="text-right">Token · chi phí</th>
-                <th className="text-right">Thời điểm</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((b) => (
-                <tr key={b.batch_id} className="group hover:bg-slate-50/70">
-                  <td className="max-w-[260px]">
-                    <Link to={{ pathname: "/runs", search: `?batch=${encodeURIComponent(b.batch_id)}&scope=${b.kind}` }} title={b.batch_id} className="block truncate font-mono text-xs font-medium text-brand-600 hover:underline">{b.batch_id}</Link>
-                    <div title={b.store} className="mt-0.5 max-w-[240px] truncate text-xs text-slate-500">{b.store}</div>
-                  </td>
-                  <td>
-                    <Badge tone={b.kind === "experiment" ? "brand" : b.kind === "demo" ? "payload" : "neutral"}>
-                      <KindIcon kind={b.kind} />
-                      {KIND_LABEL[b.kind]}
-                    </Badge>
-                  </td>
-                  <td className="text-sm text-slate-600">
-                    {b.scenario ? (
-                      <>
-                        <div className="font-medium text-slate-700">
-                          {b.scenario.goal} · {GOAL_LABEL[b.scenario.goal]}
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {CHANNEL_LABEL[b.scenario.channel] ?? b.scenario.channel} · {b.scenario.technique} ·{" "}
-                          {b.scenario.carrier_task_id}
-                        </div>
-                      </>
-                    ) : b.run_kinds.includes("attack") ? (
-                      <>
-                        <div className="font-medium text-slate-700">
-                          Tấn công{b.manifest?.block ? ` · khối ${b.manifest.block}` : ""}
-                        </div>
-                        <div className="text-xs text-slate-500">{b.channels.join(", ") || "—"}</div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="font-medium text-slate-700">Bench hữu dụng</div>
-                        <div className="text-xs text-slate-500">
-                          {b.manifest?.task ? `${b.manifest.task} · ` : ""}câu lành tính
-                        </div>
-                      </>
-                    )}
-                  </td>
-                  <td className="text-sm">
-                    <div className="text-slate-700">{b.targets.join(", ")}</div>
-                    <div className="mt-0.5 flex flex-wrap gap-1">
-                      {b.presets.map((p) => (
-                        <Badge key={p} tone={p === "off" ? "neutral" : "defense"} className="!text-2xs">
-                          {presetLabel(p)}
-                        </Badge>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="num text-right">
-                    {int(b.n_runs)}
-                    {b.n_parse_error > 0 && (
-                      <div className="text-xs text-amber-600">{b.n_parse_error} lỗi</div>
-                    )}
-                  </td>
-                  <td>
-                    <Result b={b} />
-                  </td>
-                  <td className="num text-right text-sm">
-                    <div className="text-slate-700">{kilo(b.tokens)}</div>
-                    <div className="text-xs text-slate-500">{usd(b.manifest?.spent_usd)}</div>
-                  </td>
-                  <td className="text-right text-sm text-slate-500">{when(b.created_at)}</td>
-                  <td className="w-8 pr-4">
-                    <Link
-                      to={{ pathname: "/runs", search: `?batch=${encodeURIComponent(b.batch_id)}&scope=${b.kind}` }}
-                      aria-label={`Xem run của lô ${b.batch_id}`} className="flex h-9 w-9 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                      title="Xem các run"
-                    >
-                      <ChevronRight size={16} />
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table></div>
-        )}
-      </Card>
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <label className="relative block w-full max-w-xs">
+            <span className="sr-only">Tìm lô hoặc model</span>
+            <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <input
+              className="input w-full pl-8"
+              type="search"
+              placeholder="Nhập mã lô, A1, A2…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </label>
+          <span role="status" className="num text-xs text-slate-500">
+            {int(rows.length)} lô
+          </span>
+        </div>
+        <Card className="overflow-hidden">
+          {rows.length === 0 ? (
+            <Empty
+              title="Không có lô phù hợp"
+              action={
+                search ? (
+                  <Button size="sm" onClick={() => setSearch("")}>
+                    Xóa tìm kiếm
+                  </Button>
+                ) : undefined
+              }
+            >
+              Thử tìm bằng mã lô hoặc đổi bộ lọc.
+            </Empty>
+          ) : (
+            <div className="max-w-full overflow-x-auto">
+              <table className="table-base">
+                <thead>
+                  <tr>
+                    <th>Lô</th>
+                    <th>Loại</th>
+                    <th>Nội dung</th>
+                    <th>Model</th>
+                    <th>Phòng thủ</th>
+                    <th className="text-right">Run</th>
+                    <th>Kết quả</th>
+                    <th className="text-right">Token</th>
+                    <th className="text-right">Chi phí</th>
+                    <th className="text-right">Thời điểm</th>
+                    <th>
+                      <span className="sr-only">Mở</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((b) => {
+                    const to = { pathname: "/runs", search: `?batch=${encodeURIComponent(b.batch_id)}&scope=${b.kind}` };
+                    return (
+                      <tr key={b.batch_id}>
+                        <td className="max-w-[260px]">
+                          <Link to={to} title={b.batch_id} className="block truncate font-mono text-xs font-medium text-brand-600 hover:underline">
+                            {b.batch_id}
+                          </Link>
+                          <div title={b.store} className="mt-0.5 truncate text-xs text-slate-500">
+                            {b.store}
+                          </div>
+                        </td>
+                        <td>
+                          <Badge tone={b.kind === "experiment" ? "brand" : b.kind === "demo" ? "payload" : "neutral"}>{KIND_LABEL[b.kind]}</Badge>
+                        </td>
+                        <td>
+                          <Scenario b={b} />
+                        </td>
+                        <td className="whitespace-nowrap font-mono text-xs text-slate-700">{b.targets.join(", ")}</td>
+                        <td>
+                          <div className="flex flex-wrap gap-1">
+                            {b.presets.map((p) => (
+                              <Badge key={p} tone={p === "off" ? "neutral" : "defense"}>
+                                {presetLabel(p)}
+                              </Badge>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="num text-right">
+                          {int(b.n_runs)}
+                          {b.n_parse_error > 0 && <div className="whitespace-nowrap text-xs text-amber-700">{b.n_parse_error} lỗi</div>}
+                        </td>
+                        <td>
+                          <Result b={b} />
+                        </td>
+                        <td className="num text-right text-slate-700">{kilo(b.tokens)}</td>
+                        <td className="num whitespace-nowrap text-right text-slate-700">{usd(b.manifest?.spent_usd)}</td>
+                        <td className="num whitespace-nowrap text-right text-slate-500">{when(b.created_at)}</td>
+                        <td className="w-8">
+                          <Link
+                            to={to}
+                            aria-label={`Xem run của lô ${b.batch_id}`}
+                            title="Xem các run"
+                            className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                          >
+                            <ChevronRight size={16} />
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      </div>
     </>
   );
 }

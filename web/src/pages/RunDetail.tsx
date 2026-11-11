@@ -1,26 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import clsx from "clsx";
+import { ArrowLeft, Check, Copy } from "lucide-react";
+import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { GoalEvidenceBody } from "@/components/Evidence";
 import { HighlightText, InjectedContext, ToolActions, TraceInspector, TraceLegend } from "@/components/Trace";
 import { TraceReplay } from "@/components/TraceReplay";
-import { Badge, Callout, Card, ErrorBox, Loading, Mono, PageHeader, Segmented } from "@/components/ui";
+import { Badge, Callout, Card, ErrorBox, KeyValue, Loading, Mono, Tabs, Tooltip, buttonClass } from "@/components/ui";
 import { api, type PayloadSource, type RunDetail } from "@/lib/api";
 import { CHANNEL_LABEL, GOAL_LABEL, int, presetLabel, seconds, when } from "@/lib/format";
 
 type Tab = "evidence" | "trace" | "tools" | "answer" | "payload" | "replay";
-
-/** Một ô thông tin trong dải tóm tắt: nhãn nhỏ trên, giá trị dưới. */
-function Meta({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <div className="text-2xs uppercase tracking-wide text-slate-400">{label}</div>
-      <div className="break-words text-sm text-slate-800">{children}</div>
-    </div>
-  );
-}
 
 function sourceNote(src: PayloadSource): string {
   if (src.kind === "commit")
@@ -37,61 +28,91 @@ function missingReason(src: PayloadSource): string {
   return `Payload không có trong ${at}, trong file payload của lô, hay trong corpus hiện hành — thường là lô dò sinh payload riêng mà không ghi manifest.`;
 }
 
+function CopyId({ id }: { id: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <Tooltip content={done ? "Đã chép" : "Chép mã run"}>
+      <button
+        aria-label="Chép mã run"
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(id);
+            setDone(true);
+            setTimeout(() => setDone(false), 1500);
+          } catch {
+            /* trình duyệt chặn clipboard: mã vẫn chọn được bằng tay */
+          }
+        }}
+        className="inline-flex items-center gap-1.5 rounded px-1 py-0.5 font-mono text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+      >
+        {id}
+        {done ? <Check size={12} className="text-defense-600" /> : <Copy size={12} />}
+      </button>
+    </Tooltip>
+  );
+}
+
+const TONE_BAR: Record<string, string> = {
+  attack: "bg-attack-500",
+  defense: "bg-defense-500",
+  refusal: "bg-refusal-500",
+};
+
 function Summary({ d }: { d: RunDetail }) {
   const run = d.run;
   const attack = run.run_kind === "attack";
-  const tone = d.verdict?.tone;
-  const edge = tone === "attack" ? "border-l-attack-500" : tone === "defense" ? "border-l-defense-500" : tone === "refusal" ? "border-l-refusal-500" : "border-l-slate-300";
+  const items: [string, React.ReactNode][] = [
+    ["Model", <Mono>{String(run.model_id)}</Mono>],
+    ["Phòng thủ", presetLabel(String(run.preset))],
+    ["System prompt", <Mono>{d.prompt_variant ?? "—"}</Mono>],
+    ...(attack
+      ? ([
+          ["Kênh", run.channel ? CHANNEL_LABEL[String(run.channel)] ?? String(run.channel) : "—"],
+          ["Kỹ thuật", String(run.technique ?? "—")],
+          ["Mục tiêu", run.goal ? `${run.goal} · ${GOAL_LABEL[String(run.goal)]}` : "—"],
+          ["Payload", <Mono>{String(run.payload_id ?? "—")}</Mono>],
+        ] as [string, React.ReactNode][])
+      : ([["Câu hỏi", <Mono>{String(run.benign_query_id)}</Mono>]] as [string, React.ReactNode][])),
+    ["Bước", <span className="num">{int(Number(run.n_steps))}</span>],
+    ["Token", <span className="num">{int(Number(run.tokens_in) + Number(run.tokens_out))}</span>],
+    ["Độ trễ", <span className="num">{seconds(Number(run.latency_ms))}</span>],
+    ["Thời điểm", <span className="num">{when(String(run.created_at))}</span>],
+  ];
   return (
-    <Card className={`border-l-4 ${edge}`}>
-      <div className="space-y-4 p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="text-md font-semibold text-slate-900">{d.verdict?.label ?? "Lượt lành tính"}</div>
-            {d.verdict?.detail && <div className="mt-0.5 text-sm text-slate-600">{d.verdict.detail}</div>}
+    <header className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+        <div className="flex min-w-0 gap-3">
+          <span className={clsx("w-[3px] shrink-0 rounded-full", TONE_BAR[d.verdict?.tone ?? ""] ?? "bg-slate-300")} aria-hidden="true" />
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold text-slate-900">{d.verdict?.label ?? "Lượt lành tính"}</h1>
+            {d.verdict?.detail && <p className="mt-0.5 max-w-[80ch] text-sm text-slate-600">{d.verdict.detail}</p>}
           </div>
-          {attack && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              {(["g1", "g2", "g3"] as const).map((g) => (
-                <Badge key={g} tone={run[`${g}_hit`] ? "attack" : "neutral"} dot={!!run[`${g}_hit`]}>
-                  {g.toUpperCase()} {run[`${g}_hit`] ? "✓" : "✗"}
-                </Badge>
-              ))}
-              {run.g2_severity ? <Badge tone="warn">mức {String(run.g2_severity)}</Badge> : null}
-            </div>
-          )}
         </div>
-
-        {d.user_query && (
-          <div className="rounded-lg bg-slate-50 px-4 py-2.5">
-            <div className="text-2xs uppercase tracking-wide text-slate-400">
-              {attack ? `Nhân viên hỏi · tác vụ chở ${d.user_query.id}` : `Câu lành tính ${d.user_query.id}`}
-            </div>
-            <div className="mt-0.5 text-sm leading-relaxed text-slate-800">{d.user_query.text}</div>
+        {attack && (
+          <div className="flex flex-wrap items-center gap-1" aria-label="Mục tiêu tấn công đạt hay không">
+            {(["g1", "g2", "g3"] as const).map((g) => (
+              <Badge key={g} tone={run[`${g}_hit`] ? "attack" : "neutral"}>
+                {g.toUpperCase()} · {run[`${g}_hit`] ? "đạt" : "không"}
+              </Badge>
+            ))}
+            {run.g2_severity ? <Badge tone="warn">mức {String(run.g2_severity)}</Badge> : null}
           </div>
         )}
-
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-6">
-          <Meta label="Model"><Mono>{String(run.model_id)}</Mono></Meta>
-          <Meta label="Phòng thủ">{presetLabel(String(run.preset))}</Meta>
-          <Meta label="System prompt"><Mono>{d.prompt_variant ?? "—"}</Mono></Meta>
-          {attack ? (
-            <>
-              <Meta label="Kênh">{run.channel ? CHANNEL_LABEL[String(run.channel)] ?? String(run.channel) : "—"}</Meta>
-              <Meta label="Kỹ thuật">{String(run.technique ?? "—")}</Meta>
-              <Meta label="Mục tiêu">{run.goal ? `${run.goal} · ${GOAL_LABEL[String(run.goal)]}` : "—"}</Meta>
-              <Meta label="Payload"><Mono>{String(run.payload_id ?? "—")}</Mono></Meta>
-            </>
-          ) : (
-            <Meta label="Câu hỏi"><Mono>{String(run.benign_query_id)}</Mono></Meta>
-          )}
-          <Meta label="Bước">{int(Number(run.n_steps))}</Meta>
-          <Meta label="Token">{int(Number(run.tokens_in) + Number(run.tokens_out))}</Meta>
-          <Meta label="Độ trễ">{seconds(Number(run.latency_ms))}</Meta>
-          <Meta label="Thời điểm">{when(String(run.created_at))}</Meta>
-        </div>
       </div>
-    </Card>
+
+      {d.user_query && (
+        <figure className="border-l-2 border-slate-200 pl-3">
+          <figcaption className="text-xs text-slate-500">
+            {attack ? `Nhân viên hỏi · tác vụ chở ${d.user_query.id}` : `Câu lành tính ${d.user_query.id}`}
+          </figcaption>
+          <blockquote className="mt-0.5 max-w-[88ch] text-base text-slate-800">{d.user_query.text}</blockquote>
+        </figure>
+      )}
+
+      <div className="rounded-lg border border-slate-200 px-4 py-3">
+        <KeyValue items={items} columns={6} />
+      </div>
+    </header>
   );
 }
 
@@ -102,7 +123,7 @@ export function RunDetailPage() {
   const config = useQuery({ queryKey: ["config"], queryFn: api.config });
   const [tab, setTab] = useState<Tab | null>(null);
 
-  if (q.isLoading) return <Loading />;
+  if (q.isLoading) return <Loading rows={10} />;
   if (q.error) return <ErrorBox error={q.error} />;
   const d = q.data!;
   const run = d.run;
@@ -120,72 +141,59 @@ export function RunDetailPage() {
   const active: Tab = tab && tabs.some((t) => t.value === tab) ? tab : tabs[0].value;
 
   return (
-    <>
-      <PageHeader
-        title="Chi tiết lượt chạy"
-        info={<Mono>{run.run_id}</Mono>}
-        actions={
-          <Link
-            to={`/runs${sp.toString() ? `?${sp}` : ""}`}
-            className="inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium text-slate-600 ring-1 ring-inset ring-slate-300 hover:bg-slate-50"
-          >
-            <ArrowLeft size={15} /> Lượt chạy
-          </Link>
-        }
-      />
-
-      <div className="space-y-4">
-        <Summary d={d} />
-
-        {spontaneous && (
-          <Callout tone="warn" title="Cần đối chiếu hành động với payload">
-            Scorer chấm đạt G2 nhưng chưa tìm thấy lời gọi tool khớp gợi ý từ payload.
-            Đây là dấu hiệu cần kiểm tra trace, chưa đủ để kết luận hành vi có do payload hay không.
-          </Callout>
-        )}
-
-        <Card>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
-            <Segmented value={active} onChange={setTab} options={tabs} />
-            {active === "trace" && <TraceLegend />}
-          </div>
-          <div className="p-4">
-            {active === "evidence" && <GoalEvidenceBody ev={d.evidence} />}
-            {active === "trace" && (
-              <div className="space-y-4">
-                <InjectedContext ctx={d.injected_context} />
-                <TraceInspector steps={d.steps} />
-              </div>
-            )}
-            {active === "tools" && <ToolActions actions={d.tool_actions} />}
-            {active === "answer" && d.final_answer && <HighlightText value={d.final_answer} />}
-            {active === "payload" && (
-              <div className="space-y-2">
-                {d.payload_text ? (
-                  <>
-                    <pre className="code-block ring-payload-200">{d.payload_text}</pre>
-                    <p className="text-xs text-slate-500">
-                      Nhân viên không nhìn thấy đoạn này — nó nằm trong{" "}
-                      {run.channel ? CHANNEL_LABEL[String(run.channel)] ?? String(run.channel) : "dữ liệu"} mà agent đọc.
-                    </p>
-                  </>
-                ) : (
-                  <Callout tone="warn" title={`Không tra được payload ${String(run.payload_id ?? "")}`}>
-                    {missingReason(d.payload_source)}
-                  </Callout>
-                )}
-                <p className="text-xs text-slate-400">{sourceNote(d.payload_source)}</p>
-              </div>
-            )}
-            {active === "replay" && (
-              <TraceReplay
-                detail={d}
-                codes={config.data?.presets.find((p) => p.name === String(run.preset))?.codes ?? []}
-              />
-            )}
-          </div>
-        </Card>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2" data-chrome>
+        <Link to={`/runs${sp.toString() ? `?${sp}` : ""}`} className={buttonClass("ghost", "sm")}>
+          <ArrowLeft size={13} /> Lượt chạy
+        </Link>
+        <span className="h-4 w-px bg-slate-200" />
+        <CopyId id={run.run_id} />
       </div>
-    </>
+
+      <Summary d={d} />
+
+      {spontaneous && (
+        <Callout tone="warn" title="Cần đối chiếu hành động với payload">
+          Scorer chấm đạt G2 nhưng chưa tìm thấy lời gọi tool khớp gợi ý từ payload.
+          Đây là dấu hiệu cần kiểm tra trace, chưa đủ để kết luận hành vi có do payload hay không.
+        </Callout>
+      )}
+
+      <Card>
+        <Tabs label="Các mặt của lượt chạy" value={active} onChange={setTab} options={tabs} trailing={active === "trace" ? <TraceLegend /> : undefined} />
+        <div className="p-4">
+          {active === "evidence" && <GoalEvidenceBody ev={d.evidence} />}
+          {active === "trace" && (
+            <div className="space-y-3">
+              <InjectedContext ctx={d.injected_context} />
+              <TraceInspector steps={d.steps} />
+            </div>
+          )}
+          {active === "tools" && <ToolActions actions={d.tool_actions} />}
+          {active === "answer" && d.final_answer && <HighlightText value={d.final_answer} />}
+          {active === "payload" && (
+            <div className="space-y-2">
+              {d.payload_text ? (
+                <>
+                  <pre className="code-block border-payload-200">{d.payload_text}</pre>
+                  <p className="text-xs text-slate-500">
+                    Nhân viên không nhìn thấy đoạn này — nó nằm trong{" "}
+                    {run.channel ? CHANNEL_LABEL[String(run.channel)] ?? String(run.channel) : "dữ liệu"} mà agent đọc.
+                  </p>
+                </>
+              ) : (
+                <Callout tone="warn" title={`Không tra được payload ${String(run.payload_id ?? "")}`}>
+                  {missingReason(d.payload_source)}
+                </Callout>
+              )}
+              <p className="text-xs text-slate-400">{sourceNote(d.payload_source)}</p>
+            </div>
+          )}
+          {active === "replay" && (
+            <TraceReplay detail={d} codes={config.data?.presets.find((p) => p.name === String(run.preset))?.codes ?? []} />
+          )}
+        </div>
+      </Card>
+    </div>
   );
 }

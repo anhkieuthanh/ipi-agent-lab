@@ -2,13 +2,13 @@
 // tô màu dựng bằng phần tử <mark>, không qua innerHTML.
 
 import clsx from "clsx";
-import { Brain, ChevronDown, Cpu, FileCode2, Loader2, ShieldAlert, Sparkles, Wrench } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { ChevronRight, Loader2 } from "lucide-react";
+import { type KeyboardEvent, type ReactNode, useRef, useState } from "react";
 
 import type { InjectedContext as InjectedCtx, Marked, Step, ToolAction } from "@/lib/api";
 import { seconds } from "@/lib/format";
 
-import { Badge } from "./ui";
+import { Badge, Button, Kbd } from "./ui";
 
 export function HighlightText({ value, className }: { value: Marked; className?: string }) {
   const { text, spans } = value;
@@ -45,97 +45,91 @@ function format(text: string): string {
   }
 }
 
-function stepTone(s: Step): { ring: string; icon: ReactNode; chip: ReactNode } {
-  if (s.blocking)
-    return {
-      ring: "border-defense-200 bg-defense-50/40",
-      icon: <ShieldAlert size={15} className="text-defense-600" />,
-      chip: <Badge tone="defense">Chặn</Badge>,
-    };
-  if (s.refusal)
-    return {
-      ring: "border-refusal-200 bg-refusal-50/40",
-      icon: <ShieldAlert size={15} className="text-refusal-600" />,
-      chip: <Badge tone="refusal">Model từ chối</Badge>,
-    };
-  if (s.transforming)
-    return {
-      ring: "border-payload-200 bg-payload-50/30",
-      icon: <Sparkles size={15} className="text-payload-600" />,
-      chip: <Badge tone="payload">Biến đổi</Badge>,
-    };
-  if (s.kind === "tool")
-    return { ring: "border-slate-200", icon: <Wrench size={15} className="text-slate-500" />, chip: null };
-  return { ring: "border-slate-200", icon: <Cpu size={15} className="text-slate-500" />, chip: null };
+/** Loại sự kiện của một bước: quyết định màu vạch và nhãn. Chặn (phòng thủ) ≠ model tự từ chối. */
+function stepKind(s: Step): { bar: string; chip: ReactNode } {
+  if (s.blocking) return { bar: "bg-defense-500", chip: <Badge tone="defense">Chặn</Badge> };
+  if (s.refusal) return { bar: "bg-refusal-500", chip: <Badge tone="refusal">Model từ chối</Badge> };
+  if (s.transforming) return { bar: "bg-payload-500", chip: <Badge tone="payload">Biến đổi</Badge> };
+  return { bar: "bg-transparent", chip: null };
 }
 
-function StepCard({ step, initialOpen = false }: { step: Step; initialOpen?: boolean }) {
-  const [open, setOpen] = useState(
-    initialOpen || step.decisive || step.blocking || step.payload_fields.length > 0,
+function stepName(s: Step): ReactNode {
+  if (s.kind === "tool" || s.tool_name) return <span className="font-mono text-xs text-slate-900">{s.tool_name}</span>;
+  return s.kind === "defense" ? "Phòng thủ xử lý" : "Lượt suy luận";
+}
+
+function stepRole(s: Step): string {
+  return s.kind === "tool" || s.tool_name ? "Tool" : s.kind === "defense" ? "Phòng thủ" : "Model";
+}
+
+function StepFlags({ step }: { step: Step }) {
+  return (
+    <>
+      {stepKind(step).chip}
+      {step.decisive && <Badge tone="defense">Quyết định</Badge>}
+      {step.payload_fields.length > 0 && <Badge tone="payload">Payload</Badge>}
+      {step.canary_fields.length > 0 && <Badge tone="canary">Canary</Badge>}
+    </>
   );
-  const tone = stepTone(step);
+}
+
+function StepBody({ step }: { step: Step }) {
+  const empty = !Object.keys(step.fields).length && !step.events.length;
+  if (empty) return <p className="text-sm text-slate-500">Bước này không có nội dung chi tiết.</p>;
+  return (
+    <div className="space-y-4">
+      {step.events.length > 0 && (
+        <ul className="space-y-1 text-sm text-slate-600">
+          {step.events.map((e, i) => (
+            <li key={i} className="flex gap-2">
+              <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-slate-400" aria-hidden="true" />
+              {e}
+            </li>
+          ))}
+        </ul>
+      )}
+      {Object.entries(step.fields).map(([key, marked]) => (
+        <section key={key}>
+          <h3 className="label mb-1.5">{FIELD_LABEL[key] ?? key}</h3>
+          <HighlightText
+            value={{ text: marked.spans.length ? marked.text : format(marked.text), spans: marked.spans }}
+            className={clsx(key === "llm_reasoning" && "max-h-72 overflow-y-auto text-slate-500")}
+          />
+        </section>
+      ))}
+    </div>
+  );
+}
+
+/** Bước dạng gập — dùng khi trace đang chạy trực tiếp (Phòng thí nghiệm). */
+function StepRow({ step, initialOpen = false }: { step: Step; initialOpen?: boolean }) {
+  const [open, setOpen] = useState(initialOpen || step.decisive || step.blocking || step.payload_fields.length > 0);
   const hasBody = Object.keys(step.fields).length > 0 || step.events.length > 0;
   return (
-    <div className={clsx("rounded-lg border", tone.ring, step.decisive && "ring-2 ring-defense-400")}>
+    <div className="relative">
+      <span className={clsx("absolute inset-y-0 left-0 w-0.5", stepKind(step).bar)} aria-hidden="true" />
       <button
         aria-expanded={hasBody ? open : undefined}
         disabled={!hasBody}
         onClick={() => hasBody && setOpen(!open)}
-        className={clsx("flex w-full items-center gap-3 px-4 py-2.5 text-left", hasBody && "cursor-pointer")}
+        className="flex min-h-9 w-full flex-wrap items-center gap-x-2.5 gap-y-1 px-3 py-1.5 text-left hover:bg-slate-50 disabled:hover:bg-transparent"
       >
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-surface text-2xs font-semibold text-slate-500 ring-1 ring-slate-200">
-          {step.idx}
+        <ChevronRight size={13} className={clsx("shrink-0 text-slate-400 transition-transform", open && "rotate-90", !hasBody && "invisible")} />
+        <span className="num w-5 shrink-0 text-right font-mono text-xs text-slate-400">{step.idx}</span>
+        <span className="w-16 shrink-0 text-xs text-slate-500">{stepRole(step)}</span>
+        <span className="text-sm font-medium text-slate-700">{stepName(step)}</span>
+        <span className="flex flex-wrap items-center gap-1">
+          <StepFlags step={step} />
+          {step.fields.llm_reasoning && <Badge>Có suy luận</Badge>}
         </span>
-        {tone.icon}
-        <span className="text-sm font-medium text-slate-700">
-          {step.kind === "tool" || step.tool_name ? (
-            <>
-              Gọi tool <span className="font-mono text-slate-900">{step.tool_name}</span>
-            </>
-          ) : step.kind === "defense" ? (
-            "Phòng thủ xử lý"
-          ) : (
-            "Lượt suy luận"
-          )}
-        </span>
-        <div className="flex items-center gap-1.5">
-          {tone.chip}
-          {step.decisive && <Badge tone="defense">Quyết định</Badge>}
-          {step.payload_fields.length > 0 && <Badge tone="payload">Có payload</Badge>}
-          {step.canary_fields.length > 0 && <Badge tone="canary">Có canary</Badge>}
-          {step.fields.llm_reasoning && (
-            <Badge>
-              <Brain size={12} /> Có suy luận
-            </Badge>
-          )}
-        </div>
-        <span className="ml-auto flex items-center gap-3 text-xs text-slate-400">
+        <span className="num ml-auto flex items-center gap-3 text-xs text-slate-400">
           {step.finish_reason && <span className="font-mono">{step.finish_reason}</span>}
           {step.latency_ms ? <span>{seconds(step.latency_ms)}</span> : null}
-          {hasBody && <ChevronDown size={14} className={clsx("transition", open && "rotate-180")} />}
         </span>
       </button>
       {open && hasBody && (
-        <div className="space-y-3 border-t border-slate-100 px-4 py-3">
-          {step.events.map((e, i) => (
-            <div key={i} className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">
-              {e}
-            </div>
-          ))}
-          {Object.entries(step.fields).map(([key, marked]) => (
-            <div key={key}>
-              <div className="label mb-1 flex items-center gap-1.5">
-                {key === "llm_reasoning" && <Brain size={12} />}
-                {FIELD_LABEL[key] ?? key}
-              </div>
-              <HighlightText
-                value={{ text: marked.spans.length ? marked.text : format(marked.text), spans: marked.spans }}
-                className={clsx(
-                  key === "llm_reasoning" && "max-h-72 overflow-y-auto italic text-slate-500",
-                )}
-              />
-            </div>
-          ))}
+        <div className="px-3 pb-4 pl-[42px] pt-1">
+          <StepBody step={step} />
         </div>
       )}
     </div>
@@ -148,35 +142,26 @@ export function InjectedContext({ ctx }: { ctx: InjectedCtx | null | undefined }
   const [open, setOpen] = useState(true);
   if (!ctx) return null;
   return (
-    <div className="rounded-lg border border-payload-200 bg-payload-50/30">
-      <button
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-        className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left"
-      >
-        <FileCode2 size={15} className="text-payload-600" />
+    <div className="relative overflow-hidden rounded-lg border border-slate-200">
+      <span className="absolute inset-y-0 left-0 w-0.5 bg-payload-500" aria-hidden="true" />
+      <button aria-expanded={open} onClick={() => setOpen(!open)} className="flex min-h-9 w-full flex-wrap items-center gap-2.5 px-3 py-1.5 text-left hover:bg-slate-50">
+        <ChevronRight size={13} className={clsx("shrink-0 text-slate-400 transition-transform", open && "rotate-90")} />
         <span className="text-sm font-medium text-slate-700">
-          Ngữ cảnh gửi model · mô tả tool <span className="font-mono text-slate-900">{ctx.tool}</span>
+          Ngữ cảnh gửi model · mô tả tool <span className="font-mono text-xs text-slate-900">{ctx.tool}</span>
         </span>
-        <div className="flex items-center gap-1.5">
-          <Badge tone="payload">Có payload</Badge>
-          {ctx.reconstructed && <Badge>Dựng lại</Badge>}
-        </div>
-        <ChevronDown size={14} className={clsx("ml-auto text-slate-400 transition", open && "rotate-180")} />
+        <Badge tone="payload">Payload</Badge>
+        {ctx.reconstructed && <Badge>Dựng lại</Badge>}
       </button>
       {open && (
-        <div className="space-y-2 border-t border-payload-100 px-4 py-3">
-          <p className="text-xs text-slate-600">
+        <div className="space-y-2 px-3 pb-3 pl-[34px]">
+          <p className="max-w-[88ch] text-xs leading-[18px] text-slate-500">
             K2a: payload nối vào mô tả tool, gửi kèm danh sách tool ở{" "}
             {ctx.rug_pull ? "các lượt gọi model sau lần liệt kê đầu (rug-pull)" : "mọi lượt gọi model"} — nên
             không hiện ở bước nào bên dưới.
-            {ctx.reconstructed &&
-              " Trace không lưu danh sách tool; bản này dựng lại từ corpus và config hiện hành."}
+            {ctx.reconstructed && " Trace không lưu danh sách tool; bản này dựng lại từ corpus và config hiện hành."}
           </p>
           {ctx.d1_wrapped && (
-            <p className="text-xs text-amber-700">
-              D1 bật: model nhận bản mô tả đã qua spotlighting, không phải nguyên văn dưới đây.
-            </p>
+            <p className="text-xs text-amber-700">D1 bật: model nhận bản mô tả đã qua spotlighting, không phải nguyên văn dưới đây.</p>
           )}
           <HighlightText value={ctx.text} />
         </div>
@@ -188,19 +173,36 @@ export function InjectedContext({ ctx }: { ctx: InjectedCtx | null | undefined }
 export function ToolActions({ actions }: { actions: ToolAction[] }) {
   if (!actions.length) return <p className="text-sm text-slate-500">Agent không gọi tool nào.</p>;
   return (
-    <div className="space-y-2">
-      {actions.map((a, i) => (
-        <div key={i} className="flex items-start gap-3 rounded-lg border border-slate-200 px-3 py-2">
-          <Badge tone={a.blocked ? "defense" : "neutral"}>{a.blocked ? "Bị chặn" : "Đã chạy"}</Badge>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-xs font-medium text-slate-800">{a.tool}</span>
-              {a.follows_payload && <Badge tone="payload">Làm theo payload</Badge>}
-            </div>
-            <pre className="mt-1 truncate font-mono text-xs text-slate-500">{a.args}</pre>
-          </div>
-        </div>
-      ))}
+    <div className="overflow-x-auto rounded-lg border border-slate-200">
+      <table className="table-base">
+        <thead>
+          <tr>
+            <th className="w-8 text-right">#</th>
+            <th>Tool</th>
+            <th>Tham số</th>
+            <th>Trạng thái</th>
+          </tr>
+        </thead>
+        <tbody>
+          {actions.map((a, i) => (
+            <tr key={i}>
+              <td className="num text-right font-mono text-xs text-slate-400">{i + 1}</td>
+              <td className="whitespace-nowrap">
+                <span className="font-mono text-xs font-medium text-slate-900">{a.tool}</span>
+              </td>
+              <td className="max-w-[560px]">
+                <pre className="truncate font-mono text-xs text-slate-500" title={a.args}>{a.args}</pre>
+              </td>
+              <td className="whitespace-nowrap">
+                <span className="flex items-center gap-1">
+                  <Badge tone={a.blocked ? "defense" : "neutral"}>{a.blocked ? "Bị chặn" : "Đã chạy"}</Badge>
+                  {a.follows_payload && <Badge tone="payload">Làm theo payload</Badge>}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -208,14 +210,14 @@ export function ToolActions({ actions }: { actions: ToolAction[] }) {
 export function StepTimeline({ steps, live = false }: { steps: Step[]; live?: boolean }) {
   if (!steps.length && !live) return <p className="text-sm text-slate-500">Run không có bước nào.</p>;
   return (
-    <div className="space-y-2">
+    <div className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200">
       {steps.map((s, i) => (
         // Đang chạy: mở sẵn lượt model mới nhất để thấy nó vừa nghĩ gì; kết quả tool dài nên để đóng.
-        <StepCard key={s.idx} step={s} initialOpen={live && i === steps.length - 1 && s.kind === "llm"} />
+        <StepRow key={s.idx} step={s} initialOpen={live && i === steps.length - 1 && s.kind === "llm"} />
       ))}
       {live && (
-        <div className="flex items-center gap-2 rounded-lg border border-dashed border-slate-200 px-4 py-2.5 text-xs text-slate-500">
-          <Loader2 size={13} className="animate-spin text-brand-500" />
+        <div className="flex items-center gap-2 px-3 py-2 text-xs text-slate-500">
+          <Loader2 size={13} className="animate-spin text-slate-400" />
           {steps.length ? "Đang chờ bước tiếp theo…" : "Đang chuẩn bị dữ liệu và gọi model…"}
         </div>
       )}
@@ -223,47 +225,102 @@ export function StepTimeline({ steps, live = false }: { steps: Step[]; live?: bo
   );
 }
 
-/** Compact investigation: select a step to inspect its evidence. */
+/** Điều tra trace: danh sách bước bên trái, bằng chứng của bước đang chọn bên phải.
+ * Bàn phím trong danh sách: ↑/↓ hoặc J/K đổi bước. */
 export function TraceInspector({ steps }: { steps: Step[] }) {
   const decisive = steps.find((s) => s.decisive);
   const [selected, setSelected] = useState<number | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const step = steps.find((s) => s.idx === selected) ?? decisive ?? steps[0];
-  if (!step) return <p className="p-5 text-sm text-slate-500">Chưa có bước nào.</p>;
-  return <div className="trace-inspector">
-    <div className="trace-step-list">
-      {decisive && <button className="filter-clear mb-3" onClick={() => setSelected(decisive.idx)}>Bước quyết định</button>}
-      <div role="group" aria-label="Các bước thực thi">
-        {steps.map((s) => <button key={s.idx} className={clsx("trace-step", s.idx === step.idx && "is-selected")} aria-pressed={s.idx === step.idx} onClick={() => setSelected(s.idx)}>
-          <span className="trace-step-icon" aria-hidden="true">{stepTone(s).icon}</span>
-          <span><span className="trace-step-name">{s.tool_name ?? (s.kind === "defense" ? "Phòng thủ" : "Model")}</span><span className="trace-step-meta">Bước {s.idx}{s.decisive ? " · Quyết định" : s.blocking ? " · Chặn" : s.refusal ? " · Từ chối" : ""}</span></span>
-        </button>)}
+  if (!step) return <p className="text-sm text-slate-500">Chưa có bước nào.</p>;
+
+  const move = (delta: number) => {
+    const at = steps.findIndex((s) => s.idx === step.idx);
+    const next = steps[Math.min(steps.length - 1, Math.max(0, at + delta))];
+    if (!next) return;
+    setSelected(next.idx);
+    listRef.current?.querySelector<HTMLElement>(`[data-step="${next.idx}"]`)?.focus();
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "ArrowDown" || e.key === "j") { e.preventDefault(); move(1); }
+    if (e.key === "ArrowUp" || e.key === "k") { e.preventDefault(); move(-1); }
+  };
+
+  return (
+    <div className="grid overflow-hidden rounded-lg border border-slate-200 md:grid-cols-[280px_minmax(0,1fr)]">
+      <div className="flex min-w-0 flex-col border-b border-slate-200 bg-slate-50 md:border-b-0 md:border-r">
+        <div className="flex h-9 shrink-0 items-center justify-between gap-2 border-b border-slate-200 px-3">
+          <span className="text-xs font-medium text-slate-500">{steps.length} bước</span>
+          {decisive ? (
+            <Button size="sm" variant="ghost" onClick={() => setSelected(decisive.idx)}>Tới bước quyết định</Button>
+          ) : (
+            <span className="hidden items-center gap-1 text-2xs text-slate-400 md:flex"><Kbd>↑</Kbd><Kbd>↓</Kbd></span>
+          )}
+        </div>
+        <div ref={listRef} role="listbox" aria-label="Các bước thực thi" onKeyDown={onKey} className="max-h-60 overflow-y-auto p-1 md:max-h-[640px]">
+          {steps.map((s) => {
+            const on = s.idx === step.idx;
+            return (
+              <button
+                key={s.idx}
+                data-step={s.idx}
+                role="option"
+                aria-selected={on}
+                tabIndex={on ? 0 : -1}
+                onClick={() => setSelected(s.idx)}
+                className={clsx(
+                  "relative flex h-9 w-full items-center gap-2 overflow-hidden rounded-md pl-3 pr-2 text-left transition-colors",
+                  on ? "bg-surface shadow-[0_0_0_1px_rgb(var(--n-200))]" : "hover:bg-slate-100",
+                )}
+              >
+                <span className={clsx("absolute inset-y-1.5 left-0.5 w-0.5 rounded-full", stepKind(s).bar)} aria-hidden="true" />
+                <span className="num w-5 shrink-0 text-right font-mono text-xs text-slate-400">{s.idx}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-slate-700">
+                  {s.tool_name ? <span className="font-mono text-xs text-slate-900">{s.tool_name}</span> : stepRole(s)}
+                </span>
+                <span className="flex shrink-0 items-center gap-1" aria-hidden="true">
+                  {s.payload_fields.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-payload-500" title="Có payload" />}
+                  {s.canary_fields.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-canary-500" title="Có canary" />}
+                </span>
+                <span className="shrink-0 text-2xs text-slate-400">
+                  {s.decisive ? "Quyết định" : s.blocking ? "Chặn" : s.refusal ? "Từ chối" : s.latency_ms ? seconds(s.latency_ms) : ""}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="min-w-0 overflow-y-auto p-4 md:max-h-[676px]" aria-live="polite">
+        <div className="mb-4 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <span className="text-sm font-semibold text-slate-900">Bước {step.idx} · {stepName(step)}</span>
+          <StepFlags step={step} />
+          <span className="num ml-auto flex items-center gap-3 text-xs text-slate-400">
+            {step.finish_reason && <span className="font-mono">{step.finish_reason}</span>}
+            {step.latency_ms ? <span>{seconds(step.latency_ms)}</span> : null}
+          </span>
+        </div>
+        <StepBody step={step} />
       </div>
     </div>
-    <div className="trace-evidence" aria-live="polite">
-      <div className="mb-4 flex flex-wrap items-center gap-2"><Badge>Bước {step.idx}</Badge>{stepTone(step).chip}{step.decisive && <Badge tone="defense">Quyết định</Badge>}</div>
-      {step.events.map((event, i) => <p key={i} className="mb-3 text-sm text-slate-600">{event}</p>)}
-      {Object.entries(step.fields).map(([key, marked]) => <div key={key} className="mb-4"><h3 className="label mb-2">{FIELD_LABEL[key] ?? key}</h3><HighlightText value={{ text: marked.spans.length ? marked.text : format(marked.text), spans: marked.spans }} /></div>)}
-      {!Object.keys(step.fields).length && !step.events.length && <p className="text-sm text-slate-500">Không có nội dung chi tiết.</p>}
-    </div>
-  </div>;
+  );
 }
 
 export function TraceLegend() {
+  const items: [string, string][] = [
+    ["bg-defense-500", "Phòng thủ chặn"],
+    ["bg-refusal-500", "Model từ chối"],
+    ["bg-payload-500", "Payload"],
+    ["bg-canary-500", "Canary"],
+  ];
   return (
-    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-      <span className="flex items-center gap-1.5">
-        <span className="h-2.5 w-2.5 rounded-sm bg-defense-500" /> Chặn
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span className="h-2.5 w-2.5 rounded-sm bg-refusal-500" /> Model từ chối
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span className="h-2.5 w-2.5 rounded-sm bg-payload-500" /> Payload
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span className="h-2.5 w-2.5 rounded-sm bg-canary-500" /> Canary
-      </span>
-      <span className="text-slate-400">· viền đậm = bước khiến run bị chặn</span>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+      {items.map(([cls, label]) => (
+        <span key={label} className="flex items-center gap-1.5">
+          <span className={clsx("h-2 w-2 rounded-sm", cls)} aria-hidden="true" />
+          {label}
+        </span>
+      ))}
     </div>
   );
 }

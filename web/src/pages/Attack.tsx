@@ -1,11 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
-import { Crosshair, Cpu, Grid3x3, Radar, Table2, Trophy, Waypoints } from "lucide-react";
-import { useState } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { OutcomeBar, OutcomeLegend, Rate, ScopeNote, useRunsLink } from "@/components/Analysis";
-import { Badge, Card, CardHeader, Empty, ErrorBox, Loading, PageHeader, RateBar, Segmented, Select } from "@/components/ui";
+import { Card, CardHeader, Disclosure, Empty, ErrorBox, Loading, Mono, PageHeader, RateBar, Segmented, Select, Tooltip } from "@/components/ui";
 import { api, type AsrRow, type AttackSummary } from "@/lib/api";
 import { CHANNEL_LABEL, GOAL_LABEL, TECHNIQUE_LABEL, ci, int, pct, presetLabel } from "@/lib/format";
 import { useScope } from "@/lib/scope";
@@ -36,11 +35,30 @@ function describe(dim: string, v: string): string {
   return v;
 }
 
-/** Màu ô heatmap theo ASR: trắng → đỏ. */
-function heat(p: number | null) {
-  if (p === null) return { background: "#f8fafc", color: "#94a3b8" };
-  const a = 0.08 + p * 0.82;
-  return { background: `rgba(229,72,77,${a})`, color: p > 0.45 ? "#fff" : "#7f1d1d" };
+/** Nền ô heatmap: màu `attack` từ token, độ đậm theo ASR. Chữ dùng thang trung tính nên đọc được ở cả hai chế độ. */
+function heat(p: number): CSSProperties {
+  return { backgroundColor: `rgb(var(--attack-500) / ${(0.06 + p * 0.5).toFixed(3)})` };
+}
+
+const HEAT_STEPS = [0, 0.25, 0.5, 0.75, 1];
+
+/** Tiêu đề cột có chú giải: gạch chấm dưới, mở bằng rê chuột hoặc focus. */
+function Hint({ tip, children }: { tip: ReactNode; children: ReactNode }) {
+  return (
+    <Tooltip content={tip}>
+      <span tabIndex={0} className="cursor-help underline decoration-slate-300 decoration-dotted underline-offset-4">
+        {children}
+      </span>
+    </Tooltip>
+  );
+}
+
+function EmptyScope() {
+  return (
+    <Empty title="Chưa có run tấn công trong phạm vi này">
+      Đổi <b>Phạm vi</b> ở thanh trên sang “Lượt demo” hoặc “Lô chạy thử” để xem các run đã có.
+    </Empty>
+  );
 }
 
 function Heatmap({ rows, dims }: { rows: AsrRow[]; dims: [string, string] }) {
@@ -49,59 +67,75 @@ function Heatmap({ rows, dims }: { rows: AsrRow[]; dims: [string, string] }) {
   const colKeys = [...new Set(rows.map((x) => String(x[c])))].sort();
   const at = (rk: string, ck: string) => rows.find((x) => String(x[r]) === rk && String(x[c]) === ck);
   return (
-    <div className="overflow-x-auto px-5 py-5">
-      <div className="max-w-full overflow-x-auto"><table className="border-separate border-spacing-1.5">
-        <thead>
-          <tr>
-            <th />
-            {colKeys.map((ck) => (
-              <th key={ck} className="px-1 pb-1 text-center align-bottom">
-                <div className="text-xs font-semibold text-slate-700">{ck}</div>
-                <div className="max-w-[110px] text-2xs font-normal leading-tight text-slate-400">
-                  {describe(c, ck) !== ck ? describe(c, ck) : ""}
-                </div>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rowKeys.map((rk) => (
-            <tr key={rk}>
-              <th className="pr-3 text-left align-middle">
-                <div className="text-xs font-semibold text-slate-700">{rk}</div>
-                <div className="text-2xs font-normal text-slate-400">{describe(r, rk) !== rk ? describe(r, rk) : ""}</div>
-              </th>
-              {colKeys.map((ck) => {
-                const cell = at(rk, ck);
-                const p = cell?.asr_e2e ?? null;
-                return (
-                  <td
-                    key={ck}
-                    className="h-16 w-[104px] rounded-lg text-center align-middle transition hover:ring-2 hover:ring-slate-300"
-                    style={cell ? heat(p) : { background: "transparent" }}
-                    title={cell ? `${rk} × ${ck}: ${cell.s}/${cell.n} · CI ${ci(cell.asr_e2e_lo, cell.asr_e2e_hi)}` : "không có ô"}
-                  >
-                    {cell ? (
-                      <>
-                        <div className="num text-md font-semibold">{pct(p, 0)}</div>
-                        <div className="num text-2xs opacity-80">
-                          {cell.s}/{cell.n}
-                        </div>
-                      </>
-                    ) : (
-                      <span className="text-2xs text-slate-300">—</span>
-                    )}
-                  </td>
-                );
-              })}
+    <div>
+      <div className="overflow-x-auto">
+        <table className="border-separate border-spacing-0.5">
+          <thead>
+            <tr>
+              <th />
+              {colKeys.map((ck) => (
+                <th key={ck} scope="col" className="px-1 pb-1 text-center align-bottom">
+                  <div className="font-mono text-xs font-medium text-slate-800">{ck}</div>
+                  {describe(c, ck) !== ck && (
+                    <div className="mx-auto max-w-28 text-2xs font-normal text-slate-500">{describe(c, ck)}</div>
+                  )}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table></div>
-      <div className="mt-4 flex items-center gap-3 text-xs text-slate-500">
+          </thead>
+          <tbody>
+            {rowKeys.map((rk) => (
+              <tr key={rk}>
+                <th scope="row" className="whitespace-nowrap pr-3 text-left align-middle">
+                  <div className="font-mono text-xs font-medium text-slate-800">{rk}</div>
+                  {describe(r, rk) !== rk && <div className="text-2xs font-normal text-slate-500">{describe(r, rk)}</div>}
+                </th>
+                {colKeys.map((ck) => {
+                  const cell = at(rk, ck);
+                  if (!cell)
+                    return (
+                      <td key={ck} className="p-0">
+                        <Tooltip content="không có ô">
+                          <div className="flex h-12 min-w-24 items-center justify-center text-xs text-slate-300">—</div>
+                        </Tooltip>
+                      </td>
+                    );
+                  const p = cell.asr_e2e;
+                  return (
+                    <td key={ck} className="p-0">
+                      <Tooltip content={`${rk} × ${ck}: ${cell.s}/${cell.n} · CI ${ci(cell.asr_e2e_lo, cell.asr_e2e_hi)}`}>
+                        <div
+                          className={clsx(
+                            "flex h-12 min-w-24 flex-col items-center justify-center rounded text-center",
+                            p === null ? "bg-slate-50 text-slate-400" : "text-slate-900",
+                          )}
+                          style={p === null ? undefined : heat(p)}
+                        >
+                          <div className="num text-sm font-semibold">{pct(p, 0)}</div>
+                          <div className={clsx("num text-2xs", p !== null && "text-slate-700")}>
+                            {cell.s}/{cell.n}
+                          </div>
+                        </div>
+                      </Tooltip>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
         <span>Tỉ lệ tấn công thành công</span>
-        <div className="h-2 w-40 rounded-full" style={{ background: "linear-gradient(90deg, rgba(229,72,77,.08), rgba(229,72,77,.9))" }} />
-        <span>0% → 100%</span>
+        <span className="inline-flex items-center gap-2 whitespace-nowrap">
+          <span className="num">0%</span>
+          <span className="flex gap-px" aria-hidden="true">
+            {HEAT_STEPS.map((p) => (
+              <span key={p} className="h-2.5 w-6 first:rounded-l-sm last:rounded-r-sm" style={heat(p)} />
+            ))}
+          </span>
+          <span className="num">100%</span>
+        </span>
       </div>
     </div>
   );
@@ -114,83 +148,93 @@ function Explorer() {
   const q = useQuery({ queryKey: ["asr", params, view], queryFn: () => api.asr({ ...params, by: view }) });
 
   return (
-    <Card>
-      <details className="detail-disclosure">
-        <summary>Khám phá thêm — bản đồ ASR và bảng đầy đủ theo chiều tùy chọn</summary>
-        <div className="flex justify-end px-5 pt-3">
-          <Select value={view} onChange={setView} options={VIEWS} className="w-64" />
-        </div>
-      {q.isLoading && <Loading />}
-      {q.error && <ErrorBox error={q.error} />}
-      {q.data && q.data.rows.length === 0 && (
-        <Card>
-          <Empty title="Chưa có run tấn công trong phạm vi này" icon={<Crosshair size={20} />}>
-            Đổi <b>Phạm vi</b> ở thanh trên sang “Lượt demo” hoặc “Lô chạy thử” để xem các run đã có.
-          </Empty>
-        </Card>
-      )}
-      {q.data && q.data.rows.length > 0 && (
-        <div className="space-y-6 p-4">
-          {dims.length === 2 && (
-            <Card>
-              <CardHeader
-                title={`Bản đồ ASR · ${DIM_LABEL[dims[0]]} × ${DIM_LABEL[dims[1]]}`}
-                icon={<Grid3x3 size={16} />}
-              />
-              <Heatmap rows={q.data.rows} dims={[dims[0], dims[1]]} />
-            </Card>
-          )}
-          <Card>
-            <CardHeader title="Bảng chi tiết" icon={<Table2 size={16} />} />
-            <div className="max-w-full overflow-x-auto"><table className="table-base">
-              <thead>
-                <tr>
-                  {dims.map((d) => (
-                    <th key={d}>{DIM_LABEL[d]}</th>
-                  ))}
-                  <th className="text-right">n</th>
-                  <th className="w-64" title="ASR_e2e">Tấn công thành công · CI 95%</th>
-                  <th className="text-right" title="DSR = 1 − ASR khi bật phòng thủ">Phòng thủ giữ được</th>
-                  <th className="text-right">Phòng thủ chặn</th>
-                  <th className="text-right">Model từ chối</th>
-                  <th className="text-right">Harness chặn</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...q.data.rows]
-                  .sort((a, b) => (b.asr_e2e ?? -1) - (a.asr_e2e ?? -1))
-                  .map((r, i) => (
-                    <tr key={i} className="hover:bg-slate-50/70">
+    <Card className="overflow-hidden">
+      <Disclosure className="px-4 py-3" summary="Khám phá thêm — bản đồ ASR và bảng đầy đủ theo chiều tùy chọn">
+        <Select value={view} onChange={setView} options={VIEWS} label="Chiều phân tích" className="w-64 max-w-full" />
+        {q.isLoading && <Loading rows={4} />}
+        {q.error && (
+          <div className="mt-3">
+            <ErrorBox error={q.error} />
+          </div>
+        )}
+        {q.data && q.data.rows.length === 0 && <EmptyScope />}
+        {q.data && q.data.rows.length > 0 && (
+          <>
+            {dims.length === 2 && (
+              <section className="mt-4">
+                <h3 className="mb-2 text-sm font-semibold text-slate-900">
+                  Bản đồ ASR · {DIM_LABEL[dims[0]]} × {DIM_LABEL[dims[1]]}
+                </h3>
+                <Heatmap rows={q.data.rows} dims={[dims[0], dims[1]]} />
+              </section>
+            )}
+            <section className="mt-5">
+              <h3 className="mb-2 text-sm font-semibold text-slate-900">Bảng chi tiết</h3>
+              <div className="-mx-4 -mb-3 overflow-x-auto border-t border-slate-200">
+                <table className="table-base">
+                  <thead>
+                    <tr>
                       {dims.map((d) => (
-                        <td key={d}>
-                          <div className="font-medium text-slate-800">{String(r[d])}</div>
-                          {describe(d, String(r[d])) !== String(r[d]) && (
-                            <div className="text-xs text-slate-500">{describe(d, String(r[d]))}</div>
-                          )}
-                        </td>
+                        <th key={d}>{DIM_LABEL[d]}</th>
                       ))}
-                      <td className="num text-right">{int(r.n)}</td>
-                      <td>
-                        <div className="mb-1 flex justify-between text-xs">
-                          <span className={clsx("num font-semibold", (r.asr_e2e ?? 0) > 0 ? "text-attack-600" : "text-slate-700")}>
-                            {pct(r.asr_e2e)}
-                          </span>
-                          <span className="num text-slate-400">{ci(r.asr_e2e_lo, r.asr_e2e_hi)}</span>
-                        </div>
-                        <RateBar p={r.asr_e2e} lo={r.asr_e2e_lo} hi={r.asr_e2e_hi} />
-                      </td>
-                      <td className="num text-right">{r.dsr === null ? "—" : <Badge tone="defense">{pct(r.dsr)}</Badge>}</td>
-                      <td className="num text-right">{int(r.blocked_defense)}</td>
-                      <td className="num text-right">{int(r.blocked_model_refusal)}</td>
-                      <td className="num text-right">{int(r.blocked_harness)}</td>
+                      <th className="text-right">n</th>
+                      <th className="min-w-56">
+                        <Hint tip="ASR_e2e">Tấn công thành công · CI 95%</Hint>
+                      </th>
+                      <th className="text-right">
+                        <Hint tip="DSR = 1 − ASR khi bật phòng thủ">Phòng thủ giữ được</Hint>
+                      </th>
+                      <th className="text-right">Phòng thủ chặn</th>
+                      <th className="text-right">Model từ chối</th>
+                      <th className="text-right">Harness chặn</th>
                     </tr>
-                  ))}
-              </tbody>
-            </table></div>
-          </Card>
-        </div>
-      )}
-      </details>
+                  </thead>
+                  <tbody>
+                    {[...q.data.rows]
+                      .sort((a, b) => (b.asr_e2e ?? -1) - (a.asr_e2e ?? -1))
+                      .map((r, i) => (
+                        <tr key={i}>
+                          {dims.map((d) => (
+                            <td key={d}>
+                              <span className="whitespace-nowrap font-medium text-slate-800">{String(r[d])}</span>
+                              {describe(d, String(r[d])) !== String(r[d]) && (
+                                <span className="ml-2 whitespace-nowrap text-xs text-slate-500">{describe(d, String(r[d]))}</span>
+                              )}
+                            </td>
+                          ))}
+                          <td className="num text-right">{int(r.n)}</td>
+                          <td>
+                            <div className="mb-1 flex items-baseline justify-between gap-3">
+                              <span
+                                className={clsx(
+                                  "num font-medium",
+                                  r.asr_e2e === null ? "text-slate-400" : r.asr_e2e > 0 ? "text-attack-600" : "text-slate-700",
+                                )}
+                              >
+                                {pct(r.asr_e2e)}
+                              </span>
+                              <span className="num text-xs text-slate-500">
+                                {r.s}/{r.n}
+                                {ci(r.asr_e2e_lo, r.asr_e2e_hi) && ` · ${ci(r.asr_e2e_lo, r.asr_e2e_hi)}`}
+                              </span>
+                            </div>
+                            <RateBar p={r.asr_e2e} lo={r.asr_e2e_lo} hi={r.asr_e2e_hi} />
+                          </td>
+                          <td className={clsx("num text-right", r.dsr === null ? "text-slate-400" : "font-medium text-defense-700")}>
+                            {pct(r.dsr)}
+                          </td>
+                          <td className="num text-right">{int(r.blocked_defense)}</td>
+                          <td className="num text-right">{int(r.blocked_model_refusal)}</td>
+                          <td className="num text-right">{int(r.blocked_harness)}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </>
+        )}
+      </Disclosure>
     </Card>
   );
 }
@@ -201,114 +245,127 @@ function Explorer() {
 
 const K_LABEL: Record<string, string> = { ...CHANNEL_LABEL, K2: "Kênh công cụ MCP (K2a + K2b)" };
 
+function Finding({ label, to, children }: { label: string; to?: string; children: ReactNode }) {
+  const inner = (
+    <>
+      <div className="text-xs font-medium text-slate-500">{label}</div>
+      {children}
+    </>
+  );
+  return to ? (
+    <Link to={to} className="block min-w-0 px-4 py-3 transition-colors hover:bg-slate-50">
+      {inner}
+    </Link>
+  ) : (
+    <div className="min-w-0 px-4 py-3">{inner}</div>
+  );
+}
+
 function Headlines({ d }: { d: AttackSummary }) {
   const link = useRunsLink();
   if (!d.headline.length) return null;
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+    <Card className="grid grid-cols-1 divide-y divide-slate-200 overflow-hidden lg:grid-cols-3 lg:divide-x lg:divide-y-0">
       {d.headline.map((h) => {
         if (h.kind === "top_cell")
           return (
-            <Card key={h.kind}>
-              <Link to={link({ channel: h.channel, technique: h.technique })} className="block p-5 hover:bg-slate-50/60">
-                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                  <Trophy size={14} className="text-attack-500" /> Lỗ hổng lớn nhất
-                </div>
-                <div className="mt-2 text-md font-semibold text-slate-900">
-                  {h.technique} {TECHNIQUE_LABEL[h.technique]} qua {K_LABEL[h.channel] ?? h.channel}
-                </div>
-                <div className="mt-1"><Rate r={h.asr} strong /></div>
-                <div className="mt-2 text-xs text-slate-500">Xếp theo cận dưới khoảng tin cậy, chỉ ô từ 20 run. Bấm để xem các run →</div>
-              </Link>
-            </Card>
+            <Finding key={h.kind} label="Lỗ hổng lớn nhất" to={link({ channel: h.channel, technique: h.technique })}>
+              <div className="mt-1.5 text-base font-semibold text-slate-900">
+                {h.technique} {TECHNIQUE_LABEL[h.technique]} qua {K_LABEL[h.channel] ?? h.channel}
+              </div>
+              <div className="mt-1"><Rate r={h.asr} strong /></div>
+              <div className="mt-1.5 text-xs text-slate-500">Xếp theo cận dưới khoảng tin cậy, chỉ ô từ 20 run. Bấm để xem các run →</div>
+            </Finding>
           );
         if (h.kind === "k1_vs_k2")
           return (
-            <Card key={h.kind}>
-              <div className="p-5">
-                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                  <Waypoints size={14} className="text-payload-500" /> RAG (K1) so với công cụ MCP (K2)
-                </div>
-                <div className="mt-2 text-md font-semibold text-slate-900">
-                  K2 {pct(h.k2.p)} · K1 {pct(h.k1.p)}
-                </div>
-                <div className="mt-2 text-xs leading-relaxed text-slate-600">
-                  Payload K1 tới được agent ở {pct(h.k1_delivery.p, 0)} run; trong số đó tấn công thành công {pct(h.k1_cond.p)}.
-                  {h.k1.p === 0 && h.k1_delivery.p && h.k1_delivery.p > 0.5
-                    ? " K1 thấp không phải vì payload không được truy hồi — agent đọc được nhưng không làm theo."
-                    : ""}
-                </div>
+            <Finding key={h.kind} label="RAG (K1) so với công cụ MCP (K2)">
+              <dl className="mt-1.5 space-y-0.5">
+                {(
+                  [
+                    ["K2", h.k2],
+                    ["K1", h.k1],
+                  ] as const
+                ).map(([k, r]) => (
+                  <div key={k} className="flex items-baseline gap-2">
+                    <dt className="w-6 font-mono text-xs font-medium text-slate-500">{k}</dt>
+                    <dd><Rate r={r} strong /></dd>
+                  </div>
+                ))}
+              </dl>
+              <div className="mt-1.5 text-xs leading-[18px] text-slate-500">
+                Payload K1 tới được agent ở {pct(h.k1_delivery.p, 0)} run; trong số đó tấn công thành công {pct(h.k1_cond.p)}.
+                {h.k1.p === 0 && h.k1_delivery.p && h.k1_delivery.p > 0.5
+                  ? " K1 thấp không phải vì payload không được truy hồi — agent đọc được nhưng không làm theo."
+                  : ""}
               </div>
-            </Card>
+            </Finding>
           );
         return (
-          <Card key={h.kind}>
-            <Link to={link({ target: h.target_id })} className="block p-5 hover:bg-slate-50/60">
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                <Cpu size={14} className="text-brand-600" /> Model dễ bị nhất
-              </div>
-              <div className="mt-2 text-md font-semibold text-slate-900">{h.target_id}</div>
-              <div className="mt-1"><Rate r={h.asr} strong /></div>
-              <div className="mt-2 text-xs text-slate-500">Gộp mọi kênh và kỹ thuật trong phạm vi. Bấm để xem các run →</div>
-            </Link>
-          </Card>
+          <Finding key={h.kind} label="Model dễ bị nhất" to={link({ target: h.target_id })}>
+            <div className="mt-1.5 break-words text-base font-semibold text-slate-900">{h.target_id}</div>
+            <div className="mt-1"><Rate r={h.asr} strong /></div>
+            <div className="mt-1.5 text-xs text-slate-500">Gộp mọi kênh và kỹ thuật trong phạm vi. Bấm để xem các run →</div>
+          </Finding>
         );
       })}
-    </div>
+    </Card>
   );
 }
 
 function RQ1({ d }: { d: AttackSummary }) {
   const link = useRunsLink();
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader
         title="RQ1 · Kênh nào nguy hiểm hơn: kho tri thức RAG hay công cụ MCP?"
-        icon={<Waypoints size={16} />}
+        subtitle="K1 phải được truy hồi mới tới agent; K2 luôn vào ngữ cảnh. Vì vậy đọc K1 kèm tỉ lệ tới được agent và tỉ lệ thành công khi đã tới."
       />
-      <p className="px-5 pb-3 text-xs leading-relaxed text-slate-500">K1 phải được truy hồi mới tới agent; K2 luôn vào ngữ cảnh. Vì vậy đọc K1 kèm tỉ lệ tới được agent và tỉ lệ thành công khi đã tới.</p>
-      <div className="max-w-full overflow-x-auto">
+      <div className="overflow-x-auto border-t border-slate-200">
         <table className="table-base">
           <thead>
             <tr>
               <th>Kênh</th>
-              <th className="w-56">Tỉ lệ tấn công thành công</th>
-              <th className="w-56">Payload tới được agent</th>
-              <th className="w-56">Thành công khi đã tới</th>
-              <th className="w-48">Kết cục</th>
+              <th className="min-w-52">Tỉ lệ tấn công thành công</th>
+              <th className="min-w-52">Payload tới được agent</th>
+              <th className="min-w-44">Thành công khi đã tới</th>
+              <th className="min-w-40">Kết cục</th>
             </tr>
           </thead>
           <tbody>
-            {d.rq1.map((r) => (
-              <tr key={r.channel} className={clsx("hover:bg-slate-50/70", (r.channel === "K2a" || r.channel === "K2b") && "text-sm")}>
-                <td>
-                  <Link to={link({ channel: r.members })} className="hover:underline">
-                    <span className={clsx("font-mono font-semibold", r.channel.length > 2 ? "pl-4 text-slate-500" : "text-slate-800")}>{r.channel}</span>
-                    <span className="ml-2 text-xs text-slate-500">{K_LABEL[r.channel]}</span>
-                  </Link>
-                </td>
-                <td>
-                  <Rate r={r.asr} />
-                  <RateBar p={r.asr.p} lo={r.asr.lo} hi={r.asr.hi} />
-                </td>
-                <td>
-                  {r.channel === "K1" ? (
-                    <>
-                      <Rate r={r.delivery} />
-                      <RateBar p={r.delivery.p} lo={r.delivery.lo} hi={r.delivery.hi} tone="brand" />
-                    </>
-                  ) : (
-                    <span className="text-xs text-slate-400">luôn tới (100%)</span>
-                  )}
-                </td>
-                <td>{r.channel === "K1" ? <Rate r={r.asr_cond} /> : <span className="text-xs text-slate-400">= cột đầu</span>}</td>
-                <td><OutcomeBar o={r.outcomes} /></td>
-              </tr>
-            ))}
+            {d.rq1.map((r) => {
+              const sub = r.channel.length > 2;
+              return (
+                <tr key={r.channel}>
+                  <td className="whitespace-nowrap">
+                    <Link to={link({ channel: r.members })} className={clsx("hover:underline", sub && "pl-4")}>
+                      <Mono className={clsx("font-medium", sub ? "text-slate-500" : "text-slate-900")}>{r.channel}</Mono>
+                      <span className="ml-2 text-xs text-slate-500">{K_LABEL[r.channel]}</span>
+                    </Link>
+                  </td>
+                  <td>
+                    <div className="mb-1"><Rate r={r.asr} /></div>
+                    <RateBar p={r.asr.p} lo={r.asr.lo} hi={r.asr.hi} />
+                  </td>
+                  <td>
+                    {r.channel === "K1" ? (
+                      <>
+                        <div className="mb-1"><Rate r={r.delivery} good /></div>
+                        <RateBar p={r.delivery.p} lo={r.delivery.lo} hi={r.delivery.hi} tone="brand" />
+                      </>
+                    ) : (
+                      <span className="text-xs text-slate-500">luôn tới (100%)</span>
+                    )}
+                  </td>
+                  <td>{r.channel === "K1" ? <Rate r={r.asr_cond} /> : <span className="text-xs text-slate-500">= cột đầu</span>}</td>
+                  <td><OutcomeBar o={r.outcomes} /></td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
-      <div className="border-t border-slate-100 px-5 py-3"><OutcomeLegend /></div>
+      <div className="border-t border-slate-200 px-4 py-2.5"><OutcomeLegend /></div>
     </Card>
   );
 }
@@ -322,57 +379,60 @@ function RQ2({ d }: { d: AttackSummary }) {
   const rows = d.rq2.filter((r) => r.channel === current).sort((a, b) => (b.asr.p ?? -1) - (a.asr.p ?? -1));
   const targets = d.targets.map((t) => t.target_id);
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader
         title="RQ2 · Kỹ thuật nào mạnh nhất trên từng kênh, và có ổn định khi đổi model?"
-        icon={<Radar size={16} />}
+        subtitle="Xếp kỹ thuật theo tỉ lệ thành công; vạch nhạt là khoảng tin cậy 95%. Cột model cho biết kết quả có giữ nguyên khi đổi model không."
         action={
           <Segmented
             value={current}
             onChange={setCh}
+            label="Kênh"
             options={channels.map((c) => ({ value: c, label: c }))}
           />
         }
       />
-      <p className="px-5 pb-3 text-xs leading-relaxed text-slate-500">Xếp kỹ thuật theo tỉ lệ thành công; vạch nhạt là khoảng tin cậy 95%. Cột model cho biết kết quả có giữ nguyên khi đổi model không.</p>
-      <div className="max-w-full overflow-x-auto">
+      <div className="overflow-x-auto border-t border-slate-200">
         <table className="table-base">
           <thead>
             <tr>
               <th>Kỹ thuật</th>
-              <th className="w-64">Tỉ lệ thành công · CI 95%</th>
+              <th className="min-w-56">Tỉ lệ thành công · CI 95%</th>
               {targets.map((t) => (
-                <th key={t} className="text-center">{t}</th>
+                <th key={t} className="text-right">{t}</th>
               ))}
-              <th className="w-44">Kết cục</th>
+              <th className="min-w-40">Kết cục</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.technique} className="hover:bg-slate-50/70">
-                <td>
+              <tr key={r.technique}>
+                <td className="whitespace-nowrap">
                   <Link to={link({ channel: r.channel, technique: r.technique })} className="hover:underline">
-                    <span className="font-mono font-semibold text-slate-800">{r.technique}</span>
+                    <Mono className="font-medium text-slate-900">{r.technique}</Mono>
                     <span className="ml-2 text-xs text-slate-500">{TECHNIQUE_LABEL[r.technique]}</span>
                   </Link>
                 </td>
                 <td>
-                  <Rate r={r.asr} />
+                  <div className="mb-1"><Rate r={r.asr} /></div>
                   <RateBar p={r.asr.p} lo={r.asr.lo} hi={r.asr.hi} />
                 </td>
                 {targets.map((t) => {
                   const v = r.by_target[t];
                   return (
-                    <td key={t} className="text-center">
+                    <td key={t} className="num text-right">
                       {v ? (
-                        <Link
-                          to={link({ channel: r.channel, technique: r.technique, target: t })}
-                          title={`${t}: ${v.x}/${v.n} · CI ${ci(v.lo, v.hi)}`}
-                          className={clsx("num inline-block min-w-12 rounded px-1.5 py-0.5 text-xs",
-                            (v.p ?? 0) > 0 ? "bg-attack-50 font-semibold text-attack-700" : "text-slate-400")}
-                        >
-                          {pct(v.p, 0)}
-                        </Link>
+                        <Tooltip content={`${t}: ${v.x}/${v.n} · CI ${ci(v.lo, v.hi)}`}>
+                          <Link
+                            to={link({ channel: r.channel, technique: r.technique, target: t })}
+                            className={clsx(
+                              "-mx-1.5 inline-block rounded px-1.5 py-0.5 text-xs hover:underline",
+                              v.p === null ? "text-slate-400" : v.p > 0 ? "bg-attack-50 font-medium text-attack-700" : "text-slate-500",
+                            )}
+                          >
+                            {pct(v.p, 0)}
+                          </Link>
+                        </Tooltip>
                       ) : (
                         <span className="text-slate-300">—</span>
                       )}
@@ -392,15 +452,14 @@ function RQ2({ d }: { d: AttackSummary }) {
 function Notes() {
   return (
     <Card>
-      <details className="detail-disclosure">
-        <summary>Lưu ý đo lường</summary>
-        <ul className="list-disc space-y-1.5 px-9 pb-4 text-xs leading-relaxed text-slate-600">
+      <Disclosure className="px-4 py-3" summary="Lưu ý đo lường">
+        <ul className="max-w-[88ch] list-disc space-y-1.5 pl-5 text-xs leading-[18px] text-slate-600">
           <li>Tỉ lệ tấn công thành công (ASR) = run đạt mục tiêu / run hợp lệ; run lỗi hạ tầng bị loại khỏi mẫu số.</li>
           <li>Khoảng tin cậy Wilson 95%. Ô ít run cho khoảng rộng — đừng so hai ô khi khoảng của chúng chồng nhau nhiều.</li>
           <li>“Model từ chối” là lớp an toàn của chính model, không phải thành tích của D1–D4 (quy tắc cứng #8).</li>
           <li>Mục tiêu G2 (hành động trái phép): chỉ tính khi agent gọi đúng tool mà payload nhắm. Agent tự gọi sai tool khi làm tác vụ được ghi riêng, không tính là tấn công thành công — mở run để kiểm “tool đã gọi”.</li>
         </ul>
-      </details>
+      </Disclosure>
     </Card>
   );
 }
@@ -419,15 +478,13 @@ export function AttackPage() {
       {q.error && <ErrorBox error={q.error} />}
       {d && d.n === 0 && (
         <Card>
-          <Empty title="Chưa có run tấn công trong phạm vi này" icon={<Crosshair size={20} />}>
-            Đổi <b>Phạm vi</b> ở thanh trên sang “Lượt demo” hoặc “Lô chạy thử” để xem các run đã có.
-          </Empty>
+          <EmptyScope />
         </Card>
       )}
       {d && d.n > 0 && (
-        <div className="space-y-6">
-          <ScopeNote s={d.scope} />
+        <div className="space-y-4">
           <Headlines d={d} />
+          <ScopeNote s={d.scope} />
           <RQ1 d={d} />
           <RQ2 d={d} />
           <Explorer />

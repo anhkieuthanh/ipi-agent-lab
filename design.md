@@ -1,45 +1,46 @@
-# Design — IPI Guard
+# Design — IPI Guard Console
 
-<!-- Hallmark · pre-emit critique: P4 H4 E4 S5 R5 V4 -->
 Nội dung thiết kế soạn với sự hỗ trợ của AI.
 
 ## Hướng thiết kế
-Modern-minimal. Bàn làm việc nghiên cứu và vận hành: sidebar cố định với bốn nhóm,
-thanh phạm vi, nội dung, nguồn dữ liệu. Giữ tất cả route và chức năng hiện có.
-Trang Tổng quan dùng dải ba chỉ số, một biểu đồ, bảng truy tới bằng chứng.
-Trang phân tích và thực nghiệm dùng bảng và các vùng nội dung phân cấp.
+Công cụ kỹ thuật mật độ cao, lấy số liệu và trace làm trung tâm. Chữ, khoảng cách và đường kẻ mảnh
+tạo phân cấp; không dùng thẻ trang trí, ô biểu tượng, gradient hay bóng đổ. Màu chỉ mang nghĩa kết quả.
+Giữ mọi route và chức năng; mỗi con số truy được tới run và trace.
 
-## Hệ thống dùng chung
-Nguồn màu và khoảng cách: `web/src/tokens.css`. Nền sáng, than đậm cho thao tác và
-phân cấp; đỏ/xanh lá chỉ mang nghĩa kết quả. Be Vietnam Pro dùng cho tiêu đề và
-nội dung, JetBrains Mono dùng cho mã và trace. Không thêm font.
-Thẻ có đường viền mảnh, bo 12px, không bóng. Không gradient, không hiệu ứng xuất hiện.
-Giữ nguyên các màu ngữ nghĩa payload/canary/refusal để truy vết.
-Các màn hình chia sẻ header, nav, màu, cỡ chữ, button và nhịp khoảng cách.
+## Nguồn sự thật
+- `web/src/tokens.css`: mọi màu (bộ ba RGB, hai bộ sáng/tối), phông, kích thước khung. Không khai màu ở nơi khác.
+- `web/tailwind.config.js`: chỉ ánh xạ token sang lớp Tailwind; thang `slate` trỏ về token trung tính nên tự đảo khi tối.
+- `web/src/components/ui.tsx`: bộ thành phần gốc. Trang chỉ ghép thành phần, không tự dựng nút, nhãn, thẻ.
+- `web/src/lib/nav.ts`: cấu trúc điều hướng, dùng chung cho thanh bên, đường dẫn vị trí, bảng lệnh, phím tắt.
 
-## Hai chế độ
-Làm việc: hiện bộ lọc, cập nhật dữ liệu, cấu hình và điều hướng phụ.
-Trình bày: ẩn nav, cố định phạm vi đã chọn, tăng cỡ chữ, ưu tiên chỉ số và biểu đồ.
-Luôn hiện nút về làm việc; Escape thoát chế độ trình bày. Lưu lựa chọn trong phiên.
-Không thêm phân quyền hay nhật ký thao tác giả vào giao diện.
+## Chữ
+Inter (variable) cho giao diện, JetBrains Mono cho mã, ID, trace. Thang chữ duy nhất:
+11 · 12 · 13 (thân) · 14 · 15 · 16 · 20 · 24 · 28 px. Không dùng cỡ tùy ý. Số trong bảng dùng `num`
+(chữ số đều cột) và canh phải.
 
-## Tương tác
-Nút chính navy, nút phụ viền mảnh. Focus hiển thị rõ, hỗ trợ bàn phím và cảm ứng.
-Bảng cuộn trong vùng riêng. Responsive 320/375/414/768px.
-Motion ngắn 150ms; tôn trọng prefers-reduced-motion.
+## Màu ngữ nghĩa
+attack (đỏ) = tấn công thành công · defense (xanh lá) = phòng thủ chặn · refusal (tím) = model tự từ chối ·
+payload (cam) = nội dung tiêm · canary (xanh dương) = dấu rò rỉ · amber = cảnh báo, lỗi hạ tầng.
+Màu không bao giờ là kênh duy nhất: kết cục luôn có chữ (`Status`, `Badge`), điểm biểu đồ có nhãn trực tiếp.
 
-## UI UX Pro Max — quy tắc áp dụng
-Tham chiếu skill cài tại `~/.codex/skills/ui-ux-pro-max`. Áp dụng gợi ý
-Minimalism & Swiss Style phù hợp dashboard; giữ palette sáng/navy và font tiếng
-Việt đã chốt. Không dùng bố cục marketing/Contact Sales do bộ tìm kiếm gợi ý.
-Chữ phụ ít nhất 12px, vùng bấm mobile 44px cho thao tác chính; bảng dùng vùng cuộn riêng.
-Tìm kiếm run debounce 300ms, bộ lọc và trang nằm trên URL để quay lại từ trace.
-Chỉ vẽ chuỗi chỉ số đã đo; nhãn trực tiếp và bảng số liệu có mẫu số/CI là cách
-đọc không phụ thuộc màu hay hover. Chưa đo không được trình bày thành 0%.
-Trạng thái bộ lọc công bố qua aria-pressed; lỗi có thử lại tại chỗ, giữ trạng thái trang.
+## Khung ứng dụng
+Thanh bên 232px (ẩn thành ngăn kéo dưới 768px). Một thanh trên 48px: vị trí · phạm vi dữ liệu · trạng thái
+dịch vụ · làm mới · sáng/tối · trình bày. Nội dung tối đa 1360px.
+Bảng lệnh ⌘K / Ctrl+K: trang, lô, mã run, tìm run. Phím tắt `g` + chữ đổi trang; ↑/↓ hoặc J/K trong trace.
+Chế độ trình bày: ẩn thanh bên và thao tác phụ (`data-chrome`), phóng nội dung; Esc để thoát.
 
-## Khối nội dung
-Icon 22px trong ô 42px ở phía trên tiêu đề của mỗi khối. Tiêu đề 2–4 từ;
-chú thích dài mở qua Chi tiết. Sidebar 224px, toolbar một hàng, nội dung nền sáng.
-Thẻ phòng thủ D1–D4 theo lưới; chỉ số có biểu tượng độc lập. Giữ dữ kiện đo lường,
-phân biệt chưa đo và 0%; cảnh báo và nguyên nhân chặn luôn đọc được.
+## Thành phần
+Khối nội dung: `Card` viền 1px, bo 8px, `CardHeader` tiêu đề 13px đậm và một dòng phụ ngắn; giải thích dài
+đặt trong `Disclosure` hoặc `InfoDot`. Bảng `table-base`: tiêu đề dính, hàng ~36px, bảng rộng cuộn trong khung.
+Nút: primary nền đậm, secondary viền mảnh, ghost; cao 28/32px. `Tabs` gạch chân cho các mặt của một đối tượng,
+`Segmented` cho chế độ xem. Tải dữ liệu bằng khung giữ chỗ (`Skeleton`), không vòng xoay giữa trang.
+Biểu đồ vẽ bằng SVG tự viết (`components/charts.tsx`), không thư viện biểu đồ.
+
+## Trung thực số liệu
+Chưa đo không bao giờ hiện thành 0%. Mọi tỉ lệ kèm mẫu số và khoảng tin cậy Wilson 95%.
+`blocked_by` (phòng thủ · model từ chối · harness) luôn gọi tên riêng. Phiên bản chưa tải hiện “—”, không đoán.
+Bản dựng lại (vd mô tả tool K2a) ghi rõ là dựng lại.
+
+## Tương tác và trợ năng
+Focus hiển thị rõ; mọi thao tác dùng được bằng bàn phím; tooltip mở được bằng focus. Vùng chạm ≥ 32px trên
+desktop. Không cuộn ngang trang ở 375px. Chuyển động 120ms, tắt khi `prefers-reduced-motion`.

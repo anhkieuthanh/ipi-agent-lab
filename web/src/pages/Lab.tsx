@@ -1,17 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
-import {
-  Activity,
-  Columns2,
-  FlaskConical,
-  Loader2,
-  Map as MapIcon,
-  Play,
-  Shield,
-  ShieldCheck,
-  SlidersHorizontal,
-} from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Check, Circle, Loader2, Map as MapIcon, Play } from "lucide-react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import {
@@ -33,27 +23,30 @@ import {
   Callout,
   Card,
   CardHeader,
+  Disclosure,
   ErrorBox,
   Loading,
   Mono,
   OutcomeBadge,
   PageHeader,
+  SectionTitle,
   Segmented,
   Select,
   VerdictBanner,
 } from "@/components/ui";
 import { api, type DemoCheck, type Job, type Preset, type RunDetail, type Scenario } from "@/lib/api";
-import { int, presetLabel, seconds, usd } from "@/lib/format";
+import { DEFENSE_LABEL, int, presetLabel, seconds, usd } from "@/lib/format";
 import { SANDBOX_ID, useSandboxModel } from "@/lib/sandbox";
 
 const CODES: DefenseCode[] = ["D1", "D2", "D3", "D4"];
 
-const STATUS_CHIP: Record<PointStatus | "off", string> = {
-  off: "bg-slate-50 text-slate-400 ring-slate-200",
-  idle: "bg-defense-50 text-defense-700 ring-defense-100",
-  pass: "bg-defense-50 text-defense-700 ring-defense-100",
-  transform: "bg-orange-50 text-orange-700 ring-orange-200",
-  block: "bg-attack-50 text-attack-700 ring-attack-100",
+/** Màu chữ theo trạng thái điểm móc; nghĩa luôn nằm ở chữ đi kèm. */
+const STATUS_INK: Record<PointStatus | "off", string> = {
+  off: "text-slate-400",
+  idle: "text-defense-700",
+  pass: "text-defense-700",
+  transform: "text-payload-600",
+  block: "text-attack-700",
 };
 
 /** Mã D bật trong một preset — lấy từ `config/defenses.yaml` qua /api/config. */
@@ -61,23 +54,44 @@ function codesOf(presets: Preset[], name: string): string[] {
   return presets.find((p) => p.name === name)?.codes ?? [];
 }
 
+/** Hàng lựa chọn gọn: nền xám + dấu kiểm khi đang chọn. */
+function rowClass(selected: boolean) {
+  return clsx(
+    "flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
+    selected ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+  );
+}
+
+function RowCheck({ on }: { on: boolean }) {
+  return <Check size={14} aria-hidden="true" className={clsx("shrink-0", on ? "text-slate-900" : "invisible")} />;
+}
+
+/** Một phần của bảng thiết lập: nhãn + nội dung, ngăn với phần trước bằng đường kẻ mảnh. */
+function FormSection({ title, hint, children }: { title: string; hint?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="min-w-0 border-t border-slate-100 px-4 py-4 first:border-t-0">
+      <div className="mb-2.5 flex items-baseline justify-between gap-3">
+        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+        {hint && <span className="min-w-0 truncate text-xs text-slate-500">{hint}</span>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 function HookChips({ codes, status }: { codes: string[]; status: Partial<Record<DefenseCode, PointStatus>> }) {
   return (
-    <div className="grid grid-cols-4 gap-1.5">
+    <dl className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
       {CODES.map((c) => {
         const st = codes.includes(c) ? status[c] ?? "pass" : null;
         return (
-          <div
-            key={c}
-            title={`${c} · ${st ? STATUS_LABEL[st] : "tắt"}`}
-            className={clsx("rounded-md px-2 py-1 text-center ring-1 ring-inset", STATUS_CHIP[st ?? "off"])}
-          >
-            <div className="text-xs font-bold">{c}</div>
-            <div className="truncate text-2xs">{st ? STATUS_LABEL[st] : "tắt"}</div>
+          <div key={c} title={`${c} · ${st ? STATUS_LABEL[st] : "tắt"}`} className="min-w-0">
+            <dt className="font-mono text-xs font-medium text-slate-900">{c}</dt>
+            <dd className={clsx("text-xs", STATUS_INK[st ?? "off"])}>{st ? STATUS_LABEL[st] : "tắt"}</dd>
           </div>
         );
       })}
-    </div>
+    </dl>
   );
 }
 
@@ -100,41 +114,34 @@ function ResultColumn({
   const spontaneous = d.run.goal === "G2" && d.verdict?.tone === "attack" && !d.tool_actions.some((a) => a.follows_payload);
   const codes = codesOf(presets, String(run.preset));
   return (
-    <Card className={clsx("flex flex-col", showing && "ring-2 ring-brand-500")}>
-      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-        <span className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-          <Shield size={15} className="text-slate-400" />
-          Phòng thủ: {presetLabel(String(run.preset))}
-        </span>
+    <Card className={clsx("flex flex-col", showing && "border-brand-500")}>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-slate-100 px-4 py-2.5">
+        <span className="min-w-0 text-sm font-semibold text-slate-900">Phòng thủ: {presetLabel(String(run.preset))}</span>
         <OutcomeBadge outcome={run.outcome} blockedBy={run.blocked_by} />
       </div>
-      <div className="space-y-3 p-4">
+      <div className="space-y-4 p-4">
         {d.verdict && <VerdictBanner verdict={d.verdict} />}
         {spontaneous && (
           <Callout tone="warn">Scorer chấm đạt G2 nhưng chưa thấy tool khớp gợi ý payload. Cần đối chiếu trace trước khi kết luận nguyên nhân.</Callout>
         )}
-        <div className="grid grid-cols-3 gap-2 text-center">
+        <dl className="grid grid-cols-3 divide-x divide-slate-100 rounded-md border border-slate-100">
           {[
             ["Bước", int(Number(run.n_steps))],
             ["Token", int(Number(run.tokens_in) + Number(run.tokens_out))],
             ["Thời gian", seconds(Number(run.latency_ms))],
           ].map(([k, v]) => (
-            <div key={k} className="rounded-lg bg-slate-50 py-2">
-              <div className="num text-lg font-semibold text-slate-900">{v}</div>
-              <div className="text-2xs text-slate-500">{k}</div>
+            <div key={k} className="min-w-0 px-3 py-2">
+              <dt className="text-xs text-slate-500">{k}</dt>
+              <dd className="num mt-0.5 text-md font-semibold text-slate-900">{v}</dd>
             </div>
           ))}
-        </div>
+        </dl>
         <div>
-          <div className="mb-1.5 flex items-center justify-between">
+          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
             <span className="label">Điểm phòng thủ</span>
-            <button
-              onClick={onShow}
-              disabled={showing}
-              className="flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 disabled:text-slate-400"
-            >
-              <MapIcon size={12} /> {showing ? "Đang phát trên sơ đồ" : "Phát lại trên sơ đồ"}
-            </button>
+            <Button size="sm" variant="ghost" onClick={onShow} disabled={showing} icon={<MapIcon size={12} />}>
+              {showing ? "Đang phát trên sơ đồ" : "Phát lại trên sơ đồ"}
+            </Button>
           </div>
           <HookChips codes={codes} status={hookStatusFromSteps(d.steps, codes)} />
         </div>
@@ -142,16 +149,17 @@ function ResultColumn({
           <div className="label mb-1.5">Tool agent đã gọi</div>
           <ToolActions actions={d.tool_actions} />
         </div>
-        <details className="group">
-          <summary className="cursor-pointer text-sm font-medium text-brand-600">Xem từng bước</summary>
-          <div className="mt-2 space-y-2">
+        <Disclosure summary="Xem từng bước">
+          <div className="space-y-2">
             <InjectedContext ctx={d.injected_context} />
             <StepTimeline steps={d.steps} />
           </div>
-        </details>
-        <Link to={`/runs/${run.run_id}`} className="text-sm font-medium text-brand-600 hover:text-brand-700">
-          Mở chi tiết đầy đủ →
-        </Link>
+        </Disclosure>
+        <div className="border-t border-slate-100 pt-3">
+          <Link to={`/runs/${run.run_id}`} className="text-sm font-medium text-brand-600 hover:text-brand-700">
+            Mở chi tiết đầy đủ →
+          </Link>
+        </div>
       </div>
     </Card>
   );
@@ -177,11 +185,8 @@ function Results({
   if (!items.length) return null;
   return (
     <div className="mt-6">
-      <h2 className="mb-3 flex items-center gap-2 text-md font-semibold text-slate-900">
-        <Columns2 size={17} className="text-slate-400" />
-        Kết quả so sánh
-      </h2>
-      <div className={clsx("grid gap-4", items.length > 1 ? "lg:grid-cols-2" : "lg:grid-cols-1")}>
+      <SectionTitle>Kết quả so sánh</SectionTitle>
+      <div className={clsx("grid grid-cols-1 gap-4", items.length > 1 && "lg:grid-cols-2")}>
         {items.map((r) => (
           <ResultColumn
             key={r.run_id}
@@ -211,26 +216,20 @@ function DefenseMap({
   onBack: () => void;
 }) {
   return (
-    <Card className="xl:col-span-3">
+    <Card>
       <CardHeader
-        title={view ? `Phát lại run · ${presetLabel(view.preset)}` : "2. Phòng thủ"}
-        icon={<ShieldCheck size={16} />}
-        action={
-          view ? (
-            <Button onClick={onBack}>Quay lại thiết lập</Button>
-          ) : (
-            <span className="text-xs text-slate-500">Bấm D1–D4 để bật/tắt</span>
-          )
-        }
+        title={view ? `Phát lại run · ${presetLabel(view.preset)}` : "Sơ đồ điểm phòng thủ"}
+        subtitle={view ? undefined : "Bấm D1–D4 để bật/tắt"}
+        action={view ? <Button size="sm" onClick={onBack}>Quay lại thiết lập</Button> : undefined}
       />
       {view ? (
         <TraceReplay detail={view.detail} codes={view.codes} autoplay />
       ) : (
         <>
-          <div className="px-4 pb-2 pt-3">
+          <div className="px-4 pb-2">
             <SystemMap defenses={enabled} onToggle={onToggle} />
           </div>
-          <div className="border-t border-slate-100 px-5 py-3">
+          <div className="border-t border-slate-100 px-4 py-3">
             <HookLegend />
           </div>
         </>
@@ -251,11 +250,10 @@ function LivePanel({ job, attack }: { job: Job; attack?: string }) {
   const isLive = running && preset === current && !done;
   if (!started.length) return null;
   return (
-    <Card className="xl:col-span-3">
+    <Card>
       <CardHeader
         title="Diễn biến trực tiếp"
-        subtitle={`${attack ? `${attack} — ` : ""}từng bước agent làm, cập nhật trong lúc chạy: suy luận của model (nếu model trả về), lời model, tool được gọi, phòng thủ xử lý. Đoạn tô màu là payload.`}
-        icon={<Activity size={16} />}
+        subtitle={`${attack ? `${attack} — ` : ""}từng bước agent làm, cập nhật trong lúc chạy.`}
         action={
           isLive ? (
             <Badge tone="brand" dot>
@@ -264,7 +262,12 @@ function LivePanel({ job, attack }: { job: Job; attack?: string }) {
           ) : null
         }
       />
-      <div className="space-y-4 p-5">
+      <div className="space-y-4 border-t border-slate-100 p-4">
+        <Disclosure summary="Cách đọc diễn biến">
+          <p className="max-w-[80ch] text-xs leading-[18px] text-slate-500">
+            Mỗi bước gồm suy luận của model (nếu model trả về), lời model, tool được gọi, phòng thủ xử lý. Đoạn tô màu là payload.
+          </p>
+        </Disclosure>
         {job.presets.length > 1 && (
           <Segmented
             value={preset}
@@ -403,6 +406,8 @@ export function LabPage() {
   const live = meta.data?.live_demo;
   const running = job.data && ["queued", "running"].includes(job.data.status);
 
+  const runCount = compareOff && chosen !== "off" ? "2 lượt · so sánh bật/tắt" : "1 lượt chạy";
+
   return (
     <>
       <PageHeader
@@ -411,33 +416,44 @@ export function LabPage() {
       />
 
       {!live && (
-        <div className="mb-6">
+        <div className="mb-5">
           <Callout tone="brand">
             Chế độ chỉ xem. Chạy trực tiếp cần <Mono>make console</Mono> trên máy có hạ tầng lab và <Mono>.env</Mono>.
           </Callout>
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <Card className="xl:col-span-3">
-          <CardHeader title="1. Kịch bản" icon={<FlaskConical size={16} />} />
-          <div className="p-5">
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[340px_minmax(0,1fr)]">
+        {/* Trái: một bảng thiết lập duy nhất */}
+        <Card>
+          <FormSection title="1. Kịch bản">
             <Segmented
               value={mode}
               onChange={setMode}
+              label="Nguồn kịch bản"
               options={[
                 { value: "preset", label: "Chọn sẵn" },
                 { value: "custom", label: "Tự chọn từ corpus" },
               ]}
             />
-            <div className="mb-4 mt-3">
+            <div className="mt-3">
               {mode === "preset" ? (
-                <Select
-                  value={presetKey}
-                  onChange={setPresetKey}
-                  options={(scenarios.data ?? []).map((s) => ({ value: s.key, label: s.title }))}
-                  label="Kịch bản"
-                />
+                <div role="radiogroup" aria-label="Kịch bản" className="-mx-2 max-h-72 space-y-px overflow-y-auto">
+                  {(scenarios.data ?? []).map((s) => {
+                    const on = s.key === presetKey;
+                    return (
+                      <button key={s.key} type="button" role="radio" aria-checked={on} onClick={() => setPresetKey(s.key)} className={rowClass(on)}>
+                        <span className="min-w-0 flex-1">
+                          <span className="block break-words">{s.title}</span>
+                          <span className="block font-mono text-2xs text-slate-500">
+                            {s.channel} · {s.technique} · {s.goal}
+                          </span>
+                        </span>
+                        <RowCheck on={on} />
+                      </button>
+                    );
+                  })}
+                </div>
               ) : (
                 <>
                   <ScenarioPicker value={customKey} onChange={setCustomKey} />
@@ -445,101 +461,106 @@ export function LabPage() {
                 </>
               )}
             </div>
-            {scenario && <details className="detail-disclosure"><summary>Nội dung kịch bản</summary><div><AttackBrief scenario={scenario} /></div></details>}
-          </div>
-        </Card>
+          </FormSection>
 
-        <DefenseMap
-          enabled={enabled}
-          onToggle={(c) => setEnabled({ ...enabled, [c]: !enabled[c] })}
-          view={view}
-          onBack={() => setViewRun(null)}
-        />
-
-        <Card className="xl:col-span-3">
-          <CardHeader title="3. Thiết lập" icon={<SlidersHorizontal size={16} />} />
-          <div className="space-y-4 p-5">
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div>
-              <Select
-                label="Model đích"
-                value={target}
-                onChange={setTarget}
-                options={[
-                  ...(config.data?.targets ?? []).map((t) => ({ value: t.id, label: `${t.id} · ${t.model_id}` })),
-                  ...(sandbox ? [{ value: SANDBOX_ID, label: `Thử · ${sandbox.model_id}` }] : []),
-                ]}
-              />
-              {target === SANDBOX_ID ? (
-                <div className="mt-1.5 text-xs text-amber-700">
-                  Model ngoài bộ đo — lượt này chỉ là demo, không vào số liệu báo cáo.
-                </div>
-              ) : (
-                <Link to="/config" className="mt-1.5 inline-block text-xs text-slate-500 hover:text-brand-700">
-                  {sandbox ? "Đổi model thử ở trang Cấu hình" : "Thử model khác ở trang Cấu hình"}
-                </Link>
-              )}
+          <FormSection title="2. Phòng thủ" hint={chosen ? `→ ${presetLabel(chosen)}` : undefined}>
+            <div role="group" aria-label="Cấu hình phòng thủ" className="-mx-2 space-y-px">
+              {CODES.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  aria-pressed={enabled[c]}
+                  onClick={() => setEnabled({ ...enabled, [c]: !enabled[c] })}
+                  className={rowClass(enabled[c])}
+                >
+                  <span className="w-6 shrink-0 font-mono text-xs font-medium">{c}</span>
+                  <span className="min-w-0 flex-1 truncate">{DEFENSE_LABEL[c] ?? c}</span>
+                  <span className="shrink-0 text-xs text-slate-500">{enabled[c] ? "bật" : "tắt"}</span>
+                  <RowCheck on={enabled[c]} />
+                </button>
+              ))}
             </div>
-            <Select
-              label="System prompt"
-              value={variant}
-              onChange={setVariant}
-              options={(config.data?.prompt.variants ?? []).map((v) => ({ value: v, label: v }))}
-            />
-            <div>
-              <span className="label">Cấu hình phòng thủ</span>
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                {CODES.map((c) => (
-                  <span
-                    key={c}
-                    className={clsx(
-                      "rounded-md px-2 py-0.5 text-xs font-bold ring-1 ring-inset",
-                      enabled[c] ? STATUS_CHIP.pass : STATUS_CHIP.off,
-                    )}
-                  >
-                    {c}
-                  </span>
-                ))}
-                {chosen && <span className="text-xs text-slate-600">→ {presetLabel(chosen)}</span>}
+            {matches.length > 1 && (
+              <div className="mt-3">
+                <div className="label mb-1">Preset khớp tổ hợp này</div>
+                <div role="radiogroup" aria-label="Preset khớp tổ hợp này" className="-mx-2 space-y-px">
+                  {matches.map((m) => (
+                    <button key={m} type="button" role="radio" aria-checked={m === chosen} onClick={() => setVariantPick(m)} className={rowClass(m === chosen)}>
+                      <span className="min-w-0 flex-1 break-words">{presetLabel(m)}</span>
+                      <RowCheck on={m === chosen} />
+                    </button>
+                  ))}
+                </div>
               </div>
-              {matches.length > 1 && (
+            )}
+            {!chosen && (
+              <div className="mt-3">
+                <Callout tone="warn">Tổ hợp này chưa có preset trong config/defenses.yaml.</Callout>
+              </div>
+            )}
+            <label className="mt-3 flex items-start gap-2 text-xs text-slate-600">
+              <input
+                type="checkbox"
+                checked={compareOff}
+                onChange={(e) => setCompareOff(e.target.checked)}
+                disabled={chosen === "off"}
+                className="mt-px accent-brand-600"
+              />
+              Chạy kèm bản tắt phòng thủ để so sánh
+            </label>
+          </FormSection>
+
+          <FormSection title="3. Thiết lập">
+            <div className="space-y-3">
+              <div>
                 <Select
-                  className="mt-2"
-                  value={chosen ?? ""}
-                  onChange={setVariantPick}
-                  options={matches.map((m) => ({ value: m, label: presetLabel(m) }))}
+                  label="Model đích"
+                  className="min-w-0"
+                  value={target}
+                  onChange={setTarget}
+                  options={[
+                    ...(config.data?.targets ?? []).map((t) => ({ value: t.id, label: `${t.id} · ${t.model_id}` })),
+                    ...(sandbox ? [{ value: SANDBOX_ID, label: `Thử · ${sandbox.model_id}` }] : []),
+                  ]}
                 />
-              )}
-              {!chosen && (
-                <div className="mt-2">
-                  <Callout tone="warn">Tổ hợp này chưa có preset trong config/defenses.yaml.</Callout>
-                </div>
-              )}
-              <label className="mt-2.5 flex items-center gap-2 text-xs text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={compareOff}
-                  onChange={(e) => setCompareOff(e.target.checked)}
-                  disabled={chosen === "off"}
-                  className="accent-brand-600"
-                />
-                Chạy kèm bản tắt phòng thủ để so sánh
-              </label>
+                {target === SANDBOX_ID ? (
+                  <div className="mt-1.5 text-xs text-amber-700">
+                    Model ngoài bộ đo — lượt này chỉ là demo, không vào số liệu báo cáo.
+                  </div>
+                ) : (
+                  <Link to="/config" className="mt-1.5 inline-block text-xs text-slate-500 hover:text-brand-700">
+                    {sandbox ? "Đổi model thử ở trang Cấu hình" : "Thử model khác ở trang Cấu hình"}
+                  </Link>
+                )}
+              </div>
+              <Select
+                label="System prompt"
+                className="min-w-0"
+                value={variant}
+                onChange={setVariant}
+                options={(config.data?.prompt.variants ?? []).map((v) => ({ value: v, label: v }))}
+              />
             </div>
+          </FormSection>
+
+          <section className="space-y-3 border-t border-slate-100 px-4 py-4">
+            <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
+              <span>{target}</span>
+              <span>{chosen ? presetLabel(chosen) : "Chưa chọn cấu hình"}</span>
+              <span>{runCount}</span>
             </div>
-            <div className="run-summary"><span>{target}</span><span>{chosen ? presetLabel(chosen) : "Chưa chọn cấu hình"}</span><span>{compareOff && chosen !== "off" ? "2 lượt · so sánh bật/tắt" : "1 lượt chạy"}</span></div>
             <Button
               variant="primary"
-              className="w-full lg:ml-auto lg:flex lg:w-[320px]"
+              className="w-full"
               disabled={!live || !scenario || !presets.length || !!running || active.isFetching || !!active.error || !!job.error || start.isPending}
               onClick={() => start.mutate(false)}
-              icon={running || start.isPending ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
+              icon={running || start.isPending ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
             >
               {running ? "Đang chạy…" : "Chạy thí nghiệm"}
             </Button>
             {check && <DemoCheckNote check={check} />}
             {check && !check.ok && !running && (
-              <Button variant="danger" className="w-full lg:ml-auto lg:flex lg:w-[320px]" disabled={!live || start.isPending} onClick={() => start.mutate(true)} icon={<Play size={15} />}>
+              <Button variant="danger" className="h-auto min-h-8 w-full whitespace-normal py-1.5" disabled={!live || start.isPending} onClick={() => start.mutate(true)} icon={<Play size={14} />}>
                 Vẫn chạy dù dịch vụ bắt buộc đang lỗi
               </Button>
             )}
@@ -548,49 +569,74 @@ export function LabPage() {
             {job.error && <Callout tone="warn" title="Mất kết nối cập nhật tiến độ">Dữ liệu bên dưới có thể đã cũ. Hệ thống đang thử kết nối lại.</Callout>}
 
             {job.data && (
-              <div className="rounded-lg bg-slate-50 p-3">
-                <div className="mb-2 flex items-center justify-between text-xs">
-                  <span className="font-medium text-slate-700">Tiến độ</span>
+              <div className="border-t border-slate-100 pt-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="label">Tiến độ</span>
                   <Badge tone={job.data.status === "done" ? "defense" : job.data.status === "error" ? "attack" : "brand"}>
                     {job.data.status}
                   </Badge>
                 </div>
-                <div className="space-y-1">
+                <ul className="space-y-1">
                   {job.data.presets.map((p) => {
                     const done = job.data!.events.some((e) => e.preset === p && e.event === "done");
                     const started = job.data!.events.some((e) => e.preset === p && e.event === "start");
                     return (
-                      <div key={p} className="flex items-center gap-2 text-xs text-slate-600">
+                      <li key={p} className="flex items-center gap-2 text-xs text-slate-600">
                         {done ? (
-                          <span className="text-defense-500">✓</span>
+                          <Check size={12} className="shrink-0 text-defense-600" aria-hidden="true" />
                         ) : started ? (
-                          <Loader2 size={12} className="animate-spin text-brand-500" />
+                          <Loader2 size={12} className="shrink-0 animate-spin text-brand-500" aria-hidden="true" />
                         ) : (
-                          <span className="text-slate-300">○</span>
+                          <Circle size={12} className="shrink-0 text-slate-300" aria-hidden="true" />
                         )}
-                        {presetLabel(p)}
-                      </div>
+                        <span className="min-w-0 flex-1 break-words">{presetLabel(p)}</span>
+                        <span className="shrink-0 text-slate-400">{done ? "xong" : started ? "đang chạy" : "chờ"}</span>
+                      </li>
                     );
                   })}
-                </div>
+                </ul>
                 {job.data.status === "done" && (
-                  <div className="mt-2 text-xs text-slate-500">
+                  <div className="num mt-2 text-xs text-slate-500">
                     Chi phí {usd(job.data.spent_usd, 4)} · ngân sách {job.data.budget_status}
                   </div>
                 )}
-                {job.data.error && <div className="mt-2 text-xs text-attack-600">{job.data.error}</div>}
+                {job.data.error && <div className="mt-2 break-words text-xs text-attack-600">{job.data.error}</div>}
               </div>
             )}
-          </div>
+          </section>
         </Card>
 
-        {job.data && (
-          <LivePanel
-            key={job.data.id}
-            job={job.data}
-            attack={jobScenario.data?.title}
+        {/* Phải: kịch bản đang chọn, sơ đồ / phát lại, diễn biến trực tiếp */}
+        <div className="min-w-0 space-y-5">
+          {scenario && (
+            <Card className="px-4 py-3">
+              <Disclosure
+                summary={
+                  <span className="min-w-0 break-words">
+                    Nội dung kịch bản <span className="font-normal text-slate-500">· {scenario.title}</span>
+                  </span>
+                }
+              >
+                <AttackBrief scenario={scenario} />
+              </Disclosure>
+            </Card>
+          )}
+
+          <DefenseMap
+            enabled={enabled}
+            onToggle={(c) => setEnabled({ ...enabled, [c]: !enabled[c] })}
+            view={view}
+            onBack={() => setViewRun(null)}
           />
-        )}
+
+          {job.data && (
+            <LivePanel
+              key={job.data.id}
+              job={job.data}
+              attack={jobScenario.data?.title}
+            />
+          )}
+        </div>
       </div>
 
       {batchId && (

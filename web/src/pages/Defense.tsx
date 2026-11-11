@@ -1,36 +1,49 @@
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
-import { ArrowDown, ArrowUp, Ban, Check, ChevronDown, ChartScatter, Gauge, Info, Layers, Scale, ShieldCheck } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Fragment, useState } from "react";
-import {
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Scatter,
-  ScatterChart,
-  Tooltip,
-  XAxis,
-  YAxis,
-  ZAxis,
-} from "recharts";
 
 import { OutcomeBar, OutcomeLegend, Rate, ScopeNote, useRunsLink } from "@/components/Analysis";
-import { Badge, Callout, Card, CardHeader, Empty, ErrorBox, Loading, PageHeader, RateBar } from "@/components/ui";
+import { ScatterPlot, type ScatterPoint } from "@/components/charts";
+import { Button, Card, CardHeader, Disclosure, Empty, ErrorBox, Loading, PageHeader, RateBar } from "@/components/ui";
 import { api, type DefensePoint, type DefenseSummary, type Preset } from "@/lib/api";
 import { DEFENSE_LABEL, ci, pct, presetLabel } from "@/lib/format";
-import { DEFENSE_ICON } from "@/lib/icons";
 import { useScope } from "@/lib/scope";
 
-const PRESET_COLOR: Record<string, string> = {
-  off: "#64748b",
-  d1_only: "#0ea5e9",
-  d2_only: "#8b5cf6",
-  d3_only: "#f59e0b",
-  d4_only: "#ec4899",
-  d3_no_confirm: "#14b8a6",
-  all: "#16a34a",
+/** Màu của từng cấu hình — tên biến trong tokens.css. Màu chỉ hỗ trợ; tên cấu hình luôn đi kèm. */
+const PRESET_TOKEN: Record<string, string> = {
+  off: "n-500",
+  d1_only: "canary-500",
+  d2_only: "refusal-500",
+  d3_only: "amber-400",
+  d4_only: "payload-500",
+  d3_no_confirm: "brand-500",
+  all: "defense-500",
 };
+const presetToken = (p: string) => PRESET_TOKEN[p] ?? "n-700";
+
+/** Tên ngắn đặt cạnh điểm trên biểu đồ. */
+function presetShort(p: string): string {
+  if (p === "off") return "Tắt";
+  if (p === "all") return "D1–D4";
+  const m = /^d(\d)_only$/.exec(p);
+  if (m) return `D${m[1]}`;
+  if (p === "d3_no_confirm") return "D3 không XN";
+  return p;
+}
+
+function PresetName({ name, code }: { name: string; code?: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-2 whitespace-nowrap">
+      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: `rgb(var(--${presetToken(name)}))` }} aria-hidden="true" />
+      <span className="text-slate-800">{presetLabel(name)}</span>
+      {code && <span className="font-mono text-xs text-slate-400">{name}</span>}
+    </span>
+  );
+}
+
+const Unmeasured = () => <span className="text-xs text-slate-400">chưa đo</span>;
 
 const DEFENSE_DESC: Record<string, string> = {
   D1: "Bọc ranh giới dữ liệu / chỉ thị để model phân biệt nội dung ngoài.",
@@ -39,88 +52,41 @@ const DEFENSE_DESC: Record<string, string> = {
   D4: "Soát dữ liệu đi ra: canary, đích lạ, PII, URL mã hóa.",
 };
 
-function ParetoChart({ points }: { points: DefensePoint[] }) {
-  const usable = points.filter((p) => p.asr_e2e !== null && p.usr !== null);
-  if (!usable.length) {
-    return (
-      <Empty title="Chưa đủ dữ liệu để vẽ đường đánh đổi" icon={<ShieldCheck size={20} />}>
-        Mỗi điểm cần cả ASR (run tấn công) và USR (run lành tính) của cùng cấu hình phòng thủ và model. Dữ liệu
-        có sau khối B2 và B3.
-      </Empty>
-    );
-  }
-  const groups = [...new Set(usable.map((p) => p.preset))];
+function Delta({ v, better }: { v: number | null; better: "down" | "up" }) {
+  if (v === null || v === undefined) return <span className="text-slate-300">—</span>;
+  if (Math.abs(v) < 0.0005) return <span className="num text-xs text-slate-400">±0</span>;
+  const good = better === "down" ? v < 0 : v > 0;
+  const Icon = v < 0 ? ArrowDown : ArrowUp;
   return (
-    <div className="h-[380px] px-2 pb-2 pt-4">
-      <ResponsiveContainer>
-        <ScatterChart margin={{ left: 0, right: 24, top: 8, bottom: 16 }}>
-          <CartesianGrid stroke="#eef0f4" />
-          <XAxis
-            type="number"
-            dataKey="x"
-            domain={[0, 100]}
-            tickFormatter={(v) => `${v}%`}
-            name="ASR"
-            label={{ value: "Tấn công thành công (ASR) — thấp hơn là an toàn hơn", position: "insideBottom", offset: -8, fontSize: 12, fill: "#64748b" }}
-            tick={{ fontSize: 12, fill: "#94a3b8" }}
-          />
-          <YAxis
-            type="number"
-            dataKey="y"
-            domain={[0, 100]}
-            tickFormatter={(v) => `${v}%`}
-            name="USR"
-            label={{ value: "Câu lành tính đạt (USR) — cao hơn là hữu dụng hơn", angle: -90, position: "insideLeft", fontSize: 12, fill: "#64748b" }}
-            tick={{ fontSize: 12, fill: "#94a3b8" }}
-          />
-          <ZAxis range={[120, 120]} />
-          <Tooltip
-            cursor={{ strokeDasharray: "3 3" }}
-            content={({ payload }) => {
-              const p = payload?.[0]?.payload as (DefensePoint & { x: number; y: number }) | undefined;
-              if (!p) return null;
-              return (
-                <div className="rounded-lg border border-slate-200 bg-surface p-3 text-xs shadow-pop">
-                  <div className="font-semibold text-slate-900">
-                    {presetLabel(p.preset)} · {p.target_id}
-                  </div>
-                  <div className="mt-1 text-slate-600">
-                    ASR {pct(p.asr_e2e)} ({ci(p.asr_lo, p.asr_hi)}) · n={p.n_attack}
-                  </div>
-                  <div className="text-slate-600">
-                    USR {pct(p.usr)} ({ci(p.usr_lo, p.usr_hi)}) · n={p.n_benign}
-                  </div>
-                </div>
-              );
-            }}
-          />
-          <Legend verticalAlign="top" height={30} iconType="circle" wrapperStyle={{ fontSize: 12.5 }} />
-          {groups.map((g) => (
-            <Scatter
-              key={g}
-              name={presetLabel(g)}
-              fill={PRESET_COLOR[g] ?? "#334155"}
-              data={usable
-                .filter((p) => p.preset === g)
-                .map((p) => ({ ...p, x: +(p.asr_e2e! * 100).toFixed(1), y: +(p.usr! * 100).toFixed(1) }))}
-            />
-          ))}
-        </ScatterChart>
-      </ResponsiveContainer>
-    </div>
+    <span className={clsx("num inline-flex items-center gap-0.5 whitespace-nowrap text-xs font-medium", good ? "text-defense-600" : "text-attack-600")}>
+      <Icon size={11} aria-hidden="true" />
+      <span className="sr-only">{v < 0 ? "giảm" : "tăng"}</span>
+      {pct(Math.abs(v))}
+    </span>
   );
 }
 
-function Delta({ v, better }: { v: number | null; better: "down" | "up" }) {
-  if (v === null || v === undefined) return null;
-  const good = better === "down" ? v < 0 : v > 0;
-  const Icon = v < 0 ? ArrowDown : ArrowUp;
-  if (Math.abs(v) < 0.0005) return <span className="ml-1.5 text-xs text-slate-400">±0</span>;
+function NotMeasuredNote() {
   return (
-    <span className={clsx("num ml-1.5 inline-flex items-center text-xs font-medium", good ? "text-defense-600" : "text-attack-600")}>
-      <Icon size={11} />
-      {pct(Math.abs(v))}
-    </span>
+    <p className="text-sm text-slate-600">
+      <span className="font-medium text-slate-900">Chưa có lô đo phòng thủ (khối B2) trong phạm vi này.</span>{" "}
+      Hiện chỉ có run tắt phòng thủ — dùng làm mốc so sánh bên dưới.
+    </p>
+  );
+}
+
+function NotMeasuredDetail({ d }: { d: DefenseSummary }) {
+  const pending = d.presets.filter((p) => !d.measured.includes(p.name));
+  return (
+    <Disclosure summary="Trang này sẽ hiện gì sau khi chạy khối B2">
+      <div className="max-w-[88ch] space-y-1 text-sm text-slate-600">
+        <p>
+          Mỗi cấu hình giảm bao nhiêu tấn công và mất bao nhiêu hữu dụng (RQ4), tổ hợp D1–D4 so với cơ chế đơn lẻ tốt
+          nhất (RQ3), và chặn nhầm theo tác vụ.
+        </p>
+        {pending.length > 0 && <p>Cấu hình chờ đo: {pending.map((p) => presetLabel(p.name)).join(" · ")}.</p>}
+      </div>
+    </Disclosure>
   );
 }
 
@@ -128,48 +94,55 @@ function Baseline({ d }: { d: DefenseSummary }) {
   const link = useRunsLink();
   return (
     <Card>
-      <CardHeader title="Mốc so sánh · tắt phòng thủ" icon={<Gauge size={16} />} />
-      <p className="px-5 pb-3 text-xs leading-relaxed text-slate-500">
-        Mọi cấu hình phòng thủ được so với mốc này của CÙNG model. Phần “Model từ chối” là lớp an toàn sẵn có của
-        model — phòng thủ D1–D4 không được tính công cho phần đó.
-      </p>
-      <div className="max-w-full overflow-x-auto">
+      <CardHeader title="Mốc so sánh · tắt phòng thủ" subtitle="Mọi cấu hình phòng thủ được so với mốc này của cùng model." />
+      <div className="max-w-full overflow-x-auto border-t border-slate-200">
         <table className="table-base">
           <thead>
             <tr>
               <th>Model</th>
-              <th className="w-56">Tấn công thành công (ASR)</th>
-              <th className="w-56">Câu lành tính đạt (USR)</th>
-              <th className="w-40">Chặn nhầm (FRR)</th>
-              <th className="w-48">Kết cục run tấn công</th>
+              <th className="min-w-52">Tấn công thành công (ASR)</th>
+              <th className="min-w-52">Câu lành tính đạt (USR)</th>
+              <th className="min-w-36">Chặn nhầm (FRR)</th>
+              <th className="min-w-44">Kết cục run tấn công</th>
             </tr>
           </thead>
           <tbody>
             {d.baseline.map((b) => (
-              <tr key={b.target_id} className="hover:bg-slate-50/70">
+              <tr key={b.target_id}>
                 <td>
-                  <Link to={link({ target: b.target_id })} className="font-mono font-semibold text-slate-800 hover:underline">{b.target_id}</Link>
+                  <Link to={link({ target: b.target_id })} className="font-mono font-medium text-slate-900 hover:underline">
+                    {b.target_id}
+                  </Link>
                 </td>
                 <td>
-                  <Rate r={b.asr} />
-                  <RateBar p={b.asr.p} lo={b.asr.lo} hi={b.asr.hi} />
+                  <div className="space-y-1.5">
+                    <Rate r={b.asr} />
+                    <RateBar p={b.asr.p} lo={b.asr.lo} hi={b.asr.hi} />
+                  </div>
                 </td>
                 <td>
                   {b.usr.n ? (
-                    <>
+                    <div className="space-y-1.5">
                       <Rate r={b.usr} good />
                       <RateBar p={b.usr.p} lo={b.usr.lo} hi={b.usr.hi} tone="brand" />
-                    </>
-                  ) : <span className="text-xs text-slate-400">chưa đo</span>}
+                    </div>
+                  ) : (
+                    <Unmeasured />
+                  )}
                 </td>
-                <td>{b.frr.n ? <Rate r={b.frr} good /> : <span className="text-xs text-slate-400">—</span>}</td>
+                <td>{b.frr.n ? <Rate r={b.frr} good /> : <Unmeasured />}</td>
                 <td>{b.outcomes && <OutcomeBar o={b.outcomes} />}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <div className="border-t border-slate-100 px-5 py-3"><OutcomeLegend /></div>
+      <div className="space-y-2 border-t border-slate-200 px-4 py-3">
+        <OutcomeLegend />
+        <p className="max-w-[88ch] text-xs text-slate-500">
+          Phần “Model từ chối” là lớp an toàn sẵn có của model — phòng thủ D1–D4 không được tính công cho phần đó.
+        </p>
+      </div>
     </Card>
   );
 }
@@ -178,22 +151,23 @@ function Effects({ d }: { d: DefenseSummary }) {
   const targets = [...new Set(d.effects.map((e) => e.target_id))];
   return (
     <Card>
-      <CardHeader title="RQ4 · Mỗi cấu hình giảm bao nhiêu tấn công, mất bao nhiêu hữu dụng?" icon={<Scale size={16} />} />
-      <p className="px-5 pb-3 text-xs leading-relaxed text-slate-500">
-        Mũi tên so với lúc tắt phòng thủ của cùng model: ASR giảm (xanh) là tốt, USR giảm (đỏ) là cái giá phải trả.
-        “Cắt được” = phần tấn công thành công bị loại bỏ.
-      </p>
-      <div className="max-w-full overflow-x-auto">
+      <CardHeader
+        title="RQ4 · Mỗi cấu hình giảm bao nhiêu tấn công, mất bao nhiêu hữu dụng?"
+        subtitle="Δ so với lúc tắt phòng thủ của cùng model: ASR giảm là tốt, USR giảm là cái giá phải trả."
+      />
+      <div className="max-w-full overflow-x-auto border-t border-slate-200">
         <table className="table-base">
           <thead>
             <tr>
               <th>Model</th>
               <th>Cấu hình</th>
-              <th className="w-56">Tấn công thành công (ASR)</th>
+              <th>Tấn công thành công (ASR)</th>
+              <th className="text-right">Δ ASR</th>
               <th className="text-right">Cắt được</th>
-              <th className="w-56">Câu lành tính đạt (USR)</th>
-              <th className="text-right">Chặn nhầm</th>
-              <th className="w-44">Kết cục</th>
+              <th>Câu lành tính đạt (USR)</th>
+              <th className="text-right">Δ USR</th>
+              <th>Chặn nhầm (FRR)</th>
+              <th className="min-w-40">Kết cục</th>
             </tr>
           </thead>
           <tbody>
@@ -202,29 +176,38 @@ function Effects({ d }: { d: DefenseSummary }) {
                 .filter((e) => e.target_id === t)
                 .sort((a, b) => (a.asr.p ?? 1) - (b.asr.p ?? 1))
                 .map((e, i) => (
-                  <tr key={`${t}-${e.preset}`} className="hover:bg-slate-50/70">
-                    <td className="font-mono font-semibold text-slate-800">{i === 0 ? t : ""}</td>
+                  <tr key={`${t}-${e.preset}`}>
+                    <td className="font-mono font-medium text-slate-900">
+                      {i === 0 ? t : <span className="sr-only">{t}</span>}
+                    </td>
                     <td>
-                      <span className="inline-flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: PRESET_COLOR[e.preset] ?? "#334155" }} />
-                        {presetLabel(e.preset)}
-                      </span>
+                      <PresetName name={e.preset} />
                     </td>
                     <td>
                       <Rate r={e.asr} />
+                    </td>
+                    <td className="text-right">
                       <Delta v={e.d_asr} better="down" />
                     </td>
-                    <td className="num text-right">{e.asr_cut === null ? "—" : pct(e.asr_cut, 0)}</td>
-                    <td>
-                      {e.usr.n ? (<><Rate r={e.usr} good /><Delta v={e.d_usr} better="up" /></>) : <span className="text-xs text-slate-400">chưa đo</span>}
-                    </td>
-                    <td className="num text-right">{e.frr.n ? pct(e.frr.p) : "—"}</td>
+                    <td className="num text-right">{e.asr_cut === null ? <span className="text-slate-300">—</span> : pct(e.asr_cut, 0)}</td>
+                    <td>{e.usr.n ? <Rate r={e.usr} good /> : <Unmeasured />}</td>
+                    <td className="text-right">{e.usr.n ? <Delta v={e.d_usr} better="up" /> : <span className="text-slate-300">—</span>}</td>
+                    <td>{e.frr.n ? <Rate r={e.frr} good /> : <Unmeasured />}</td>
                     <td>{e.outcomes && <OutcomeBar o={e.outcomes} />}</td>
                   </tr>
                 )),
             )}
           </tbody>
         </table>
+      </div>
+      <div className="space-y-2 border-t border-slate-200 px-4 py-3">
+        <OutcomeLegend />
+        <Disclosure summary="Cách đọc bảng">
+          <p className="max-w-[88ch] text-sm text-slate-600">
+            Mũi tên so với lúc tắt phòng thủ của cùng model: ASR giảm (xanh) là tốt, USR giảm (đỏ) là cái giá phải trả.
+            “Cắt được” = phần tấn công thành công bị loại bỏ.
+          </p>
+        </Disclosure>
       </div>
     </Card>
   );
@@ -234,25 +217,130 @@ function Rq3({ d }: { d: DefenseSummary }) {
   if (!d.rq3.length) return null;
   return (
     <Card>
-      <CardHeader title="RQ3 · Bật cả D1–D4 có hơn cơ chế đơn lẻ tốt nhất không?" icon={<Layers size={16} />} />
-      <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-3">
-        {d.rq3.map((r) => (
-          <div key={r.target_id} className="rounded-lg border border-slate-200 p-4">
-            <div className="font-mono text-sm font-semibold text-slate-800">{r.target_id}</div>
-            <div className="mt-2 text-xs text-slate-600">
-              Bật D1–D4: <Rate r={r.all.asr} />
-            </div>
-            <div className="text-xs text-slate-600">
-              Tốt nhất đơn lẻ ({presetLabel(r.best_single)}): <Rate r={r.single.asr} />
-            </div>
-            <div className={clsx("mt-2 text-sm font-medium", r.gain > 0 ? "text-defense-700" : "text-slate-600")}>
-              {r.gain > 0 ? `Tổ hợp giảm thêm ${pct(r.gain)} ASR` : "Tổ hợp không giảm thêm ASR"}
-              {r.usr_cost !== null && `, USR ${r.usr_cost >= 0 ? "+" : "−"}${pct(Math.abs(r.usr_cost))}`}
-            </div>
-          </div>
-        ))}
+      <CardHeader title="RQ3 · Bật cả D1–D4 có hơn cơ chế đơn lẻ tốt nhất không?" />
+      <div className="max-w-full overflow-x-auto border-t border-slate-200">
+        <table className="table-base">
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>ASR khi bật D1–D4</th>
+              <th>Tốt nhất đơn lẻ</th>
+              <th>ASR đơn lẻ tốt nhất</th>
+              <th className="text-right">Tổ hợp giảm thêm ASR</th>
+              <th className="text-right">Chênh USR</th>
+            </tr>
+          </thead>
+          <tbody>
+            {d.rq3.map((r) => (
+              <tr key={r.target_id}>
+                <td className="font-mono font-medium text-slate-900">{r.target_id}</td>
+                <td>
+                  <Rate r={r.all.asr} />
+                </td>
+                <td>
+                  <PresetName name={r.best_single} />
+                </td>
+                <td>
+                  <Rate r={r.single.asr} />
+                </td>
+                <td className={clsx("text-right", r.gain > 0 ? "font-medium text-defense-700" : "text-slate-500")}>
+                  {r.gain > 0 ? <span className="num">{pct(r.gain)}</span> : "không giảm thêm"}
+                </td>
+                <td className="text-right">
+                  {r.usr_cost === null ? (
+                    <Unmeasured />
+                  ) : (
+                    <span className="num text-slate-700">
+                      {r.usr_cost >= 0 ? "+" : "−"}
+                      {pct(Math.abs(r.usr_cost))}
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </Card>
+  );
+}
+
+function Tradeoff({ points }: { points: DefensePoint[] }) {
+  const usable = points.filter((p) => p.asr_e2e !== null && p.usr !== null);
+  const multiTarget = new Set(points.map((p) => p.target_id ?? "")).size > 1;
+  const name = (p: DefensePoint) => `${presetLabel(p.preset)}${p.target_id ? ` · ${p.target_id}` : ""}`;
+  if (!usable.length) {
+    return (
+      <Empty title="Chưa đủ dữ liệu để vẽ đường đánh đổi">
+        Mỗi điểm cần cả ASR (run tấn công) và USR (run lành tính) của cùng cấu hình phòng thủ và model. Dữ liệu có sau
+        khối B2 và B3.
+      </Empty>
+    );
+  }
+  const data: ScatterPoint[] = usable.map((p) => ({
+    id: `${p.target_id ?? ""}|${p.preset}`,
+    x: p.asr_e2e!,
+    y: p.usr!,
+    xLo: p.asr_lo,
+    xHi: p.asr_hi,
+    yLo: p.usr_lo,
+    yHi: p.usr_hi,
+    color: presetToken(p.preset),
+    label: `${presetShort(p.preset)}${multiTarget && p.target_id ? ` · ${p.target_id}` : ""}`,
+    title: `${name(p)}\nASR ${pct(p.asr_e2e)} (${ci(p.asr_lo, p.asr_hi)}) · n=${p.n_attack}\nUSR ${pct(p.usr)} (${ci(p.usr_lo, p.usr_hi)}) · n=${p.n_benign}`,
+  }));
+  const skipped = points.length - usable.length;
+  return (
+    <>
+      <div className="max-w-full overflow-x-auto px-4 pb-2">
+        <ScatterPlot
+          points={data}
+          xTitle="Tấn công thành công (ASR) — thấp hơn là an toàn hơn"
+          yTitle="Câu lành tính đạt (USR) — cao hơn là hữu dụng hơn"
+          ariaLabel={`Biểu đồ phân tán ASR – USR của ${data.length} cấu hình phòng thủ theo model. Số liệu đầy đủ ở bảng bên dưới biểu đồ.`}
+        />
+      </div>
+      <div className="space-y-2 border-t border-slate-200 px-4 py-3">
+        <p className="text-xs text-slate-500">
+          Râu mảnh quanh mỗi điểm là khoảng tin cậy 95%.
+          {skipped > 0 && ` ${skipped} cấu hình chưa đo đủ cả ASR và USR nên không có điểm trên biểu đồ.`}
+        </p>
+        <Disclosure summary="Bảng số liệu của biểu đồ">
+          <div className="max-w-full overflow-x-auto rounded-md border border-slate-200">
+            <table className="table-base">
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th>Cấu hình</th>
+                  <th className="text-right">ASR</th>
+                  <th className="text-right">KTC 95%</th>
+                  <th className="text-right">n tấn công</th>
+                  <th className="text-right">USR</th>
+                  <th className="text-right">KTC 95%</th>
+                  <th className="text-right">n lành tính</th>
+                </tr>
+              </thead>
+              <tbody>
+                {points.map((p) => (
+                  <tr key={`${p.target_id ?? ""}|${p.preset}`}>
+                    <td className="font-mono font-medium text-slate-900">{p.target_id ?? "—"}</td>
+                    <td>
+                      <PresetName name={p.preset} />
+                    </td>
+                    <td className="num text-right">{p.asr_e2e === null ? <Unmeasured /> : pct(p.asr_e2e)}</td>
+                    <td className="num text-right text-slate-500">{ci(p.asr_lo, p.asr_hi) || "—"}</td>
+                    <td className="num text-right text-slate-500">{p.n_attack}</td>
+                    <td className="num text-right">{p.usr === null ? <Unmeasured /> : pct(p.usr)}</td>
+                    <td className="num text-right text-slate-500">{ci(p.usr_lo, p.usr_hi) || "—"}</td>
+                    <td className="num text-right text-slate-500">{p.n_benign}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Disclosure>
+      </div>
+    </>
   );
 }
 
@@ -262,29 +350,31 @@ function FrrByTask({ d }: { d: DefenseSummary }) {
   const tasks = [...new Set(d.frr_by_task.map((r) => r.carrier_task_id ?? "?"))].sort();
   return (
     <Card>
-      <CardHeader title="Chặn nhầm theo tác vụ" icon={<Ban size={16} />} />
-      <p className="px-5 pb-3 text-xs text-slate-500">Tỉ lệ câu lành tính bị phòng thủ chặn, theo tác vụ chở (giả thuyết H4: D3 chặn nhầm ở CT-05, CT-06).</p>
-      <div className="max-w-full overflow-x-auto">
+      <CardHeader
+        title="Chặn nhầm theo tác vụ"
+        subtitle="Tỉ lệ câu lành tính bị phòng thủ chặn, theo tác vụ chở (giả thuyết H4: D3 chặn nhầm ở CT-05, CT-06)."
+      />
+      <div className="max-w-full overflow-x-auto border-t border-slate-200">
         <table className="table-base">
           <thead>
             <tr>
               <th>Tác vụ</th>
-              {presetsOn.map((p) => <th key={p} className="text-center">{presetLabel(p)}</th>)}
+              {presetsOn.map((p) => (
+                <th key={p} className="text-right">
+                  {presetLabel(p)}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {tasks.map((t) => (
               <tr key={t}>
-                <td className="font-mono font-medium">{t}</td>
+                <td className="font-mono font-medium text-slate-900">{t}</td>
                 {presetsOn.map((p) => {
                   const v = d.frr_by_task.find((r) => r.preset === p && (r.carrier_task_id ?? "?") === t);
                   return (
-                    <td key={p} className="text-center">
-                      {v ? (
-                        <span title={`${v.frr.x}/${v.frr.n}`} className={clsx("num rounded px-1.5 py-0.5 text-xs", (v.frr.p ?? 0) > 0 ? "bg-attack-50 font-semibold text-attack-700" : "text-slate-400")}>
-                          {pct(v.frr.p, 0)}
-                        </span>
-                      ) : <span className="text-slate-300">—</span>}
+                    <td key={p} className="text-right">
+                      {!v ? <span className="text-slate-300">—</span> : v.frr.n ? <Rate r={v.frr} /> : <Unmeasured />}
                     </td>
                   );
                 })}
@@ -297,89 +387,91 @@ function FrrByTask({ d }: { d: DefenseSummary }) {
   );
 }
 
-function NotMeasured({ d }: { d: DefenseSummary }) {
-  const pending = d.presets.filter((p) => !d.measured.includes(p.name));
-  return (
-    <Callout tone="brand" icon={<Info size={16} />} title="Chưa có lô đo phòng thủ (khối B2) trong phạm vi này">
-      <div className="text-xs leading-relaxed">
-        Hiện chỉ có run tắt phòng thủ — dùng làm mốc so sánh bên dưới. Khi chạy khối B2, trang này sẽ hiện: mỗi cấu hình
-        giảm bao nhiêu tấn công và mất bao nhiêu hữu dụng (RQ4), tổ hợp D1–D4 so với cơ chế đơn lẻ tốt nhất (RQ3),
-        và chặn nhầm theo tác vụ.
-        {pending.length > 0 && (
-          <div className="mt-1">Cấu hình chờ đo: {pending.map((p) => presetLabel(p.name)).join(" · ")}.</div>
-        )}
-      </div>
-    </Callout>
-  );
-}
+const CODES = ["D1", "D2", "D3", "D4"] as const;
 
 function Mechanisms({ presets }: { presets: Preset[] }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
     <Card>
-      <details className="detail-disclosure">
-        <summary>Cơ chế D1–D4 và tham số của từng cấu hình</summary>
-        <div className="defense-grid">
-          {(["D1", "D2", "D3", "D4"] as const).map((code) => {
-            const Icon = DEFENSE_ICON[code];
-            return (
-              <div key={code} className="defense-tile">
-                <span className="block-icon" aria-hidden="true"><Icon size={22} /></span>
-                <Badge tone="defense">{code}</Badge>
-                <h3>{DEFENSE_LABEL[code]}</h3>
-                <p className="text-xs text-slate-500">{DEFENSE_DESC[code]}</p>
-              </div>
-            );
-          })}
-        </div>
-        <div className="max-w-full overflow-x-auto px-1 pb-3">
-          <table className="table-base">
-            <thead>
-              <tr>
-                <th>Cấu hình</th>
-                {["D1", "D2", "D3", "D4"].map((c) => <th key={c} className="text-center">{c}</th>)}
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {presets.map((p) => (
+      <CardHeader title="Cơ chế D1–D4 và tham số của từng cấu hình" />
+      <dl className="divide-y divide-slate-100 border-t border-slate-200">
+        {CODES.map((code) => (
+          <div key={code} className="grid grid-cols-[2.5rem_1fr] gap-x-3 gap-y-0.5 px-4 py-2 sm:grid-cols-[2.5rem_10rem_1fr]">
+            <dt className="contents">
+              <span className="font-mono text-xs font-medium leading-5 text-defense-700">{code}</span>
+              <span className="font-medium text-slate-900">{DEFENSE_LABEL[code]}</span>
+            </dt>
+            <dd className="col-start-2 text-slate-600 sm:col-start-3">{DEFENSE_DESC[code]}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="max-w-full overflow-x-auto border-t border-slate-200">
+        <table className="table-base">
+          <thead>
+            <tr>
+              <th>Cấu hình</th>
+              {CODES.map((c) => (
+                <th key={c} className="w-14 text-center">
+                  {c}
+                </th>
+              ))}
+              <th className="w-28 text-right">Tham số</th>
+            </tr>
+          </thead>
+          <tbody>
+            {presets.map((p) => {
+              const isOpen = open === p.name;
+              const panelId = `preset-params-${p.name}`;
+              return (
                 <Fragment key={p.name}>
                   <tr>
                     <td>
-                      <span className="inline-flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: PRESET_COLOR[p.name] ?? "#334155" }} />
-                        <span className="font-medium text-slate-800">{presetLabel(p.name)}</span>
-                        <span className="font-mono text-xs text-slate-400">{p.name}</span>
-                      </span>
+                      <PresetName name={p.name} code />
                     </td>
-                    {["D1", "D2", "D3", "D4"].map((c) => (
+                    {CODES.map((c) => (
                       <td key={c} className="text-center">
-                        {p.codes.includes(c) ? <Check size={16} className="mx-auto text-defense-600" /> : <span className="text-slate-300">·</span>}
+                        {p.codes.includes(c) ? (
+                          <>
+                            <Check size={14} className="mx-auto text-defense-600" aria-hidden="true" />
+                            <span className="sr-only">bật</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-slate-300" aria-hidden="true">
+                              ·
+                            </span>
+                            <span className="sr-only">tắt</span>
+                          </>
+                        )}
                       </td>
                     ))}
-                    <td className="w-10">
+                    <td className="text-right">
                       {p.codes.length > 0 && (
-                        <button
-                          onClick={() => setOpen(open === p.name ? null : p.name)}
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100"
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setOpen(isOpen ? null : p.name)}
+                          aria-expanded={isOpen}
+                          aria-controls={panelId}
                           title="Tham số hiệu lực"
                         >
-                          <ChevronDown size={16} className={clsx("transition", open === p.name && "rotate-180")} />
-                        </button>
+                          {isOpen ? "Ẩn" : "Xem"}
+                          <ChevronDown size={12} className={clsx("transition-transform", isOpen && "rotate-180")} aria-hidden="true" />
+                        </Button>
                       )}
                     </td>
                   </tr>
-                  {open === p.name && (
-                    <tr>
-                      <td colSpan={6} className="bg-slate-50/60">
-                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  {isOpen && (
+                    <tr id={panelId}>
+                      <td colSpan={6} className="bg-slate-50">
+                        <div className="grid grid-cols-1 gap-3 py-1 lg:grid-cols-2">
                           {Object.entries(p.params).map(([code, params]) => (
-                            <div key={code}>
-                              <div className="mb-1 flex items-center gap-2">
-                                <Badge tone="defense">{code}</Badge>
+                            <div key={code} className="min-w-0">
+                              <div className="mb-1 flex items-baseline gap-2">
+                                <span className="font-mono text-xs font-medium text-defense-700">{code}</span>
                                 <span className="text-xs font-medium text-slate-700">{DEFENSE_LABEL[code]}</span>
                               </div>
-                              <pre className="code-block max-h-64 overflow-auto">{JSON.stringify(params, null, 2)}</pre>
+                              <pre className="code-block max-h-64 overflow-auto bg-surface">{JSON.stringify(params, null, 2)}</pre>
                             </div>
                           ))}
                         </div>
@@ -387,11 +479,11 @@ function Mechanisms({ presets }: { presets: Preset[] }) {
                     </tr>
                   )}
                 </Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </Card>
   );
 }
@@ -414,18 +506,27 @@ export function DefensePage() {
       {q.isLoading && <Loading />}
       {q.error && <ErrorBox error={q.error} />}
       {d && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <ScopeNote s={d.scope} />
-          {!d.has_defense_runs && <NotMeasured d={d} />}
+          {!d.has_defense_runs && <NotMeasuredNote />}
           {d.baseline.length > 0 && <Baseline d={d} />}
+          {!d.has_defense_runs && <NotMeasuredDetail d={d} />}
           {d.has_defense_runs && (
             <>
               <Effects d={d} />
               <Rq3 d={d} />
               <Card>
-                <CardHeader title="Bản đồ đánh đổi an toàn – hữu dụng" icon={<ChartScatter size={16} />} />
-                <p className="px-5 text-xs text-slate-500">Mỗi điểm là một cấu hình trên một model. Điểm tốt nằm góc trên bên trái: ít tấn công thành công, nhiều câu lành tính đạt.</p>
-                {points.data && <ParetoChart points={points.data.points} />}
+                <CardHeader
+                  title="Bản đồ đánh đổi an toàn – hữu dụng"
+                  subtitle="Mỗi điểm là một cấu hình trên một model. Điểm tốt nằm góc trên bên trái: ít tấn công thành công, nhiều câu lành tính đạt."
+                />
+                {points.isLoading && <Loading rows={4} />}
+                {points.error && (
+                  <div className="px-4 pb-3">
+                    <ErrorBox error={points.error} />
+                  </div>
+                )}
+                {points.data && <Tradeoff points={points.data.points} />}
               </Card>
               <FrrByTask d={d} />
             </>

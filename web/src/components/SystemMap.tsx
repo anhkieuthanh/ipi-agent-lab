@@ -5,14 +5,11 @@
 
 import clsx from "clsx";
 import {
-  Activity,
-  Bot,
   BrainCircuit,
   ClipboardCheck,
   ClipboardList,
   Database,
   Globe,
-  HardDrive,
   History,
   Inbox,
   LayoutDashboard,
@@ -29,8 +26,6 @@ import {
   Skull,
   Ticket,
   UserRound,
-  Users,
-  Wrench,
 } from "lucide-react";
 import { type ReactNode, useId, useState } from "react";
 
@@ -74,12 +69,12 @@ const LOOP_H = 60;
 const RESULT_Y = CTX_Y + CTX_H / 2; // 236
 const CALL_Y = LLM_Y + LLM_H / 2; // 324
 
-const ZONES: { id: string; x: number; y: number; w: number; h: number; label: string; icon: LucideIcon }[] = [
-  { id: "z-user", x: 16, y: TOP, w: 160, h: 380, label: "Người dùng", icon: Users },
-  { id: "z-agent", x: 200, y: TOP, w: 356, h: 380, label: "Agent", icon: Bot },
-  { id: "z-tools", x: TOOLS_Z, y: TOP, w: 216, h: 380, label: "Công cụ MCP", icon: Wrench },
-  { id: "z-data", x: DATA_X - 16, y: TOP, w: 240, h: 380, label: "Dữ liệu & bồn chứa", icon: HardDrive },
-  { id: "z-measure", x: 200, y: 508, w: 984, h: 116, label: "Hệ đo", icon: Activity },
+const ZONES: { id: string; x: number; y: number; w: number; h: number; label: string }[] = [
+  { id: "z-user", x: 16, y: TOP, w: 160, h: 380, label: "Người dùng" },
+  { id: "z-agent", x: 200, y: TOP, w: 356, h: 380, label: "Agent" },
+  { id: "z-tools", x: TOOLS_Z, y: TOP, w: 216, h: 380, label: "Công cụ MCP" },
+  { id: "z-data", x: DATA_X - 16, y: TOP, w: 240, h: 380, label: "Dữ liệu & bồn chứa" },
+  { id: "z-measure", x: 200, y: 508, w: 984, h: 116, label: "Hệ đo" },
 ];
 
 export const NODES: Box[] = [
@@ -155,28 +150,32 @@ export const HOOKS: { id: string; code: DefenseCode; x: number; y: number; stage
   { id: "h-d4b", code: "D4", x: GAP2, y: mid(3), stage: "pre_egress" },
 ];
 
-/** Bảng màu theo nhóm thành phần: nền thẻ, viền, nền ô icon, màu icon/tiêu đề. */
-const TONE: Record<Tone, { fill: string; stroke: string; tile: string; ink: string; title: string }> = {
-  user: { fill: "#ffffff", stroke: "#cbd5e1", tile: "#ecfeff", ink: "#0e7490", title: "#0f172a" },
-  agent: { fill: "#ffffff", stroke: "#cbd5e1", tile: "#eef4ff", ink: "#2a55e0", title: "#0f172a" },
-  brand: { fill: "#f5f8ff", stroke: "#93b0fb", tile: "#2a55e0", ink: "#ffffff", title: "#1e3a8a" },
-  tool: { fill: "#ffffff", stroke: "#cbd5e1", tile: "#f1f5f9", ink: "#334155", title: "#0f172a" },
-  store: { fill: "#ffffff", stroke: "#cbd5e1", tile: "#f1f5f9", ink: "#475569", title: "#0f172a" },
-  sink: { fill: "#fffbf5", stroke: "#fdba74", tile: "#ffedd5", ink: "#c2410c", title: "#9a3412" },
-  attack: { fill: "#fff5f5", stroke: "#f19a9d", tile: "#fee2e2", ink: "#dc2626", title: "#a8262b" },
-  measure: { fill: "#ffffff", stroke: "#d4d4f7", tile: "#f5f3ff", ink: "#7c3aed", title: "#334155" },
+/** Màu lấy từ src/tokens.css qua biến CSS nên sơ đồ tự đổi theo chế độ sáng/tối. */
+const c = (name: string) => `rgb(var(--${name}))`;
+
+/** Bảng màu theo nhóm thành phần: nền thẻ, viền, màu icon. Tiêu đề luôn dùng màu chữ chính. */
+const TONE: Record<Tone, { fill: string; stroke: string; ink: string }> = {
+  user: { fill: c("surface"), stroke: c("n-300"), ink: c("n-500") },
+  agent: { fill: c("surface"), stroke: c("n-300"), ink: c("n-500") },
+  brand: { fill: c("brand-50"), stroke: c("brand-500"), ink: c("brand-600") },
+  tool: { fill: c("surface"), stroke: c("n-300"), ink: c("n-500") },
+  store: { fill: c("surface"), stroke: c("n-300"), ink: c("n-500") },
+  sink: { fill: c("payload-50"), stroke: c("payload-200"), ink: c("payload-600") },
+  attack: { fill: c("attack-50"), stroke: c("attack-500"), ink: c("attack-600") },
+  measure: { fill: c("surface"), stroke: c("n-300"), ink: c("n-500") },
 };
 
+/** Điểm móc dùng nền nhạt + viền + chữ đậm cùng tông: đọc được ở cả hai chế độ màu. */
 const HOOK_STYLE: Record<PointStatus | "off" | "on", { fill: string; stroke: string; text: string }> = {
-  off: { fill: "#ffffff", stroke: "#cbd5e1", text: "#94a3b8" },
-  on: { fill: "#16a34a", stroke: "#15803d", text: "#ffffff" },
-  idle: { fill: "#16a34a", stroke: "#15803d", text: "#ffffff" },
-  pass: { fill: "#16a34a", stroke: "#15803d", text: "#ffffff" },
-  transform: { fill: "#f97316", stroke: "#ea580c", text: "#ffffff" },
-  block: { fill: "#dc2626", stroke: "#991b1b", text: "#ffffff" },
+  off: { fill: c("surface"), stroke: c("n-300"), text: c("n-400") },
+  on: { fill: c("defense-50"), stroke: c("defense-500"), text: c("defense-700") },
+  idle: { fill: c("defense-50"), stroke: c("defense-500"), text: c("defense-700") },
+  pass: { fill: c("defense-50"), stroke: c("defense-500"), text: c("defense-700") },
+  transform: { fill: c("payload-50"), stroke: c("payload-500"), text: c("payload-600") },
+  block: { fill: c("attack-50"), stroke: c("attack-500"), text: c("attack-700") },
 };
 
-const HALO = { stroke: "#ffffff", strokeWidth: 4, paintOrder: "stroke" as const, strokeLinejoin: "round" as const };
+const HALO = { stroke: c("surface"), strokeWidth: 4, paintOrder: "stroke" as const, strokeLinejoin: "round" as const };
 
 export type SystemMapProps = {
   selected?: string | null;
@@ -215,184 +214,167 @@ export function SystemMap({
   const lit = (id: string) => !dim || active.includes(id);
 
   return (
-    <div className="relative">
-      <svg viewBox={`0 0 ${W} ${H}`} className={clsx("h-auto w-full select-none", className)} role="img" aria-label="Sơ đồ hệ thống">
-        <defs>
-          {[
-            ["arrow", "#94a3b8"],
-            ["arrow-red", "#e5484d"],
-            ["arrow-blue", "#2a55e0"],
-            ["arrow-violet", "#a78bfa"],
-          ].map(([name, color]) => (
-            <marker key={name} id={`${name}-${uid}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
-              <path d="M0 1 L9 5 L0 9 z" fill={color} />
-            </marker>
-          ))}
-          <filter id={`shadow-${uid}`} x="-10%" y="-20%" width="120%" height="150%">
-            <feDropShadow dx="0" dy="1" stdDeviation="1.6" floodColor="#0f172a" floodOpacity="0.08" />
-          </filter>
-          <filter id={`glow-${uid}`} x="-20%" y="-40%" width="140%" height="180%">
-            <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#2a55e0" floodOpacity="0.35" />
-          </filter>
-        </defs>
+    <div className="max-w-full overflow-x-auto">
+      <div className="relative min-w-[720px]">
+        <svg viewBox={`0 0 ${W} ${H}`} className={clsx("h-auto w-full select-none", className)} role="img" aria-label="Sơ đồ hệ thống">
+          <defs>
+            {(
+              [
+                ["arrow", c("n-400")],
+                ["arrow-attack", c("attack-500")],
+                ["arrow-brand", c("brand-500")],
+              ] as const
+            ).map(([name, color]) => (
+              <marker key={name} id={`${name}-${uid}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+                <path d="M0 1 L9 5 L0 9 z" fill={color} />
+              </marker>
+            ))}
+          </defs>
 
-        {ZONES.map((z) => {
-          const Icon = z.icon;
-          return (
+          {ZONES.map((z) => (
             <g key={z.id}>
               <rect
                 x={z.x}
                 y={z.y}
                 width={z.w}
                 height={z.h}
-                rx={16}
-                fill="#f8fafc"
-                stroke="#eef2f6"
+                rx={8}
+                fill={c("n-50")}
+                stroke={c("n-200")}
                 strokeDasharray={z.id === "z-measure" ? "5 4" : undefined}
               />
-              <Icon x={z.x + 14} y={z.y + 10} width={14} height={14} color="#94a3b8" strokeWidth={2} />
-              <text x={z.x + 34} y={z.y + 21.5} fontSize={10.5} fontWeight={700} letterSpacing="0.09em" fill="#94a3b8">
-                {z.label.toUpperCase()}
+              <text x={z.x + 14} y={z.y + 21} fontSize={11} fontWeight={500} fill={c("n-500")}>
+                {z.label}
               </text>
             </g>
-          );
-        })}
+          ))}
 
-        {EDGES.map((e) => {
-          const on = lit(e.id) && dim;
-          const inject = e.kind === "inject";
-          const measure = e.kind === "measure";
-          const color = inject ? "#e5484d" : on ? "#2a55e0" : measure ? "#c4b5fd" : "#94a3b8";
-          const marker = inject ? ref("arrow-red") : on ? ref("arrow-blue") : measure ? ref("arrow-violet") : ref("arrow");
-          return (
-            <g key={e.id} opacity={lit(e.id) ? 1 : 0.15} style={{ transition: "opacity .3s" }}>
-              <path
-                d={e.d}
-                fill="none"
-                stroke={color}
-                strokeWidth={on ? 2.6 : inject ? 1.8 : 1.5}
-                strokeLinecap="round"
-                strokeDasharray={on ? "9 5" : inject ? "6 5" : measure ? "3 4" : undefined}
-                markerEnd={marker}
-                className={clsx(on && "animate-[dash_1s_linear_infinite]")}
-              />
-              {e.label && (
-                <text
-                  x={e.lx}
-                  y={e.ly}
-                  fontSize={10.5}
-                  textAnchor={e.anchor ?? "middle"}
-                  fill={inject ? "#c5221f" : on ? "#2a55e0" : "#64748b"}
-                  fontWeight={inject ? 700 : 600}
-                  {...HALO}
-                >
-                  {e.label}
-                </text>
-              )}
-            </g>
-          );
-        })}
+          {EDGES.map((e) => {
+            const on = lit(e.id) && dim;
+            const inject = e.kind === "inject";
+            const measure = e.kind === "measure";
+            const color = inject ? c("attack-500") : on ? c("brand-500") : c("n-400");
+            const marker = inject ? ref("arrow-attack") : on ? ref("arrow-brand") : ref("arrow");
+            return (
+              <g key={e.id} opacity={lit(e.id) ? 1 : 0.15} style={{ transition: "opacity .3s" }}>
+                <path
+                  d={e.d}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={on ? 2 : 1.5}
+                  strokeLinecap="round"
+                  strokeDasharray={on ? "9 5" : inject ? "6 5" : measure ? "3 4" : undefined}
+                  markerEnd={marker}
+                  className={clsx(on && "animate-[dash_1s_linear_infinite]")}
+                />
+                {e.label && (
+                  <text
+                    x={e.lx}
+                    y={e.ly}
+                    fontSize={11}
+                    textAnchor={e.anchor ?? "middle"}
+                    fill={inject ? c("attack-600") : on ? c("brand-600") : c("n-500")}
+                    fontWeight={inject ? 600 : 500}
+                    {...HALO}
+                  >
+                    {e.label}
+                  </text>
+                )}
+              </g>
+            );
+          })}
 
-        {NODES.map((n) => {
-          const t = TONE[n.tone];
-          const Icon = n.icon;
-          const isSel = selected === n.id || hover?.id === n.id;
-          const isLit = lit(n.id);
-          const hot = isSel || (dim && isLit);
-          const mono = n.id.includes("_");
-          const tile = n.h >= 60 ? 34 : 30;
-          const cy = n.y + n.h / 2;
-          return (
-            <g
-              key={n.id}
-              onClick={() => onSelect?.(n.id)}
-              {...hoverProps({ id: n.id, cx: n.x + n.w / 2, top: n.y, bottom: n.y + n.h })}
-              className={clsx((onSelect || renderTip) && "cursor-pointer")}
-              opacity={isLit ? 1 : 0.28}
-              style={{ transition: "opacity .3s" }}
-            >
-              <rect
-                x={n.x}
-                y={n.y}
-                width={n.w}
-                height={n.h}
-                rx={12}
-                fill={t.fill}
-                stroke={hot ? "#2a55e0" : t.stroke}
-                strokeWidth={hot ? 2 : 1}
-                filter={hot ? ref("glow") : ref("shadow")}
-              />
-              <rect x={n.x + 10} y={cy - tile / 2} width={tile} height={tile} rx={8} fill={t.tile} />
-              <Icon
-                x={n.x + 10 + (tile - 18) / 2}
-                y={cy - 9}
-                width={18}
-                height={18}
-                color={t.ink}
-                strokeWidth={2}
-              />
-              <text
-                x={n.x + 20 + tile}
-                y={cy + 5}
-                fontSize={mono ? 12.5 : 13.5}
-                fontWeight={600}
-                fill={t.title}
-                fontFamily={mono ? "JetBrains Mono, monospace" : undefined}
+          {NODES.map((n) => {
+            const t = TONE[n.tone];
+            const Icon = n.icon;
+            const isSel = selected === n.id || hover?.id === n.id;
+            const isLit = lit(n.id);
+            const hot = isSel || (dim && isLit);
+            const mono = n.id.includes("_");
+            const cy = n.y + n.h / 2;
+            return (
+              <g
+                key={n.id}
+                onClick={() => onSelect?.(n.id)}
+                {...hoverProps({ id: n.id, cx: n.x + n.w / 2, top: n.y, bottom: n.y + n.h })}
+                className={clsx((onSelect || renderTip) && "cursor-pointer")}
+                opacity={isLit ? 1 : 0.28}
+                style={{ transition: "opacity .3s" }}
               >
-                {n.title}
-              </text>
-            </g>
-          );
-        })}
+                <rect
+                  x={n.x}
+                  y={n.y}
+                  width={n.w}
+                  height={n.h}
+                  rx={6}
+                  fill={t.fill}
+                  stroke={hot ? c("brand-500") : t.stroke}
+                  strokeWidth={hot ? 2 : 1}
+                />
+                <Icon x={n.x + 12} y={cy - 8} width={16} height={16} color={t.ink} strokeWidth={1.75} />
+                <text
+                  x={n.x + 36}
+                  y={cy + 4.5}
+                  fontSize={mono ? 12 : 13}
+                  fontWeight={600}
+                  fill={c("n-900")}
+                  className={mono ? "font-mono" : undefined}
+                >
+                  {n.title}
+                </text>
+              </g>
+            );
+          })}
 
-        {HOOKS.map((h) => {
-          const enabled = defenses ? defenses[h.code] !== false : true;
-          const status = hookStatus?.[h.code];
-          const key = !enabled ? "off" : status ?? "on";
-          const s = HOOK_STYLE[key];
-          const interactive = !!onToggle || !!onSelect;
-          const Icon = enabled ? Shield : ShieldOff;
-          return (
-            <g
-              key={h.id}
-              transform={`translate(${h.x}, ${h.y})`}
-              onClick={(ev) => {
-                ev.stopPropagation();
-                if (onToggle) onToggle(h.code);
-                else onSelect?.(h.code);
-              }}
-              {...hoverProps({ id: h.code, cx: h.x, top: h.y - 11, bottom: h.y + 11 })}
-              className={clsx(interactive && "cursor-pointer")}
-            >
-              {!renderTip && (
-                <title>
-                  {`${h.code} · ${!enabled ? "tắt" : status ? STATUS_LABEL[status] : "bật"}${onToggle ? " — bấm để " + (enabled ? "tắt" : "bật") : ""}`}
-                </title>
-              )}
-              {status === "block" && (
-                <circle r={22} fill="#dc2626" opacity={0.18} className="animate-ping" style={{ transformBox: "fill-box", transformOrigin: "center" }} />
-              )}
-              <rect
-                x={-23}
-                y={-11}
-                width={46}
-                height={22}
-                rx={11}
-                fill={s.fill}
-                stroke={selected === h.code || hover?.id === h.code ? "#2a55e0" : s.stroke}
-                strokeWidth={selected === h.code || hover?.id === h.code ? 2.4 : 1.2}
-                strokeDasharray={enabled ? undefined : "3 2"}
-                filter={ref("shadow")}
-              />
-              <Icon x={-17} y={-6} width={12} height={12} color={s.text} strokeWidth={2.4} />
-              <text x={6} y={4} textAnchor="middle" fontSize={11} fontWeight={700} fill={s.text}>
-                {h.code}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-      {hover && tip && <MapTip hover={hover}>{tip}</MapTip>}
+          {HOOKS.map((h) => {
+            const enabled = defenses ? defenses[h.code] !== false : true;
+            const status = hookStatus?.[h.code];
+            const key = !enabled ? "off" : status ?? "on";
+            const s = HOOK_STYLE[key];
+            const interactive = !!onToggle || !!onSelect;
+            const Icon = enabled ? Shield : ShieldOff;
+            const focused = selected === h.code || hover?.id === h.code;
+            return (
+              <g
+                key={h.id}
+                transform={`translate(${h.x}, ${h.y})`}
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  if (onToggle) onToggle(h.code);
+                  else onSelect?.(h.code);
+                }}
+                {...hoverProps({ id: h.code, cx: h.x, top: h.y - 11, bottom: h.y + 11 })}
+                className={clsx(interactive && "cursor-pointer")}
+              >
+                {!renderTip && (
+                  <title>
+                    {`${h.code} · ${!enabled ? "tắt" : status ? STATUS_LABEL[status] : "bật"}${onToggle ? " — bấm để " + (enabled ? "tắt" : "bật") : ""}`}
+                  </title>
+                )}
+                {status === "block" && (
+                  <circle r={22} fill={c("attack-500")} opacity={0.18} className="animate-ping" style={{ transformBox: "fill-box", transformOrigin: "center" }} />
+                )}
+                <rect
+                  x={-23}
+                  y={-11}
+                  width={46}
+                  height={22}
+                  rx={6}
+                  fill={s.fill}
+                  stroke={focused ? c("brand-500") : s.stroke}
+                  strokeWidth={focused || status === "block" ? 2 : 1}
+                  strokeDasharray={enabled ? undefined : "3 2"}
+                />
+                <Icon x={-17} y={-6} width={12} height={12} color={s.text} strokeWidth={2} />
+                <text x={6} y={4} textAnchor="middle" fontSize={11} fontWeight={600} fill={s.text}>
+                  {h.code}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+        {hover && tip && <MapTip hover={hover}>{tip}</MapTip>}
+      </div>
     </div>
   );
 }
@@ -405,7 +387,7 @@ function MapTip({ hover, children }: { hover: Hover; children: ReactNode }) {
   const shiftX = fx < 0.18 ? "-12%" : fx > 0.82 ? "-88%" : "-50%";
   return (
     <div
-      className="pointer-events-none absolute z-20 w-72 rounded-lg bg-surface p-3.5 text-left shadow-pop ring-1 ring-slate-200"
+      className="pointer-events-none absolute z-20 w-72 rounded-lg bg-surface p-3 text-left shadow-pop"
       style={{
         left: `${fx * 100}%`,
         top: `${((below ? hover.bottom + 8 : hover.top - 8) / H) * 100}%`,
@@ -441,16 +423,19 @@ export function hookStatusFromSteps(steps: { hits: Hit[] }[], codes: string[]): 
   return out;
 }
 
-function Pill({ color, off, children }: { color: string; off?: boolean; children: string }) {
+type PillTone = "off" | "on" | "transform" | "block";
+
+const PILL: Record<PillTone, string> = {
+  off: "border-dashed border-slate-300 bg-surface text-slate-400",
+  on: "border-defense-500 bg-defense-50 text-defense-700",
+  transform: "border-payload-500 bg-payload-50 text-payload-600",
+  block: "border-attack-500 bg-attack-50 text-attack-700",
+};
+
+function Pill({ tone, children }: { tone: PillTone; children: string }) {
   return (
-    <span
-      className={clsx(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-bold",
-        off ? "border border-dashed border-slate-300 bg-surface text-slate-400" : "text-white",
-      )}
-      style={off ? undefined : { background: color }}
-    >
-      {off ? <ShieldOff size={10} strokeWidth={2.6} /> : <Shield size={10} strokeWidth={2.6} />}
+    <span className={clsx("inline-flex h-5 items-center gap-1 rounded-md border px-1.5 text-2xs font-semibold", PILL[tone])}>
+      {tone === "off" ? <ShieldOff size={10} strokeWidth={2} /> : <Shield size={10} strokeWidth={2} />}
       {children}
     </span>
   );
@@ -460,19 +445,19 @@ export function HookLegend({ statuses = false }: { statuses?: boolean }) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500">
       <span className="flex items-center gap-1.5">
-        <Pill color="" off>D</Pill>Tắt
+        <Pill tone="off">D</Pill>Tắt
       </span>
       <span className="flex items-center gap-1.5">
-        <Pill color="#16a34a">D</Pill>
+        <Pill tone="on">D</Pill>
         {statuses ? "Bật, không can thiệp" : "Bật"}
       </span>
       {statuses && (
         <>
           <span className="flex items-center gap-1.5">
-            <Pill color="#f97316">D</Pill>Biến đổi / gắn cờ
+            <Pill tone="transform">D</Pill>Biến đổi / gắn cờ
           </span>
           <span className="flex items-center gap-1.5">
-            <Pill color="#dc2626">D</Pill>Chặn / xin xác nhận
+            <Pill tone="block">D</Pill>Chặn / xin xác nhận
           </span>
         </>
       )}
@@ -484,21 +469,19 @@ export function MapLegend() {
   return (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-500">
       <span className="flex items-center gap-2">
-        <svg width="28" height="8"><path d="M0 4 H28" stroke="#94a3b8" strokeWidth="1.6" /></svg>Dữ liệu / lời gọi
+        <svg width="28" height="8" aria-hidden="true"><path d="M0 4 H28" stroke={c("n-400")} strokeWidth="1.5" /></svg>Dữ liệu / lời gọi
       </span>
       <span className="flex items-center gap-2">
-        <svg width="28" height="8"><path d="M0 4 H28" stroke="#e5484d" strokeWidth="1.8" strokeDasharray="6 5" /></svg>Đường tiêm nhiễm
+        <svg width="28" height="8" aria-hidden="true"><path d="M0 4 H28" stroke={c("attack-500")} strokeWidth="1.5" strokeDasharray="6 5" /></svg>Đường tiêm nhiễm
       </span>
       <span className="flex items-center gap-2">
-        <svg width="28" height="8"><path d="M0 4 H28" stroke="#c4b5fd" strokeWidth="1.6" strokeDasharray="3 4" /></svg>Ghi trace / chấm điểm
+        <svg width="28" height="8" aria-hidden="true"><path d="M0 4 H28" stroke={c("n-400")} strokeWidth="1.5" strokeDasharray="3 4" /></svg>Ghi trace / chấm điểm
       </span>
       <span className="flex items-center gap-2">
-        <Pill color="#16a34a">D</Pill>Điểm phòng thủ
+        <Pill tone="on">D</Pill>Điểm phòng thủ
       </span>
       <span className="flex items-center gap-2">
-        <span className="flex h-5 w-5 items-center justify-center rounded-md bg-orange-100 text-orange-700">
-          <Inbox size={12} />
-        </span>
+        <span className="h-3.5 w-6 rounded border border-payload-200 bg-payload-50" aria-hidden="true" />
         Bồn chứa (nơi đo G1/G2)
       </span>
     </div>

@@ -78,32 +78,37 @@ export function ScenarioPicker({
   };
 
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-5">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
       <Select
+        className="min-w-0"
         label="Kênh"
         value={pick[0]}
         onChange={(v) => set(0, v)}
         options={optionsAt(0).map((v) => ({ value: v, label: `${label(v, CHANNEL_LABEL)} (${count(0, v)})` }))}
       />
       <Select
+        className="min-w-0"
         label="Kỹ thuật"
         value={pick[1]}
         onChange={(v) => set(1, v)}
         options={optionsAt(1).map((v) => ({ value: v, label: `${label(v, TECHNIQUE_LABEL)} (${count(1, v)})` }))}
       />
       <Select
+        className="min-w-0"
         label="Mục tiêu"
         value={pick[2]}
         onChange={(v) => set(2, v)}
         options={optionsAt(2).map((v) => ({ value: v, label: `${label(v, GOAL_LABEL)} (${count(2, v)})` }))}
       />
       <Select
+        className="min-w-0"
         label="Payload"
         value={pick[3]}
         onChange={(v) => set(3, v)}
         options={optionsAt(3).map((v) => ({ value: v, label: payloadLabel(v) }))}
       />
       <Select
+        className="min-w-0"
         label="Tác vụ chở"
         value={pick[4]}
         onChange={(v) => set(4, v)}
