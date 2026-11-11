@@ -15,10 +15,13 @@ from __future__ import annotations
 import html
 import json
 import os
+import re
 import sqlite3
+import subprocess
 import sys
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -246,13 +249,94 @@ def load_payload_catalog(sources: Iterable[Path] = PAYLOAD_SOURCES) -> dict[str,
         files = sorted(f for f in src.iterdir() if f.suffix in (".json", ".yaml", ".yml")) \
             if src.is_dir() else [src]
         for f in files:
-            text = f.read_text(encoding="utf-8")
-            data = json.loads(text) if f.suffix == ".json" else yaml.safe_load(text)
-            items = data if isinstance(data, list) else (data or {}).get("payloads", [])
-            for p in items:
-                if isinstance(p, dict) and p.get("id"):
-                    catalog.setdefault(p["id"], p)
+            _add_payloads(catalog, f.suffix, f.read_text(encoding="utf-8"))
     return catalog
+
+
+def _add_payloads(catalog: dict[str, dict], suffix: str, text: str) -> None:
+    data = json.loads(text) if suffix == ".json" else yaml.safe_load(text)
+    items = data if isinstance(data, list) else (data or {}).get("payloads", [])
+    for p in items:
+        if isinstance(p, dict) and p.get("id"):
+            catalog.setdefault(p["id"], p)
+
+
+def _git(*args: str) -> str | None:
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(ROOT), *args], capture_output=True, text=True, timeout=10, check=False
+        )
+    except OSError:
+        return None
+    return out.stdout if out.returncode == 0 else None
+
+
+@lru_cache(maxsize=64)
+def load_payload_catalog_at(commit: str) -> dict[str, dict] | None:
+    """Catalog payload đúng như ở `commit` (cùng nguồn, cùng thứ tự với `load_payload_catalog`).
+    `None` nếu commit không tra được (object đã bị dọn, hoặc không có git)."""
+    if not re.fullmatch(r"[0-9a-f]{7,40}", commit) or _git("cat-file", "-e", f"{commit}^{{commit}}") is None:
+        return None
+    catalog: dict[str, dict] = {}
+    for src in PAYLOAD_SOURCES:
+        rel = src.relative_to(ROOT).as_posix()
+        listing = _git("ls-tree", "--name-only", commit, f"{rel}/" if src.suffix == "" else rel)
+        names = sorted(n for n in (listing or "").splitlines() if Path(n).suffix in (".json", ".yaml", ".yml"))
+        for name in names:
+            text = _git("show", f"{commit}:{name}")
+            if text is not None:
+                _add_payloads(catalog, Path(name).suffix, text)
+    return catalog
+
+
+def run_commit(harness_version: str | None) -> tuple[str | None, bool]:
+    """(commit, dirty) từ `harness_version` dạng `<tiền tố>@<sha>[-dirty]` trong trace."""
+    m = re.search(r"@([0-9a-f]{7,40})(-dirty)?$", harness_version or "")
+    return (m.group(1), bool(m.group(2))) if m else (None, False)
+
+
+@lru_cache(maxsize=64)
+def _payload_file(rel: str, commit: str | None) -> tuple[dict[str, dict], str] | None:
+    """Payload của một file lô (vd `payloads_file` của lô dò): bản ở `commit` nếu file đã được Git
+    theo dõi tại đó, không thì bản trên đĩa. Trả (catalog, "commit" | "disk")."""
+    suffix = Path(rel).suffix
+    text = _git("show", f"{commit}:{rel}") if commit else None
+    where = "commit"
+    if text is None:
+        path = ROOT / rel
+        if not path.is_file():
+            return None
+        text, where = path.read_text(encoding="utf-8"), "disk"
+    catalog: dict[str, dict] = {}
+    _add_payloads(catalog, suffix, text)
+    return catalog, where
+
+
+def payload_for_run(
+    payload_id: str | None, harness_version: str | None, batch_files: Sequence[str] = ()
+) -> tuple[dict | None, dict[str, Any]]:
+    """Payload của run, theo thứ tự: corpus ở commit harness ghi trong trace (đúng bản đã chạy) →
+    file payload riêng của lô (`batch_files`, vd lô dò sinh payload ngoài corpus) → corpus hiện
+    hành. Trả kèm nguồn để trang chi tiết ghi rõ."""
+    if not payload_id:
+        return None, {"kind": "none"}
+    commit, dirty = run_commit(harness_version)
+    at = load_payload_catalog_at(commit) if commit else None
+    if at is not None and payload_id in at:
+        return at[payload_id], {"kind": "commit", "commit": commit[:7], "dirty": dirty}
+    for rel in batch_files:
+        found = _payload_file(rel, commit if at is not None else None)
+        if found and payload_id in found[0]:
+            return found[0][payload_id], {
+                "kind": "batch_file", "file": rel, "at": found[1],
+                "commit": commit[:7] if commit else None, "dirty": dirty,
+            }
+    current = load_payload_catalog().get(payload_id)
+    if current is not None:
+        return current, {"kind": "current", "commit": commit[:7] if commit else None,
+                         "commit_found": at is not None}
+    return None, {"kind": "missing", "commit": commit[:7] if commit else None,
+                  "commit_found": at is not None}
 
 
 def _template_fragments(template: str) -> list[str]:

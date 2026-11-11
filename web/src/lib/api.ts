@@ -205,11 +205,22 @@ export type Evidence =
     }
   | { error: string };
 
+/** Payload của run tra từ đâu: corpus ở commit của run · file payload của lô · corpus hiện hành. */
+export type PayloadSource = {
+  kind: "commit" | "batch_file" | "current" | "missing" | "none";
+  commit?: string | null;
+  dirty?: boolean;
+  file?: string;
+  at?: "commit" | "disk";
+  commit_found?: boolean;
+};
+
 export type RunDetail = {
   run: RunRow & Record<string, unknown>;
   verdict: Verdict | null;
   payload: Record<string, unknown> | null;
   payload_text: string | null;
+  payload_source: PayloadSource;
   injected_context: InjectedContext | null;
   evidence: Evidence | null;
   /** Câu nhân viên gửi agent (tra theo carrier_task_id / benign_query_id). */

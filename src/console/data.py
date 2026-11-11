@@ -220,6 +220,23 @@ def _read_manifest(store_path: Path) -> list[dict[str, Any]]:
     return [s for s in sessions if isinstance(s, dict)]
 
 
+
+#: Mặc định `--payloads` của `scripts/coupling_probe.py` (hằng PAYLOADS) — lô dò chạy trước khi
+#: manifest có trường `payloads_file` dùng file này.
+PROBE_DEFAULT_PAYLOADS = "results/probe/coupling/payloads_coupling.yaml"
+
+
+def _batch_payload_files(store_path: Path) -> list[str]:
+    """File payload riêng của lô, khai trong manifest (`payloads_file`) — đường dẫn tương đối ROOT."""
+    files: list[str] = []
+    for s in _read_manifest(store_path):
+        rel = s.get("payloads_file")
+        if not rel and str(s.get("batch_id", "")).startswith("probe-coupling-"):
+            rel = PROBE_DEFAULT_PAYLOADS
+        if isinstance(rel, str) and rel and rel not in files:
+            files.append(rel)
+    return files
+
 def _manifest(
     store_path: Path, batch_id: str, all_sessions: list[dict[str, Any]] | None = None
 ) -> dict[str, Any] | None:
@@ -870,8 +887,9 @@ def run_detail(cache: RunCache, run_id: str) -> dict[str, Any] | None:
         return None
     run = hit.iloc[0]
     store = cache.store_path(run["store"])
-    catalog = td.load_payload_catalog()
-    payload = catalog.get(run["payload_id"]) if run["payload_id"] else None
+    payload, payload_source = td.payload_for_run(
+        run["payload_id"], run["harness_version"], _batch_payload_files(store)
+    )
     needles = td.payload_needles(payload, run["lang"])
     canaries = json.loads(run["run_canaries"] or "[]")
     steps = td.load_steps(store, run_id)
@@ -887,6 +905,7 @@ def run_detail(cache: RunCache, run_id: str) -> dict[str, Any] | None:
         "verdict": verdict.__dict__ if verdict else None,
         "payload": payload,
         "payload_text": _payload_text(payload, run["channel"]),
+        "payload_source": payload_source,
         "injected_context": _injected_context(run, payload),
         "evidence": _evidence(run, steps, payload),
         "user_query": user_query(run),

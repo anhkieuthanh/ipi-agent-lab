@@ -94,3 +94,26 @@ def test_nhan_trace_lech_ban_cham_lai_thi_bao(tmp_path):
     ev = goal_evidence(row, steps, payload)
     assert ev["mismatch"] == ["G3"]
     assert ev["outcome"] == {"stored": "success", "rescored": "failed"}
+
+
+def test_payload_for_run_tra_theo_commit_roi_file_lo_roi_hien_hanh(tmp_path, monkeypatch):
+    import subprocess
+
+    head = subprocess.run(
+        ["git", "-C", str(td.ROOT), "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+    ).stdout.strip()
+    pid = "P-T1-G1-VI-971"
+    p, src = td.payload_for_run(pid, f"core-a@{head}-dirty")
+    assert p["id"] == pid and src == {"kind": "commit", "commit": head[:7], "dirty": True}
+
+    # Payload riêng của lô (ngoài corpus): file chưa theo dõi → đọc trên đĩa.
+    rel = tmp_path / "lo.yaml"
+    rel.write_text("payloads:\n  - id: P-RIENG-001\n    goal: G1\n", encoding="utf-8")
+    monkeypatch.setattr(td, "ROOT", tmp_path)
+    td._payload_file.cache_clear()
+    p, src = td.payload_for_run("P-RIENG-001", "core-a@0000000", ["lo.yaml"])
+    assert p["id"] == "P-RIENG-001" and src["kind"] == "batch_file" and src["at"] == "disk"
+
+    p, src = td.payload_for_run("P-KHONG-CO", "core-a@0000000", ["lo.yaml"])
+    assert p is None and src["kind"] == "missing" and src["commit_found"] is False
+    td._payload_file.cache_clear()

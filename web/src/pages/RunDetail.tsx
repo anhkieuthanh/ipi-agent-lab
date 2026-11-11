@@ -7,7 +7,7 @@ import { GoalEvidenceBody } from "@/components/Evidence";
 import { HighlightText, InjectedContext, ToolActions, TraceInspector, TraceLegend } from "@/components/Trace";
 import { TraceReplay } from "@/components/TraceReplay";
 import { Badge, Callout, Card, ErrorBox, Loading, Mono, PageHeader, Segmented } from "@/components/ui";
-import { api, type RunDetail } from "@/lib/api";
+import { api, type PayloadSource, type RunDetail } from "@/lib/api";
 import { CHANNEL_LABEL, GOAL_LABEL, int, presetLabel, seconds, when } from "@/lib/format";
 
 type Tab = "evidence" | "trace" | "tools" | "answer" | "payload" | "replay";
@@ -20,6 +20,21 @@ function Meta({ label, children }: { label: string; children: ReactNode }) {
       <div className="break-words text-[13px] text-slate-800">{children}</div>
     </div>
   );
+}
+
+function sourceNote(src: PayloadSource): string {
+  if (src.kind === "commit")
+    return `Nguồn: corpus ở commit ${src.commit} của run${src.dirty ? " (lúc chạy còn thay đổi chưa commit)" : ""}.`;
+  if (src.kind === "batch_file")
+    return `Nguồn: file payload của lô ${src.file}${src.at === "commit" ? ` ở commit ${src.commit}` : " (bản trên đĩa)"}.`;
+  if (src.kind === "current")
+    return `Nguồn: corpus hiện hành — ${src.commit_found ? `commit ${src.commit} của run không chứa payload này` : `không tra được commit ${src.commit ?? "của run"}`}, nội dung có thể khác bản đã chạy.`;
+  return "";
+}
+
+function missingReason(src: PayloadSource): string {
+  const at = src.commit ? (src.commit_found ? `corpus ở commit ${src.commit} của run` : `commit ${src.commit} (không còn trong repo)`) : "commit của run";
+  return `Payload không có trong ${at}, trong file payload của lô, hay trong corpus hiện hành — thường là lô dò sinh payload riêng mà không ghi manifest.`;
 }
 
 function Summary({ d }: { d: RunDetail }) {
@@ -99,7 +114,7 @@ export function RunDetailPage() {
     { value: "trace", label: "Diễn biến", count: d.steps.length },
     { value: "tools", label: "Tool đã gọi", count: d.tool_actions.length },
     ...(d.final_answer ? [{ value: "answer" as Tab, label: "Trả lời cuối" }] : []),
-    ...(attack && d.payload_text ? [{ value: "payload" as Tab, label: "Payload" }] : []),
+    ...(attack ? [{ value: "payload" as Tab, label: "Payload" }] : []),
     { value: "replay", label: "Phát lại" },
   ];
   const active: Tab = tab && tabs.some((t) => t.value === tab) ? tab : tabs[0].value;
@@ -144,13 +159,22 @@ export function RunDetailPage() {
             )}
             {active === "tools" && <ToolActions actions={d.tool_actions} />}
             {active === "answer" && d.final_answer && <HighlightText value={d.final_answer} />}
-            {active === "payload" && d.payload_text && (
-              <div>
-                <pre className="code-block ring-payload-200">{d.payload_text}</pre>
-                <p className="mt-2 text-[12.5px] text-slate-500">
-                  Nhân viên không nhìn thấy đoạn này — nó nằm trong{" "}
-                  {run.channel ? CHANNEL_LABEL[String(run.channel)] ?? String(run.channel) : "dữ liệu"} mà agent đọc.
-                </p>
+            {active === "payload" && (
+              <div className="space-y-2">
+                {d.payload_text ? (
+                  <>
+                    <pre className="code-block ring-payload-200">{d.payload_text}</pre>
+                    <p className="text-[12.5px] text-slate-500">
+                      Nhân viên không nhìn thấy đoạn này — nó nằm trong{" "}
+                      {run.channel ? CHANNEL_LABEL[String(run.channel)] ?? String(run.channel) : "dữ liệu"} mà agent đọc.
+                    </p>
+                  </>
+                ) : (
+                  <Callout tone="warn" title={`Không tra được payload ${String(run.payload_id ?? "")}`}>
+                    {missingReason(d.payload_source)}
+                  </Callout>
+                )}
+                <p className="text-[12px] text-slate-400">{sourceNote(d.payload_source)}</p>
               </div>
             )}
             {active === "replay" && (
