@@ -6,7 +6,7 @@ import { Fragment, useState } from "react";
 
 import { OutcomeBar, OutcomeLegend, Rate, ScopeNote, useRunsLink } from "@/components/Analysis";
 import { ScatterPlot, type ScatterPoint } from "@/components/charts";
-import { Button, Card, CardHeader, Disclosure, Empty, ErrorBox, Loading, PageHeader, RateBar } from "@/components/ui";
+import { Button, Card, CardHeader, Disclosure, Empty, ErrorBox, InfoDot, Loading, PageHeader, RateBar } from "@/components/ui";
 import { api, type DefensePoint, type DefenseSummary, type Preset } from "@/lib/api";
 import { DEFENSE_LABEL, ci, pct, presetLabel } from "@/lib/format";
 import { useScope } from "@/lib/scope";
@@ -138,10 +138,10 @@ function Baseline({ d }: { d: DefenseSummary }) {
         </table>
       </div>
       <div className="space-y-2 border-t border-slate-200 px-4 py-3">
-        <OutcomeLegend />
-        <p className="max-w-[88ch] text-xs text-slate-500">
-          Phần “Model từ chối” là lớp an toàn sẵn có của model — phòng thủ D1–D4 không được tính công cho phần đó.
-        </p>
+        <div className="flex items-center gap-2">
+          <OutcomeLegend />
+          <InfoDot>Phần “Model từ chối” là lớp an toàn sẵn có của model — phòng thủ D1–D4 không được tính công cho phần đó.</InfoDot>
+        </div>
       </div>
     </Card>
   );
@@ -301,10 +301,9 @@ function Tradeoff({ points }: { points: DefensePoint[] }) {
         />
       </div>
       <div className="space-y-2 border-t border-slate-200 px-4 py-3">
-        <p className="text-xs text-slate-500">
-          Râu mảnh quanh mỗi điểm là khoảng tin cậy 95%.
-          {skipped > 0 && ` ${skipped} cấu hình chưa đo đủ cả ASR và USR nên không có điểm trên biểu đồ.`}
-        </p>
+        {skipped > 0 && (
+          <p className="text-xs text-slate-500">{skipped} cấu hình chưa đo đủ cả ASR và USR nên chưa có điểm.</p>
+        )}
         <Disclosure summary="Bảng số liệu của biểu đồ">
           <div className="max-w-full overflow-x-auto rounded-md border border-slate-200">
             <table className="table-base">

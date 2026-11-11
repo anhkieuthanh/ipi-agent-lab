@@ -4,7 +4,7 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { OutcomeBar, OutcomeLegend, Rate, ScopeNote, useRunsLink } from "@/components/Analysis";
-import { Card, CardHeader, Disclosure, Empty, ErrorBox, Loading, Mono, PageHeader, RateBar, Segmented, Select, Tooltip } from "@/components/ui";
+import { Card, CardHeader, Disclosure, Empty, ErrorBox, InfoDot, Loading, Mono, PageHeader, RateBar, Segmented, Select, Tooltip } from "@/components/ui";
 import { api, type AsrRow, type AttackSummary } from "@/lib/api";
 import { CHANNEL_LABEL, GOAL_LABEL, TECHNIQUE_LABEL, ci, int, pct, presetLabel } from "@/lib/format";
 import { useScope } from "@/lib/scope";
@@ -245,10 +245,10 @@ function Explorer() {
 
 const K_LABEL: Record<string, string> = { ...CHANNEL_LABEL, K2: "Kênh công cụ MCP (K2a + K2b)" };
 
-function Finding({ label, to, children }: { label: string; to?: string; children: ReactNode }) {
+function Finding({ label, info, to, children }: { label: string; info?: string; to?: string; children: ReactNode }) {
   const inner = (
     <>
-      <div className="text-xs font-medium text-slate-500">{label}</div>
+      <div className="flex items-center gap-1 text-xs font-medium text-slate-500">{label}{info && <InfoDot>{info}</InfoDot>}</div>
       {children}
     </>
   );
@@ -269,12 +269,11 @@ function Headlines({ d }: { d: AttackSummary }) {
       {d.headline.map((h) => {
         if (h.kind === "top_cell")
           return (
-            <Finding key={h.kind} label="Lỗ hổng lớn nhất" to={link({ channel: h.channel, technique: h.technique })}>
+            <Finding key={h.kind} label="Lỗ hổng lớn nhất" info="Xếp theo cận dưới khoảng tin cậy 95%, chỉ xét ô có từ 20 run." to={link({ channel: h.channel, technique: h.technique })}>
               <div className="mt-1.5 text-base font-semibold text-slate-900">
                 {h.technique} {TECHNIQUE_LABEL[h.technique]} qua {K_LABEL[h.channel] ?? h.channel}
               </div>
               <div className="mt-1"><Rate r={h.asr} strong /></div>
-              <div className="mt-1.5 text-xs text-slate-500">Xếp theo cận dưới khoảng tin cậy, chỉ ô từ 20 run. Bấm để xem các run →</div>
             </Finding>
           );
         if (h.kind === "k1_vs_k2")
@@ -302,10 +301,9 @@ function Headlines({ d }: { d: AttackSummary }) {
             </Finding>
           );
         return (
-          <Finding key={h.kind} label="Model dễ bị nhất" to={link({ target: h.target_id })}>
+          <Finding key={h.kind} label="Model dễ bị nhất" info="Gộp mọi kênh và kỹ thuật trong phạm vi." to={link({ target: h.target_id })}>
             <div className="mt-1.5 break-words text-base font-semibold text-slate-900">{h.target_id}</div>
             <div className="mt-1"><Rate r={h.asr} strong /></div>
-            <div className="mt-1.5 text-xs text-slate-500">Gộp mọi kênh và kỹ thuật trong phạm vi. Bấm để xem các run →</div>
           </Finding>
         );
       })}

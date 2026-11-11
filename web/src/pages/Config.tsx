@@ -4,7 +4,7 @@ import { ArrowRight, CircleAlert, CircleCheck, Lock, Save, Trash2 } from "lucide
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { Badge, Button, Callout, Card, CardHeader, ErrorBox, Loading, Mono, PageHeader } from "@/components/ui";
+import { Badge, Button, Callout, Card, CardHeader, ErrorBox, InfoDot, Loading, Mono, PageHeader } from "@/components/ui";
 import { type ConfigSummary, type SandboxLimits, type SandboxModel, api } from "@/lib/api";
 import { DEFENSE_LABEL, TECHNIQUE_LABEL, usd } from "@/lib/format";
 import { useSandboxModel } from "@/lib/sandbox";
@@ -135,7 +135,7 @@ function validate(d: Draft, limits: SandboxLimits): { errors: Partial<Record<key
   return { errors, model: ok ? { channel: d.channel, model_id: id, price_in: pin, price_out: pout } : null };
 }
 
-function Field({ label, error, hint, children }: { label: string; error?: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, error, hint, children }: { label: React.ReactNode; error?: string; hint?: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1">
       <span className="label">{label}</span>
@@ -234,13 +234,10 @@ function SandboxCard({ limits }: { limits: SandboxLimits }) {
           <Field label="Giá vào (USD/Mtok)" error={show("price_in")}>
             <input className="input num" inputMode="decimal" value={draft.price_in} onChange={set("price_in")} placeholder="0.50" />
           </Field>
-          <Field label="Giá ra (USD/Mtok)" error={show("price_out")}>
+          <Field label={<span className="inline-flex items-center gap-1">Giá ra (USD/Mtok)<InfoDot>Đơn giá dùng để canh ngân sách lượt demo (BudgetGuard) — nhập theo bảng giá của nhà cung cấp.</InfoDot></span>} error={show("price_out")}>
             <input className="input num" inputMode="decimal" value={draft.price_out} onChange={set("price_out")} placeholder="1.50" />
           </Field>
         </div>
-        <p className="-mt-2 text-xs text-slate-500">
-          Đơn giá dùng để canh ngân sách lượt demo (BudgetGuard) — nhập theo bảng giá của nhà cung cấp.
-        </p>
 
         {channel && !channel.ready && (
           <Callout tone="warn">Kênh này chưa có khóa: lượt demo sẽ báo lỗi cho tới khi bạn thêm biến vào .env.</Callout>

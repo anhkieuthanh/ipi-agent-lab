@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { OutcomeBar, OutcomeLegend, Rate } from "@/components/Analysis";
-import { Button, Card, Empty, ErrorBox, Kbd, Loading, Mono, OutcomeBadge, PageHeader, Segmented, Status, Tooltip } from "@/components/ui";
+import { Button, Card, Empty, ErrorBox, Loading, Mono, OutcomeBadge, PageHeader, Segmented, Status, Tooltip } from "@/components/ui";
 import { api, type Params } from "@/lib/api";
 import { BLOCKED_LABEL, CHANNEL_LABEL, GOAL_LABEL, TECHNIQUE_LABEL, int, presetLabel, when } from "@/lib/format";
 import { KindIcon } from "@/lib/icons";
@@ -325,9 +325,6 @@ export function RunsPage() {
           ) : null}
         </Card>
       )}
-      <p className="hidden text-2xs text-slate-400 md:block">
-        Mẹo: <Kbd>⌘</Kbd> <Kbd>K</Kbd> rồi dán mã run 32 ký tự để mở thẳng run đó.
-      </p>
     </div>
   );
 }

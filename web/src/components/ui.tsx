@@ -27,11 +27,12 @@ export function CardHeader({
   icon?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 px-4 pb-3 pt-3.5">
-      <div className="min-w-0 flex-1">
-        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
-        {subtitle && <div className="mt-0.5 max-w-[88ch] text-xs leading-[18px] text-slate-500">{subtitle}</div>}
-      </div>
+    <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2">
+      <h2 className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-semibold text-slate-900">
+        {title}
+        {/* Giải thích của khối nằm sau ⓘ: mặt giao diện chỉ giữ tiêu đề và số liệu. */}
+        {subtitle && <InfoDot>{subtitle}</InfoDot>}
+      </h2>
       {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
     </div>
   );
@@ -60,13 +61,16 @@ export function PageHeader({
 }) {
   return (
     <div className="mb-5 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-      <div className="min-w-0">
-        <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-900">
-          <span className="min-w-0 break-words">{title}</span>
-          {info && <InfoDot>{info}</InfoDot>}
-        </h1>
-        {description && <p className="mt-1 max-w-[80ch] text-sm text-slate-500">{description}</p>}
-      </div>
+      <h1 className="flex min-w-0 items-center gap-2 text-xl font-semibold text-slate-900">
+        <span className="min-w-0 break-words">{title}</span>
+        {(description || info) && (
+          <InfoDot>
+            {description}
+            {description && info && <span className="mt-1.5 block" />}
+            {info}
+          </InfoDot>
+        )}
+      </h1>
       {actions && <div className="flex max-w-full flex-wrap items-center gap-2" data-chrome>{actions}</div>}
     </div>
   );
@@ -503,7 +507,7 @@ export function Callout({
       <span className={clsx("mt-0.5 shrink-0", ink)}>{icon ?? (tone === "brand" ? <Info size={15} /> : <AlertTriangle size={15} />)}</span>
       <div className="min-w-0">
         {title && <div className="font-medium text-slate-900">{title}</div>}
-        <div className={clsx(title && "mt-0.5")}>{children}</div>
+        {children != null && <div className={clsx(title && "mt-0.5")}>{children}</div>}
       </div>
     </div>
   );

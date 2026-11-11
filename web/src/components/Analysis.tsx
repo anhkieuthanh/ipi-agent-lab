@@ -112,10 +112,9 @@ export function ScopeNote({ s }: { s: ScopeProfile }) {
   );
   if (!mixed)
     return (
-      <p className="text-xs leading-[18px] text-slate-500">
-        <span className="font-medium text-slate-700">Phạm vi số liệu</span>
-        {" — "}
-        {facts}
+      <p className="flex items-center gap-1 text-xs text-slate-500">
+        Phạm vi: <span className="num">{int(s.n_batches)}</span> lô
+        <InfoDot>{facts}</InfoDot>
       </p>
     );
   return (
@@ -123,15 +122,18 @@ export function ScopeNote({ s }: { s: ScopeProfile }) {
       tone="warn"
       title={
         <span className="inline-flex flex-wrap items-center gap-1.5">
-          Số liệu đang gộp nhiều điều kiện khác nhau — đọc như xu hướng, chưa phải kết quả chính thức
+          Số liệu gộp nhiều điều kiện — đọc như xu hướng, chưa phải kết quả chính thức
           <InfoDot>
-            Tập so sánh được = cùng khối thí nghiệm, cùng phiên bản harness và biến thể prompt. Chọn một lô ở thanh phạm vi để xem
-            một điều kiện duy nhất.
+            {facts}
+            <span className="mt-1.5 block">
+              Tập so sánh được = cùng khối thí nghiệm, cùng phiên bản harness và biến thể prompt. Chọn một lô ở thanh phạm vi để
+              xem một điều kiện duy nhất.
+            </span>
           </InfoDot>
         </span>
       }
     >
-      <div className="text-xs leading-[18px]">{facts}</div>
+      {null}
     </Callout>
   );
 }

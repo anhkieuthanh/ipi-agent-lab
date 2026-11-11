@@ -5,7 +5,7 @@ import { useState } from "react";
 import { AssetPanel, type AssetCode } from "@/components/AssetPanel";
 import { ServicesCard } from "@/components/Services";
 import { MapLegend, SystemMap } from "@/components/SystemMap";
-import { Badge, Card, CardHeader, ErrorBox, Loading, Mono, PageHeader, Tabs } from "@/components/ui";
+import { Badge, Card, CardHeader, ErrorBox, InfoDot, Loading, Mono, PageHeader, Tabs } from "@/components/ui";
 import { api } from "@/lib/api";
 import { GLOSSARY } from "@/lib/glossary";
 
@@ -155,10 +155,6 @@ function CarrierTasks() {
   const carriers = q.data!.carriers;
   return (
     <>
-      <p className="max-w-[88ch] px-4 py-3 text-xs leading-[18px] text-slate-500">
-        Tác vụ nhân viên giao cho agent; payload được cài vào dữ liệu mà tác vụ này đọc. Agent chỉ được
-        gọi tool trong danh sách của tác vụ — D3 chặn tool ngoài danh sách.
-      </p>
       <div className="max-w-full overflow-x-auto border-t border-slate-100">
         <table className="table-base">
           <thead>
@@ -166,7 +162,15 @@ function CarrierTasks() {
               <th>Mã</th>
               <th>Tác vụ</th>
               <th>Kênh tiêm</th>
-              <th>Tool được phép</th>
+              <th>
+                <span className="inline-flex items-center gap-1">
+                  Tool được phép
+                  <InfoDot>
+                    Tác vụ nhân viên giao cho agent; payload được cài vào dữ liệu mà tác vụ này đọc. Agent chỉ được gọi
+                    tool trong danh sách của tác vụ — D3 chặn tool ngoài danh sách.
+                  </InfoDot>
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>

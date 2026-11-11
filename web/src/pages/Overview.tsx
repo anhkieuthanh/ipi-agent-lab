@@ -93,7 +93,6 @@ export function OverviewPage() {
           <Count label={BLOCKED_LABEL.defense} value={k.blocked_by.defense} />
           <Count label={BLOCKED_LABEL.model_refusal} value={k.blocked_by.model_refusal} />
           <Count label={BLOCKED_LABEL.harness} value={k.blocked_by.harness} />
-          <span className="ml-auto text-slate-400">Cập nhật {new Date(q.dataUpdatedAt).toLocaleTimeString("vi-VN")}</span>
         </div>
       </section>
 
