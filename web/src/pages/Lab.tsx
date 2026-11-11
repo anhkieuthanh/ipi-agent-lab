@@ -443,11 +443,12 @@ export function LabPage() {
                     const on = s.key === presetKey;
                     return (
                       <button key={s.key} type="button" role="radio" aria-checked={on} onClick={() => setPresetKey(s.key)} className={rowClass(on)}>
-                        <span className="min-w-0 flex-1">
-                          <span className="block break-words">{s.title}</span>
-                          <span className="block font-mono text-2xs text-slate-500">
-                            {s.channel} · {s.technique} · {s.goal}
-                          </span>
+                        <span className="w-6 shrink-0 font-mono text-xs text-slate-500">{s.goal}</span>
+                        <span className="line-clamp-2 min-w-0 flex-1" title={s.title}>
+                          {s.title.replace(/^G\d\s*·\s*/, "").replace(/\s*\([^)]*\)\s*$/, "")}
+                        </span>
+                        <span className="shrink-0 font-mono text-2xs text-slate-400">
+                          {s.channel} · {s.technique}
                         </span>
                         <RowCheck on={on} />
                       </button>

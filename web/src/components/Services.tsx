@@ -31,7 +31,7 @@ const STATE: Record<ServiceStatus["status"], { label: string; icon: LucideIcon; 
   unknown: { label: "Không rõ", icon: CircleHelp, cls: "text-amber-700 bg-amber-50" },
   not_configured: { label: "Chưa cấu hình", icon: CircleMinus, cls: "text-slate-500 bg-slate-50" },
   // Chỉ có cấu hình, chưa probe: không dùng màu xanh "đang hoạt động".
-  configured: { label: "Đã cấu hình", icon: KeyRound, cls: "text-slate-700 bg-slate-100" },
+  configured: { label: "Đã cấu hình", icon: KeyRound, cls: "text-defense-700 bg-defense-50" },
 };
 
 export function useServices() {
@@ -50,7 +50,7 @@ const STATE_DOT: Record<ServiceStatus["status"], string> = {
   down: "bg-attack-500",
   unknown: "bg-amber-400",
   not_configured: "bg-slate-300",
-  configured: "bg-slate-400",
+  configured: "bg-defense-500",
 };
 
 function StateTag({ s, compact }: { s: ServiceStatus; compact?: boolean }) {

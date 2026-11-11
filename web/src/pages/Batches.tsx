@@ -3,35 +3,33 @@ import { ChevronRight, Search } from "lucide-react";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import { Badge, Button, Card, Empty, ErrorBox, Loading, PageHeader, RateBar, Segmented } from "@/components/ui";
+import { Badge, Button, Card, Empty, ErrorBox, Loading, PageHeader, Segmented } from "@/components/ui";
 import { api, type Batch } from "@/lib/api";
 import { CHANNEL_LABEL, GOAL_LABEL, KIND_LABEL, int, kilo, pct, presetLabel, usd, when } from "@/lib/format";
 
 type Filter = "all" | Batch["kind"];
 
-/** Tỉ lệ luôn đi kèm tử số/mẫu số; lô không có mẫu thì ghi "Chưa đo", không hiện 0%. */
+/** Một dòng: chỉ số (ASR với lô tấn công, USR với lô lành tính), tỉ lệ, tử số/mẫu số.
+ * Lô không có mẫu thì ghi "Chưa đo", không hiện 0%. */
 function Result({ b }: { b: Batch }) {
   const attack = b.n_attack > 0;
   const n = attack ? b.n_attack : b.n_benign;
   const k = attack ? b.n_success : b.n_pass;
   const p = n ? k / n : null;
   return (
-    <div className="w-40">
-      <div className="mb-1 flex items-baseline justify-between gap-2 text-xs">
-        <span className="text-slate-500" title={attack ? "ASR" : "USR"}>
-          {attack ? "Tấn công đạt" : "Lành tính đạt"}
-        </span>
-        {p === null ? (
-          <span className="text-slate-400">Chưa đo</span>
-        ) : (
-          <span className="num whitespace-nowrap text-slate-800">
-            <span className="font-medium">{pct(p, 0)}</span>
-            <span className="text-slate-500"> · {k}/{n}</span>
-          </span>
-        )}
-      </div>
-      <RateBar p={p} tone={attack ? "attack" : "brand"} />
-    </div>
+    <span className="num inline-flex items-baseline gap-1.5 whitespace-nowrap">
+      <span className="w-8 font-mono text-2xs text-slate-400" title={attack ? "Tỉ lệ tấn công thành công" : "Tỉ lệ câu lành tính đạt"}>
+        {attack ? "ASR" : "USR"}
+      </span>
+      {p === null ? (
+        <span className="text-slate-400">Chưa đo</span>
+      ) : (
+        <>
+          <span className={attack && p > 0 ? "font-medium text-attack-600" : "font-medium text-slate-900"}>{pct(p, 0)}</span>
+          <span className="text-xs text-slate-400">{k}/{n}</span>
+        </>
+      )}
+    </span>
   );
 }
 
@@ -49,10 +47,9 @@ function Scenario({ b }: { b: Batch }) {
     sub = `${b.manifest?.task ? `${b.manifest.task} · ` : ""}câu lành tính`;
   }
   return (
-    <>
-      <div className="whitespace-nowrap text-slate-800">{title}</div>
-      <div className="whitespace-nowrap text-xs text-slate-500">{sub}</div>
-    </>
+    <span className="block max-w-[280px] truncate whitespace-nowrap text-slate-800" title={`${title} — ${sub}`}>
+      {title}
+    </span>
   );
 }
 
@@ -151,12 +148,9 @@ export function BatchesPage() {
                     return (
                       <tr key={b.batch_id}>
                         <td className="max-w-[260px]">
-                          <Link to={to} title={b.batch_id} className="block truncate font-mono text-xs font-medium text-brand-600 hover:underline">
+                          <Link to={to} title={`${b.batch_id}\n${b.store}`} className="block truncate font-mono text-xs font-medium text-slate-900 hover:text-brand-600 hover:underline">
                             {b.batch_id}
                           </Link>
-                          <div title={b.store} className="mt-0.5 truncate text-xs text-slate-500">
-                            {b.store}
-                          </div>
                         </td>
                         <td>
                           <Badge tone={b.kind === "experiment" ? "brand" : b.kind === "demo" ? "payload" : "neutral"}>{KIND_LABEL[b.kind]}</Badge>

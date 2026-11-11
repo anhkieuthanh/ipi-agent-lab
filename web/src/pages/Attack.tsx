@@ -261,6 +261,20 @@ function Finding({ label, info, to, children }: { label: string; info?: string; 
   );
 }
 
+/** Một tỉ lệ đọc được ngay: số lớn, rồi câu "x trên n run thành công", khoảng tin cậy ghi rõ tên. */
+function BigRate({ r, noun = "run thành công" }: { r: { x: number; n: number; p: number | null; lo: number | null; hi: number | null } | null; noun?: string }) {
+  if (!r || r.p === null || r.p === undefined) return <div className="mt-1 text-xl text-slate-400">Chưa đo</div>;
+  return (
+    <>
+      <div className={clsx("num mt-1 text-2xl font-semibold", r.p > 0 ? "text-attack-600" : "text-slate-900")}>{pct(r.p)}</div>
+      <div className="num mt-0.5 text-xs text-slate-500">
+        {int(r.x)} / {int(r.n)} {noun}
+        <span className="text-slate-400"> · tin cậy 95%: {ci(r.lo, r.hi)}</span>
+      </div>
+    </>
+  );
+}
+
 function Headlines({ d }: { d: AttackSummary }) {
   const link = useRunsLink();
   if (!d.headline.length) return null;
@@ -270,40 +284,47 @@ function Headlines({ d }: { d: AttackSummary }) {
         if (h.kind === "top_cell")
           return (
             <Finding key={h.kind} label="Lỗ hổng lớn nhất" info="Xếp theo cận dưới khoảng tin cậy 95%, chỉ xét ô có từ 20 run." to={link({ channel: h.channel, technique: h.technique })}>
-              <div className="mt-1.5 text-base font-semibold text-slate-900">
-                {h.technique} {TECHNIQUE_LABEL[h.technique]} qua {K_LABEL[h.channel] ?? h.channel}
+              <BigRate r={h.asr} />
+              <div className="mt-2 text-sm text-slate-700">
+                <span className="font-mono text-xs text-slate-500">{h.technique}</span> {TECHNIQUE_LABEL[h.technique]}
+                <span className="text-slate-500"> qua {K_LABEL[h.channel] ?? h.channel}</span>
               </div>
-              <div className="mt-1"><Rate r={h.asr} strong /></div>
             </Finding>
           );
         if (h.kind === "k1_vs_k2")
           return (
-            <Finding key={h.kind} label="RAG (K1) so với công cụ MCP (K2)">
-              <dl className="mt-1.5 space-y-0.5">
+            <Finding
+              key={h.kind}
+              label="Kênh tiêm: MCP so với RAG"
+              info={`Payload qua RAG (K1) tới được agent ở ${pct(h.k1_delivery.p, 0)} run; trong số đó tấn công thành công ${pct(h.k1_cond.p)}.`}
+            >
+              <dl className="mt-2 space-y-2.5">
                 {(
                   [
-                    ["K2", h.k2],
-                    ["K1", h.k1],
+                    ["Công cụ MCP", "K2", h.k2],
+                    ["Kho tri thức RAG", "K1", h.k1],
                   ] as const
-                ).map(([k, r]) => (
-                  <div key={k} className="flex items-baseline gap-2">
-                    <dt className="w-6 font-mono text-xs font-medium text-slate-500">{k}</dt>
-                    <dd><Rate r={r} strong /></dd>
+                ).map(([name, code, r]) => (
+                  <div key={code} className="flex items-baseline justify-between gap-3">
+                    <dt className="min-w-0 text-sm text-slate-700">
+                      {name} <span className="font-mono text-xs text-slate-400">{code}</span>
+                    </dt>
+                    <dd className="num shrink-0 text-right">
+                      <span className={clsx("text-xl font-semibold", r.p ? "text-attack-600" : "text-slate-900")}>{pct(r.p)}</span>
+                      <span className="ml-2 text-xs text-slate-500">{int(r.x)}/{int(r.n)}</span>
+                    </dd>
                   </div>
                 ))}
               </dl>
-              <div className="mt-1.5 text-xs leading-[18px] text-slate-500">
-                Payload K1 tới được agent ở {pct(h.k1_delivery.p, 0)} run; trong số đó tấn công thành công {pct(h.k1_cond.p)}.
-                {h.k1.p === 0 && h.k1_delivery.p && h.k1_delivery.p > 0.5
-                  ? " K1 thấp không phải vì payload không được truy hồi — agent đọc được nhưng không làm theo."
-                  : ""}
-              </div>
+              {h.k1.p === 0 && h.k1_delivery.p && h.k1_delivery.p > 0.5 ? (
+                <div className="mt-2 text-xs text-slate-500">RAG: agent đọc được payload ({pct(h.k1_delivery.p, 0)} run) nhưng không làm theo.</div>
+              ) : null}
             </Finding>
           );
         return (
           <Finding key={h.kind} label="Model dễ bị nhất" info="Gộp mọi kênh và kỹ thuật trong phạm vi." to={link({ target: h.target_id })}>
-            <div className="mt-1.5 break-words text-base font-semibold text-slate-900">{h.target_id}</div>
-            <div className="mt-1"><Rate r={h.asr} strong /></div>
+            <BigRate r={h.asr} />
+            <div className="mt-2 font-mono text-sm text-slate-700">{h.target_id}</div>
           </Finding>
         );
       })}

@@ -89,7 +89,7 @@ export function Rate({ r, strong = false, good = false }: { r: CiRate; strong?: 
       </span>
       <span className="num ml-1.5 text-xs text-slate-500">
         {r.x}/{r.n}
-        {r.n > 0 && ` · ${ci(r.lo, r.hi)}`}
+        {r.n > 0 && <span className="text-slate-400"> · CI {ci(r.lo, r.hi)}</span>}
       </span>
     </span>
   );

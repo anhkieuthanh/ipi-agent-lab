@@ -8,7 +8,6 @@ import { OutcomeBar, OutcomeLegend, Rate } from "@/components/Analysis";
 import { Button, Card, Empty, ErrorBox, Loading, Mono, OutcomeBadge, PageHeader, Segmented, Status, Tooltip } from "@/components/ui";
 import { api, type Params } from "@/lib/api";
 import { BLOCKED_LABEL, CHANNEL_LABEL, GOAL_LABEL, TECHNIQUE_LABEL, int, presetLabel, when } from "@/lib/format";
-import { KindIcon } from "@/lib/icons";
 import { useScope } from "@/lib/scope";
 
 const PAGE = 40;
@@ -269,15 +268,12 @@ export function RunsPage() {
                         <td className="whitespace-nowrap">
                           <Link
                             to={detailHref(r.run_id)}
+                            title={r.run_kind === "attack" ? "Run tấn công" : "Run lành tính"}
                             aria-label={`Mở run ${r.run_id}`}
                             className="font-mono text-xs font-medium text-slate-900 hover:text-brand-600 hover:underline"
                           >
                             {r.run_id.slice(0, 12)}
                           </Link>
-                          <div className="mt-0.5 flex items-center gap-1 text-2xs text-slate-400">
-                            <KindIcon kind={r.run_kind} size={11} />
-                            {r.run_kind === "attack" ? "Tấn công" : "Lành tính"}
-                          </div>
                         </td>
                         <td className="max-w-[520px]">
                           {r.run_kind === "attack" ? (
