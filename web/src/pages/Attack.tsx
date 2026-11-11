@@ -56,8 +56,8 @@ function Heatmap({ rows, dims }: { rows: AsrRow[]; dims: [string, string] }) {
             <th />
             {colKeys.map((ck) => (
               <th key={ck} className="px-1 pb-1 text-center align-bottom">
-                <div className="text-[12.5px] font-semibold text-slate-700">{ck}</div>
-                <div className="max-w-[110px] text-[11px] font-normal leading-tight text-slate-400">
+                <div className="text-xs font-semibold text-slate-700">{ck}</div>
+                <div className="max-w-[110px] text-2xs font-normal leading-tight text-slate-400">
                   {describe(c, ck) !== ck ? describe(c, ck) : ""}
                 </div>
               </th>
@@ -68,8 +68,8 @@ function Heatmap({ rows, dims }: { rows: AsrRow[]; dims: [string, string] }) {
           {rowKeys.map((rk) => (
             <tr key={rk}>
               <th className="pr-3 text-left align-middle">
-                <div className="text-[12.5px] font-semibold text-slate-700">{rk}</div>
-                <div className="text-[11px] font-normal text-slate-400">{describe(r, rk) !== rk ? describe(r, rk) : ""}</div>
+                <div className="text-xs font-semibold text-slate-700">{rk}</div>
+                <div className="text-2xs font-normal text-slate-400">{describe(r, rk) !== rk ? describe(r, rk) : ""}</div>
               </th>
               {colKeys.map((ck) => {
                 const cell = at(rk, ck);
@@ -83,13 +83,13 @@ function Heatmap({ rows, dims }: { rows: AsrRow[]; dims: [string, string] }) {
                   >
                     {cell ? (
                       <>
-                        <div className="num text-[15px] font-semibold">{pct(p, 0)}</div>
-                        <div className="num text-[11px] opacity-80">
+                        <div className="num text-md font-semibold">{pct(p, 0)}</div>
+                        <div className="num text-2xs opacity-80">
                           {cell.s}/{cell.n}
                         </div>
                       </>
                     ) : (
-                      <span className="text-[11px] text-slate-300">—</span>
+                      <span className="text-2xs text-slate-300">—</span>
                     )}
                   </td>
                 );
@@ -98,7 +98,7 @@ function Heatmap({ rows, dims }: { rows: AsrRow[]; dims: [string, string] }) {
           ))}
         </tbody>
       </table></div>
-      <div className="mt-4 flex items-center gap-3 text-[12px] text-slate-500">
+      <div className="mt-4 flex items-center gap-3 text-xs text-slate-500">
         <span>Tỉ lệ tấn công thành công</span>
         <div className="h-2 w-40 rounded-full" style={{ background: "linear-gradient(90deg, rgba(229,72,77,.08), rgba(229,72,77,.9))" }} />
         <span>0% → 100%</span>
@@ -165,13 +165,13 @@ function Explorer() {
                         <td key={d}>
                           <div className="font-medium text-slate-800">{String(r[d])}</div>
                           {describe(d, String(r[d])) !== String(r[d]) && (
-                            <div className="text-[12px] text-slate-500">{describe(d, String(r[d]))}</div>
+                            <div className="text-xs text-slate-500">{describe(d, String(r[d]))}</div>
                           )}
                         </td>
                       ))}
                       <td className="num text-right">{int(r.n)}</td>
                       <td>
-                        <div className="mb-1 flex justify-between text-[12.5px]">
+                        <div className="mb-1 flex justify-between text-xs">
                           <span className={clsx("num font-semibold", (r.asr_e2e ?? 0) > 0 ? "text-attack-600" : "text-slate-700")}>
                             {pct(r.asr_e2e)}
                           </span>
@@ -211,14 +211,14 @@ function Headlines({ d }: { d: AttackSummary }) {
           return (
             <Card key={h.kind}>
               <Link to={link({ channel: h.channel, technique: h.technique })} className="block p-5 hover:bg-slate-50/60">
-                <div className="flex items-center gap-2 text-[12px] font-medium uppercase tracking-wide text-slate-500">
+                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
                   <Trophy size={14} className="text-attack-500" /> Lỗ hổng lớn nhất
                 </div>
-                <div className="mt-2 text-[15px] font-semibold text-slate-900">
+                <div className="mt-2 text-md font-semibold text-slate-900">
                   {h.technique} {TECHNIQUE_LABEL[h.technique]} qua {K_LABEL[h.channel] ?? h.channel}
                 </div>
                 <div className="mt-1"><Rate r={h.asr} strong /></div>
-                <div className="mt-2 text-[12px] text-slate-500">Xếp theo cận dưới khoảng tin cậy, chỉ ô từ 20 run. Bấm để xem các run →</div>
+                <div className="mt-2 text-xs text-slate-500">Xếp theo cận dưới khoảng tin cậy, chỉ ô từ 20 run. Bấm để xem các run →</div>
               </Link>
             </Card>
           );
@@ -226,13 +226,13 @@ function Headlines({ d }: { d: AttackSummary }) {
           return (
             <Card key={h.kind}>
               <div className="p-5">
-                <div className="flex items-center gap-2 text-[12px] font-medium uppercase tracking-wide text-slate-500">
+                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
                   <Waypoints size={14} className="text-payload-500" /> RAG (K1) so với công cụ MCP (K2)
                 </div>
-                <div className="mt-2 text-[15px] font-semibold text-slate-900">
+                <div className="mt-2 text-md font-semibold text-slate-900">
                   K2 {pct(h.k2.p)} · K1 {pct(h.k1.p)}
                 </div>
-                <div className="mt-2 text-[12.5px] leading-relaxed text-slate-600">
+                <div className="mt-2 text-xs leading-relaxed text-slate-600">
                   Payload K1 tới được agent ở {pct(h.k1_delivery.p, 0)} run; trong số đó tấn công thành công {pct(h.k1_cond.p)}.
                   {h.k1.p === 0 && h.k1_delivery.p && h.k1_delivery.p > 0.5
                     ? " K1 thấp không phải vì payload không được truy hồi — agent đọc được nhưng không làm theo."
@@ -244,12 +244,12 @@ function Headlines({ d }: { d: AttackSummary }) {
         return (
           <Card key={h.kind}>
             <Link to={link({ target: h.target_id })} className="block p-5 hover:bg-slate-50/60">
-              <div className="flex items-center gap-2 text-[12px] font-medium uppercase tracking-wide text-slate-500">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
                 <Cpu size={14} className="text-brand-600" /> Model dễ bị nhất
               </div>
-              <div className="mt-2 text-[15px] font-semibold text-slate-900">{h.target_id}</div>
+              <div className="mt-2 text-md font-semibold text-slate-900">{h.target_id}</div>
               <div className="mt-1"><Rate r={h.asr} strong /></div>
-              <div className="mt-2 text-[12px] text-slate-500">Gộp mọi kênh và kỹ thuật trong phạm vi. Bấm để xem các run →</div>
+              <div className="mt-2 text-xs text-slate-500">Gộp mọi kênh và kỹ thuật trong phạm vi. Bấm để xem các run →</div>
             </Link>
           </Card>
         );
@@ -266,7 +266,7 @@ function RQ1({ d }: { d: AttackSummary }) {
         title="RQ1 · Kênh nào nguy hiểm hơn: kho tri thức RAG hay công cụ MCP?"
         icon={<Waypoints size={16} />}
       />
-      <p className="px-5 pb-3 text-[12.5px] leading-relaxed text-slate-500">K1 phải được truy hồi mới tới agent; K2 luôn vào ngữ cảnh. Vì vậy đọc K1 kèm tỉ lệ tới được agent và tỉ lệ thành công khi đã tới.</p>
+      <p className="px-5 pb-3 text-xs leading-relaxed text-slate-500">K1 phải được truy hồi mới tới agent; K2 luôn vào ngữ cảnh. Vì vậy đọc K1 kèm tỉ lệ tới được agent và tỉ lệ thành công khi đã tới.</p>
       <div className="max-w-full overflow-x-auto">
         <table className="table-base">
           <thead>
@@ -280,11 +280,11 @@ function RQ1({ d }: { d: AttackSummary }) {
           </thead>
           <tbody>
             {d.rq1.map((r) => (
-              <tr key={r.channel} className={clsx("hover:bg-slate-50/70", (r.channel === "K2a" || r.channel === "K2b") && "text-[13px]")}>
+              <tr key={r.channel} className={clsx("hover:bg-slate-50/70", (r.channel === "K2a" || r.channel === "K2b") && "text-sm")}>
                 <td>
                   <Link to={link({ channel: r.members })} className="hover:underline">
                     <span className={clsx("font-mono font-semibold", r.channel.length > 2 ? "pl-4 text-slate-500" : "text-slate-800")}>{r.channel}</span>
-                    <span className="ml-2 text-[12.5px] text-slate-500">{K_LABEL[r.channel]}</span>
+                    <span className="ml-2 text-xs text-slate-500">{K_LABEL[r.channel]}</span>
                   </Link>
                 </td>
                 <td>
@@ -298,10 +298,10 @@ function RQ1({ d }: { d: AttackSummary }) {
                       <RateBar p={r.delivery.p} lo={r.delivery.lo} hi={r.delivery.hi} tone="brand" />
                     </>
                   ) : (
-                    <span className="text-[12.5px] text-slate-400">luôn tới (100%)</span>
+                    <span className="text-xs text-slate-400">luôn tới (100%)</span>
                   )}
                 </td>
-                <td>{r.channel === "K1" ? <Rate r={r.asr_cond} /> : <span className="text-[12.5px] text-slate-400">= cột đầu</span>}</td>
+                <td>{r.channel === "K1" ? <Rate r={r.asr_cond} /> : <span className="text-xs text-slate-400">= cột đầu</span>}</td>
                 <td><OutcomeBar o={r.outcomes} /></td>
               </tr>
             ))}
@@ -334,7 +334,7 @@ function RQ2({ d }: { d: AttackSummary }) {
           />
         }
       />
-      <p className="px-5 pb-3 text-[12.5px] leading-relaxed text-slate-500">Xếp kỹ thuật theo tỉ lệ thành công; vạch nhạt là khoảng tin cậy 95%. Cột model cho biết kết quả có giữ nguyên khi đổi model không.</p>
+      <p className="px-5 pb-3 text-xs leading-relaxed text-slate-500">Xếp kỹ thuật theo tỉ lệ thành công; vạch nhạt là khoảng tin cậy 95%. Cột model cho biết kết quả có giữ nguyên khi đổi model không.</p>
       <div className="max-w-full overflow-x-auto">
         <table className="table-base">
           <thead>
@@ -353,7 +353,7 @@ function RQ2({ d }: { d: AttackSummary }) {
                 <td>
                   <Link to={link({ channel: r.channel, technique: r.technique })} className="hover:underline">
                     <span className="font-mono font-semibold text-slate-800">{r.technique}</span>
-                    <span className="ml-2 text-[12.5px] text-slate-500">{TECHNIQUE_LABEL[r.technique]}</span>
+                    <span className="ml-2 text-xs text-slate-500">{TECHNIQUE_LABEL[r.technique]}</span>
                   </Link>
                 </td>
                 <td>
@@ -368,7 +368,7 @@ function RQ2({ d }: { d: AttackSummary }) {
                         <Link
                           to={link({ channel: r.channel, technique: r.technique, target: t })}
                           title={`${t}: ${v.x}/${v.n} · CI ${ci(v.lo, v.hi)}`}
-                          className={clsx("num inline-block min-w-12 rounded px-1.5 py-0.5 text-[12.5px]",
+                          className={clsx("num inline-block min-w-12 rounded px-1.5 py-0.5 text-xs",
                             (v.p ?? 0) > 0 ? "bg-attack-50 font-semibold text-attack-700" : "text-slate-400")}
                         >
                           {pct(v.p, 0)}
@@ -394,7 +394,7 @@ function Notes() {
     <Card>
       <details className="detail-disclosure">
         <summary>Lưu ý đo lường</summary>
-        <ul className="list-disc space-y-1.5 px-9 pb-4 text-[12.5px] leading-relaxed text-slate-600">
+        <ul className="list-disc space-y-1.5 px-9 pb-4 text-xs leading-relaxed text-slate-600">
           <li>Tỉ lệ tấn công thành công (ASR) = run đạt mục tiêu / run hợp lệ; run lỗi hạ tầng bị loại khỏi mẫu số.</li>
           <li>Khoảng tin cậy Wilson 95%. Ô ít run cho khoảng rộng — đừng so hai ô khi khoảng của chúng chồng nhau nhiều.</li>
           <li>“Model từ chối” là lớp an toàn của chính model, không phải thành tích của D1–D4 (quy tắc cứng #8).</li>

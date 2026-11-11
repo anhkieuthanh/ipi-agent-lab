@@ -97,12 +97,12 @@ export function OverviewPage() {
           {d.recent_batches.length ? <div className="max-w-full overflow-x-auto"><table className="table-base">
             <thead><tr><th>Lô thực nghiệm</th><th>Loại</th><th>Model</th><th className="text-right">Run</th><th className="text-right">Kết quả</th><th className="text-right">Bắt đầu</th></tr></thead>
             <tbody>{d.recent_batches.map((b) => <tr key={b.batch_id} className="hover:bg-slate-50">
-              <td><Link to={{ pathname: "/runs", search: `?batch=${encodeURIComponent(b.batch_id)}&scope=${b.kind}` }} className="font-mono text-[12px] font-medium text-brand-600 hover:underline">{b.batch_id}</Link></td>
+              <td><Link to={{ pathname: "/runs", search: `?batch=${encodeURIComponent(b.batch_id)}&scope=${b.kind}` }} className="font-mono text-xs font-medium text-brand-600 hover:underline">{b.batch_id}</Link></td>
               <td><Badge>{KIND_LABEL[b.kind]}</Badge></td>
-              <td className="text-[13px] text-slate-600">{b.targets.join(", ")}</td>
+              <td className="text-sm text-slate-600">{b.targets.join(", ")}</td>
               <td className="num text-right">{int(b.n_runs)}</td>
-              <td className="num whitespace-nowrap text-right text-[13px] text-slate-600">{b.n_attack ? `${b.n_success}/${b.n_attack} thành công` : `${b.n_pass}/${b.n_benign} đạt`}</td>
-              <td className="whitespace-nowrap text-right text-[12px] text-slate-500">{when(b.created_at)}</td>
+              <td className="num whitespace-nowrap text-right text-sm text-slate-600">{b.n_attack ? `${b.n_success}/${b.n_attack} thành công` : `${b.n_pass}/${b.n_benign} đạt`}</td>
+              <td className="whitespace-nowrap text-right text-xs text-slate-500">{when(b.created_at)}</td>
             </tr>)}</tbody>
           </table></div> : <Empty title="Chưa có lô thực nghiệm" />}
         </Card>

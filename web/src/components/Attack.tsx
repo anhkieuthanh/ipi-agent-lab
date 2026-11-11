@@ -28,11 +28,11 @@ function Chip({ code, label, title }: { code: string; label: string; title?: str
     <span
       title={title}
       className={clsx(
-        "inline-flex items-center gap-1.5 rounded-md bg-white px-2 py-1 text-[12.5px] text-slate-700 ring-1 ring-inset ring-slate-200",
+        "inline-flex items-center gap-1.5 rounded-md bg-surface px-2 py-1 text-xs text-slate-700 ring-1 ring-inset ring-slate-200",
         title && "cursor-help",
       )}
     >
-      <span className="font-mono text-[11.5px] font-bold text-payload-600">{code}</span>
+      <span className="font-mono text-xs font-bold text-payload-600">{code}</span>
       {label}
       {title && <Info size={12} className="text-slate-400" />}
     </span>
@@ -55,7 +55,7 @@ function Stage({
   return (
     <div
       className={clsx(
-        "flex min-w-0 flex-col rounded-lg border bg-white",
+        "flex min-w-0 flex-col rounded-lg border bg-surface",
         tone === "payload" && "border-payload-200",
         tone === "attack" && "border-attack-100",
         tone === "neutral" && "border-slate-200",
@@ -64,7 +64,7 @@ function Stage({
       <div className="flex items-center gap-2 px-3.5 pt-3">
         <span
           className={clsx(
-            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
+            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-2xs font-semibold",
             tone === "payload" && "bg-payload-100 text-payload-700",
             tone === "attack" && "bg-attack-50 text-attack-700",
             tone === "neutral" && "bg-slate-100 text-slate-600",
@@ -72,10 +72,10 @@ function Stage({
         >
           {n}
         </span>
-        <span className="text-[12.5px] font-semibold text-slate-700">{title}</span>
+        <span className="text-xs font-semibold text-slate-700">{title}</span>
       </div>
       <div className="flex-1 px-3.5 py-2.5">{children}</div>
-      {foot && <div className="border-t border-slate-100 px-3.5 py-2 text-[11.5px] text-slate-500">{foot}</div>}
+      {foot && <div className="border-t border-slate-100 px-3.5 py-2 text-xs text-slate-500">{foot}</div>}
     </div>
   );
 }
@@ -106,12 +106,12 @@ export function AttackBrief({ scenario }: { scenario: Scenario }) {
             title={a.technique_rationale ?? undefined}
           />
         </div>
-        <p className="text-[13px] leading-relaxed text-slate-500">{scenario.story}</p>
+        <p className="text-sm leading-relaxed text-slate-500">{scenario.story}</p>
       </div>
 
       <div className="grid grid-cols-1 items-stretch gap-2 lg:grid-cols-[1fr_auto_1.5fr_auto_1fr]">
         <Stage n={1} title="Nhân viên hỏi" foot={`Tác vụ ${scenario.carrier_task_id} · yêu cầu hợp lệ`}>
-          <p className="text-[13px] leading-relaxed text-slate-700">{scenario.query}</p>
+          <p className="text-sm leading-relaxed text-slate-700">{scenario.query}</p>
         </Stage>
 
         <ChevronRight size={16} className="hidden self-center text-slate-300 lg:block" />
@@ -124,10 +124,10 @@ export function AttackBrief({ scenario }: { scenario: Scenario }) {
         >
           <HighlightText
             value={{ text: scenario.payload_text, spans: span ? [{ start: span[0], end: span[1], kind: "payload" }] : [] }}
-            className="!bg-payload-50/40 !text-[12px] !ring-0"
+            className="!bg-payload-50/40 !text-xs !ring-0"
           />
           {meaning && (
-            <p className="mt-2 text-[12px] text-slate-500">
+            <p className="mt-2 text-xs text-slate-500">
               <span className="font-medium text-slate-600">{a.transform.length ? "Nghĩa gốc: " : "Nghĩa: "}</span>
               {meaning}
             </p>
@@ -149,9 +149,9 @@ export function AttackBrief({ scenario }: { scenario: Scenario }) {
         >
           {a.tool ? (
             <>
-              <div className="font-mono text-[13px] font-semibold text-attack-700">{a.tool}()</div>
+              <div className="font-mono text-sm font-semibold text-attack-700">{a.tool}()</div>
               {args.length > 0 && (
-                <dl className="mt-1.5 space-y-1 text-[12px]">
+                <dl className="mt-1.5 space-y-1 text-xs">
                   {args.map(([k, v]) => (
                     <div key={k} className="flex gap-2">
                       <dt className="w-16 shrink-0 font-mono text-slate-400">{k}</dt>
@@ -162,7 +162,7 @@ export function AttackBrief({ scenario }: { scenario: Scenario }) {
               )}
             </>
           ) : (
-            <p className="text-[13px] text-slate-700">Không gọi tool — nhắc lại thông tin sai như sự thật.</p>
+            <p className="text-sm text-slate-700">Không gọi tool — nhắc lại thông tin sai như sự thật.</p>
           )}
         </Stage>
       </div>

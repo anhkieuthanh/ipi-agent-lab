@@ -83,11 +83,11 @@ function StepCard({ step, initialOpen = false }: { step: Step; initialOpen?: boo
         onClick={() => hasBody && setOpen(!open)}
         className={clsx("flex w-full items-center gap-3 px-4 py-2.5 text-left", hasBody && "cursor-pointer")}
       >
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white text-[11px] font-semibold text-slate-500 ring-1 ring-slate-200">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-surface text-2xs font-semibold text-slate-500 ring-1 ring-slate-200">
           {step.idx}
         </span>
         {tone.icon}
-        <span className="text-[13px] font-medium text-slate-700">
+        <span className="text-sm font-medium text-slate-700">
           {step.kind === "tool" || step.tool_name ? (
             <>
               Gọi tool <span className="font-mono text-slate-900">{step.tool_name}</span>
@@ -109,7 +109,7 @@ function StepCard({ step, initialOpen = false }: { step: Step; initialOpen?: boo
             </Badge>
           )}
         </div>
-        <span className="ml-auto flex items-center gap-3 text-[11.5px] text-slate-400">
+        <span className="ml-auto flex items-center gap-3 text-xs text-slate-400">
           {step.finish_reason && <span className="font-mono">{step.finish_reason}</span>}
           {step.latency_ms ? <span>{seconds(step.latency_ms)}</span> : null}
           {hasBody && <ChevronDown size={14} className={clsx("transition", open && "rotate-180")} />}
@@ -118,7 +118,7 @@ function StepCard({ step, initialOpen = false }: { step: Step; initialOpen?: boo
       {open && hasBody && (
         <div className="space-y-3 border-t border-slate-100 px-4 py-3">
           {step.events.map((e, i) => (
-            <div key={i} className="rounded-md bg-slate-50 px-3 py-2 text-[12.5px] text-slate-600">
+            <div key={i} className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">
               {e}
             </div>
           ))}
@@ -155,7 +155,7 @@ export function InjectedContext({ ctx }: { ctx: InjectedCtx | null | undefined }
         className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left"
       >
         <FileCode2 size={15} className="text-payload-600" />
-        <span className="text-[13px] font-medium text-slate-700">
+        <span className="text-sm font-medium text-slate-700">
           Ngữ cảnh gửi model · mô tả tool <span className="font-mono text-slate-900">{ctx.tool}</span>
         </span>
         <div className="flex items-center gap-1.5">
@@ -166,7 +166,7 @@ export function InjectedContext({ ctx }: { ctx: InjectedCtx | null | undefined }
       </button>
       {open && (
         <div className="space-y-2 border-t border-payload-100 px-4 py-3">
-          <p className="text-[12.5px] text-slate-600">
+          <p className="text-xs text-slate-600">
             K2a: payload nối vào mô tả tool, gửi kèm danh sách tool ở{" "}
             {ctx.rug_pull ? "các lượt gọi model sau lần liệt kê đầu (rug-pull)" : "mọi lượt gọi model"} — nên
             không hiện ở bước nào bên dưới.
@@ -174,7 +174,7 @@ export function InjectedContext({ ctx }: { ctx: InjectedCtx | null | undefined }
               " Trace không lưu danh sách tool; bản này dựng lại từ corpus và config hiện hành."}
           </p>
           {ctx.d1_wrapped && (
-            <p className="text-[12.5px] text-amber-700">
+            <p className="text-xs text-amber-700">
               D1 bật: model nhận bản mô tả đã qua spotlighting, không phải nguyên văn dưới đây.
             </p>
           )}
@@ -186,7 +186,7 @@ export function InjectedContext({ ctx }: { ctx: InjectedCtx | null | undefined }
 }
 
 export function ToolActions({ actions }: { actions: ToolAction[] }) {
-  if (!actions.length) return <p className="text-[13px] text-slate-500">Agent không gọi tool nào.</p>;
+  if (!actions.length) return <p className="text-sm text-slate-500">Agent không gọi tool nào.</p>;
   return (
     <div className="space-y-2">
       {actions.map((a, i) => (
@@ -194,10 +194,10 @@ export function ToolActions({ actions }: { actions: ToolAction[] }) {
           <Badge tone={a.blocked ? "defense" : "neutral"}>{a.blocked ? "Bị chặn" : "Đã chạy"}</Badge>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[12.5px] font-medium text-slate-800">{a.tool}</span>
+              <span className="font-mono text-xs font-medium text-slate-800">{a.tool}</span>
               {a.follows_payload && <Badge tone="payload">Làm theo payload</Badge>}
             </div>
-            <pre className="mt-1 truncate font-mono text-[11.5px] text-slate-500">{a.args}</pre>
+            <pre className="mt-1 truncate font-mono text-xs text-slate-500">{a.args}</pre>
           </div>
         </div>
       ))}
@@ -206,7 +206,7 @@ export function ToolActions({ actions }: { actions: ToolAction[] }) {
 }
 
 export function StepTimeline({ steps, live = false }: { steps: Step[]; live?: boolean }) {
-  if (!steps.length && !live) return <p className="text-[13px] text-slate-500">Run không có bước nào.</p>;
+  if (!steps.length && !live) return <p className="text-sm text-slate-500">Run không có bước nào.</p>;
   return (
     <div className="space-y-2">
       {steps.map((s, i) => (
@@ -214,7 +214,7 @@ export function StepTimeline({ steps, live = false }: { steps: Step[]; live?: bo
         <StepCard key={s.idx} step={s} initialOpen={live && i === steps.length - 1 && s.kind === "llm"} />
       ))}
       {live && (
-        <div className="flex items-center gap-2 rounded-lg border border-dashed border-slate-200 px-4 py-2.5 text-[12.5px] text-slate-500">
+        <div className="flex items-center gap-2 rounded-lg border border-dashed border-slate-200 px-4 py-2.5 text-xs text-slate-500">
           <Loader2 size={13} className="animate-spin text-brand-500" />
           {steps.length ? "Đang chờ bước tiếp theo…" : "Đang chuẩn bị dữ liệu và gọi model…"}
         </div>
@@ -250,7 +250,7 @@ export function TraceInspector({ steps }: { steps: Step[] }) {
 
 export function TraceLegend() {
   return (
-    <div className="flex flex-wrap items-center gap-3 text-[12px] text-slate-500">
+    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
       <span className="flex items-center gap-1.5">
         <span className="h-2.5 w-2.5 rounded-sm bg-defense-500" /> Chặn
       </span>

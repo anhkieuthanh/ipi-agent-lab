@@ -92,7 +92,7 @@ function ComponentTip({ id }: { id: string }) {
     <div className="space-y-2">
       <div className="flex items-center gap-2.5">
         <SelectedIcon id={id} />
-        <div className="text-[14px] font-semibold text-slate-900">{info.title}</div>
+        <div className="text-base font-semibold text-slate-900">{info.title}</div>
       </div>
       {info.codes.length > 0 && (
         <div className="flex flex-wrap gap-1">
@@ -103,7 +103,7 @@ function ComponentTip({ id }: { id: string }) {
           ))}
         </div>
       )}
-      <p className="text-[12.5px] leading-relaxed text-slate-600">{info.desc}</p>
+      <p className="text-xs leading-relaxed text-slate-600">{info.desc}</p>
     </div>
   );
 }
@@ -145,13 +145,13 @@ export function SystemPage() {
                   key={g.id}
                   onClick={() => setTab(g.id)}
                   className={clsx(
-                    "flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-[13px] font-medium transition",
+                    "flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-sm font-medium transition",
                     tab === g.id ? "border-b-2 border-brand-600 text-brand-700" : "text-slate-500 hover:text-slate-800",
                   )}
                 >
                   <Icon size={14} />
                   {g.label}
-                  <span className="font-mono text-[11px] text-slate-400">{g.prefix}</span>
+                  <span className="font-mono text-2xs text-slate-400">{g.prefix}</span>
                 </button>
               );
             })}
@@ -177,9 +177,9 @@ export function SystemPage() {
                     {t.code}
                   </Badge>
                   <div className="min-w-0 flex-1">
-                    <div className="text-[13.5px] font-semibold text-slate-800">{t.name}</div>
+                    <div className="text-sm font-semibold text-slate-800">{t.name}</div>
                   </div>
-                  {canClick && <span className="shrink-0 text-[11.5px] font-medium text-brand-600">Chi tiết →</span>}
+                  {canClick && <span className="shrink-0 text-xs font-medium text-brand-600">Chi tiết →</span>}
                 </Tag>
               );
             })}
@@ -203,7 +203,7 @@ function CarrierTasks() {
   const carriers = q.data!.carriers;
   return (
     <div className="p-4">
-      <p className="mb-3 text-[12.5px] text-slate-500">
+      <p className="mb-3 text-xs text-slate-500">
         Tác vụ nhân viên giao cho agent; payload được cài vào dữ liệu mà tác vụ này đọc. Agent chỉ được
         gọi tool trong danh sách của tác vụ — D3 chặn tool ngoài danh sách.
       </p>
@@ -223,9 +223,9 @@ function CarrierTasks() {
                 <td className="whitespace-nowrap">
                   <Mono className="font-medium">{c.id}</Mono>
                 </td>
-                <td className="max-w-[460px] text-[13px] text-slate-600">
+                <td className="max-w-[460px] text-sm text-slate-600">
                   <div className="font-medium text-slate-800">{c.name || c.id}</div>
-                  {c.query && <div className="mt-0.5 text-[12px] text-slate-500">{c.query}</div>}
+                  {c.query && <div className="mt-0.5 text-xs text-slate-500">{c.query}</div>}
                 </td>
                 <td>
                   <div className="flex flex-wrap gap-1">
@@ -239,7 +239,7 @@ function CarrierTasks() {
                 <td>
                   <div className="flex flex-wrap gap-1">
                     {c.allowed_tools?.map((t) => (
-                      <span key={t} className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600">
+                      <span key={t} className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-2xs text-slate-600">
                         {t}
                       </span>
                     ))}

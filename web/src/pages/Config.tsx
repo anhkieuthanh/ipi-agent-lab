@@ -41,17 +41,17 @@ function Price({ m }: { m: Model }) {
 
 function TargetTile({ m }: { m: Model }) {
   return (
-    <div className="flex flex-col rounded-xl border border-slate-200 bg-slate-50/40 p-4">
+    <div className="flex flex-col rounded-lg border border-slate-200 bg-slate-50/40 p-4">
       <div className="flex items-center justify-between">
         <Badge tone="brand" className="font-mono">
           {m.id}
         </Badge>
-        <span className="inline-flex items-center gap-1 text-[11.5px] font-medium text-slate-500">
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500">
           <Lock size={12} /> Đã khóa
         </span>
       </div>
-      <Mono className="mt-3 block truncate text-[15px] font-semibold text-slate-900">{m.model_id}</Mono>
-      <dl className="mt-4 space-y-1 border-t border-slate-200/70 pt-3 text-[12px]">
+      <Mono className="mt-3 block truncate text-md font-semibold text-slate-900">{m.model_id}</Mono>
+      <dl className="mt-4 space-y-1 border-t border-slate-200/70 pt-3 text-xs">
         <div className="flex justify-between gap-2">
           <dt className="text-slate-500">Kênh gọi</dt>
           <dd className="text-slate-700">{channelLabel(m.provider)}</dd>
@@ -91,16 +91,16 @@ function ModelsCard({ d, tag }: { d: ConfigSummary; tag?: string }) {
             const Icon = AUX_ICON[m.id] ?? Cpu;
             return (
               <div key={m.id} className="flex items-center gap-3 rounded-lg bg-slate-50 px-3 py-2">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white text-slate-500 ring-1 ring-slate-200">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface text-slate-500 ring-1 ring-slate-200">
                   <Icon size={14} />
                 </span>
                 <div className="min-w-0 flex-1">
                   <Mono className="block truncate font-medium text-slate-800">{m.model_id}</Mono>
-                  <div className="truncate text-[12px] text-slate-500">
+                  <div className="truncate text-xs text-slate-500">
                     {m.label} · {channelLabel(m.provider)}
                   </div>
                 </div>
-                <span className="shrink-0 whitespace-nowrap text-[12px] text-slate-600">
+                <span className="shrink-0 whitespace-nowrap text-xs text-slate-600">
                   <Price m={m} />
                 </span>
               </div>
@@ -145,9 +145,9 @@ function Field({ label, error, hint, children }: { label: string; error?: string
       <span className="label">{label}</span>
       {children}
       {error ? (
-        <span className="text-[12px] text-attack-600">{error}</span>
+        <span className="text-xs text-attack-600">{error}</span>
       ) : (
-        hint && <span className="text-[12px] text-slate-500">{hint}</span>
+        hint && <span className="text-xs text-slate-500">{hint}</span>
       )}
     </label>
   );
@@ -209,10 +209,10 @@ function SandboxCard({ limits }: { limits: SandboxLimits }) {
                   )}
                 />
                 <span className="min-w-0">
-                  <span className="block text-[13.5px] font-medium text-slate-800">{c.label}</span>
+                  <span className="block text-sm font-medium text-slate-800">{c.label}</span>
                   <span
                     className={clsx(
-                      "mt-0.5 inline-flex items-center gap-1 text-[12px]",
+                      "mt-0.5 inline-flex items-center gap-1 text-xs",
                       c.ready ? "text-defense-600" : "text-amber-700",
                     )}
                   >
@@ -244,7 +244,7 @@ function SandboxCard({ limits }: { limits: SandboxLimits }) {
             <input className="input num" inputMode="decimal" value={draft.price_out} onChange={set("price_out")} placeholder="1.50" />
           </Field>
         </div>
-        <p className="-mt-2 text-[12px] text-slate-500">
+        <p className="-mt-2 text-xs text-slate-500">
           Đơn giá dùng để canh ngân sách lượt demo (BudgetGuard) — nhập theo bảng giá của nhà cung cấp.
         </p>
 
@@ -272,7 +272,7 @@ function SandboxCard({ limits }: { limits: SandboxLimits }) {
           {saved && !dirty && (
             <Link
               to="/lab"
-              className="ml-auto inline-flex items-center gap-1.5 text-[13px] font-medium text-brand-700 hover:text-brand-800"
+              className="ml-auto inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:text-brand-800"
             >
               Chạy ở Phòng thí nghiệm <ArrowRight size={14} />
             </Link>
@@ -330,12 +330,12 @@ export function ConfigPage() {
                     <Badge tone="defense" className="font-mono">
                       {code}
                     </Badge>
-                    <span className="text-[13.5px] text-slate-700">{DEFENSE_LABEL[code]}</span>
+                    <span className="text-sm text-slate-700">{DEFENSE_LABEL[code]}</span>
                   </div>
                 ))}
             </div>
             <div className="border-t border-slate-100 px-5 py-3">
-              <Link to="/defense" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-brand-700 hover:text-brand-800">
+              <Link to="/defense" className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:text-brand-800">
                 Xem tham số ở trang Phòng thủ <ArrowRight size={14} />
               </Link>
             </div>
@@ -355,10 +355,10 @@ export function ConfigPage() {
               {Object.entries(d.payloads.by_technique).map(([t, n]) => (
                 <div key={t} className="rounded-lg bg-slate-50 px-3 py-2.5">
                   <div className="flex items-baseline justify-between">
-                    <span className="font-mono text-[12.5px] font-semibold text-slate-700">{t}</span>
-                    <span className="num text-[15px] font-semibold text-slate-900">{n}</span>
+                    <span className="font-mono text-xs font-semibold text-slate-700">{t}</span>
+                    <span className="num text-md font-semibold text-slate-900">{n}</span>
                   </div>
-                  <div className="mt-0.5 truncate text-[11.5px] text-slate-500" title={TECHNIQUE_LABEL[t]}>
+                  <div className="mt-0.5 truncate text-xs text-slate-500" title={TECHNIQUE_LABEL[t]}>
                     {TECHNIQUE_LABEL[t] ?? ""}
                   </div>
                 </div>

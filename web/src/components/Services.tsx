@@ -20,19 +20,19 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
-import { Button, Callout, Card, CardHeader, ErrorBox, Loading, Mono } from "@/components/ui";
+import { Button, Callout, Card, CardHeader, ErrorBox, Loading, Mono, Tooltip } from "@/components/ui";
 import { api, type DemoCheck, type ServiceStatus, type ServicesStatus } from "@/lib/api";
 import { when } from "@/lib/format";
 
 export const SERVICES_REFRESH_MS = 15_000;
 
 const STATE: Record<ServiceStatus["status"], { label: string; icon: LucideIcon; cls: string }> = {
-  up: { label: "Hoạt động", icon: CheckCircle2, cls: "text-defense-700 bg-defense-50 ring-defense-100" },
-  down: { label: "Lỗi", icon: XCircle, cls: "text-attack-700 bg-attack-50 ring-attack-100" },
-  unknown: { label: "Không rõ", icon: CircleHelp, cls: "text-amber-700 bg-amber-50 ring-amber-200" },
-  not_configured: { label: "Chưa cấu hình", icon: CircleMinus, cls: "text-slate-500 bg-slate-50 ring-slate-200" },
+  up: { label: "Hoạt động", icon: CheckCircle2, cls: "text-defense-700 bg-defense-50" },
+  down: { label: "Lỗi", icon: XCircle, cls: "text-attack-700 bg-attack-50" },
+  unknown: { label: "Không rõ", icon: CircleHelp, cls: "text-amber-700 bg-amber-50" },
+  not_configured: { label: "Chưa cấu hình", icon: CircleMinus, cls: "text-slate-500 bg-slate-50" },
   // Chỉ có cấu hình, chưa probe: không dùng màu xanh "đang hoạt động".
-  configured: { label: "Đã cấu hình", icon: KeyRound, cls: "text-slate-700 bg-slate-100 ring-slate-200" },
+  configured: { label: "Đã cấu hình", icon: KeyRound, cls: "text-slate-700 bg-slate-100" },
 };
 
 export function useServices() {
@@ -46,14 +46,29 @@ export function useServices() {
   });
 }
 
+const STATE_DOT: Record<ServiceStatus["status"], string> = {
+  up: "bg-defense-500",
+  down: "bg-attack-500",
+  unknown: "bg-amber-400",
+  not_configured: "bg-slate-300",
+  configured: "bg-slate-400",
+};
+
 function StateTag({ s, compact }: { s: ServiceStatus; compact?: boolean }) {
   const st = STATE[s.status];
+  if (compact)
+    return (
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-slate-500">
+        <span className={clsx("h-1.5 w-1.5 rounded-full", STATE_DOT[s.status])} aria-hidden="true" />
+        {s.short}
+        <span className="sr-only">: {st.label}</span>
+      </span>
+    );
   const Icon = st.icon;
   return (
-    <span className={clsx("inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 font-medium ring-1 ring-inset", st.cls, compact ? "text-[11px]" : "text-[12px]")}>
-      <Icon size={compact ? 12 : 13} aria-hidden="true" />
-      {compact ? s.short : st.label}
-      {compact && <span className="sr-only">: {st.label}</span>}
+    <span className={clsx("inline-flex h-5 items-center gap-1 whitespace-nowrap rounded px-1.5 text-xs font-medium", st.cls)}>
+      <Icon size={12} aria-hidden="true" />
+      {st.label}
     </span>
   );
 }
@@ -69,14 +84,14 @@ function tip(s: ServiceStatus) {
 /** Dãy trạng thái trên thanh ngữ cảnh: tên ngắn + biểu tượng, không chỉ dựa vào màu. */
 export function ServiceStrip() {
   const q = useServices();
-  if (q.isLoading) return <span className="text-[11px] text-slate-400">Đang kiểm tra dịch vụ…</span>;
-  if (q.error || !q.data) return <span className="text-[11px] text-attack-600">Không đọc được trạng thái dịch vụ</span>;
+  if (q.isLoading) return <span className="text-xs text-slate-400">Đang kiểm tra dịch vụ…</span>;
+  if (q.error || !q.data) return <span className="text-xs text-attack-600">Không đọc được trạng thái dịch vụ</span>;
   return (
-    <Link to="/system#services" className="flex flex-wrap items-center gap-1" aria-label="Trạng thái dịch vụ hạ tầng — xem chi tiết">
+    <Link to="/system#services" className="flex items-center gap-3 rounded-md px-1.5 py-1 hover:bg-slate-100" aria-label="Trạng thái dịch vụ hạ tầng — xem chi tiết">
       {q.data.services.map((s) => (
-        <span key={s.id} title={tip(s)}>
-          <StateTag s={s} compact />
-        </span>
+        <Tooltip key={s.id} content={tip(s)} side="bottom">
+          <span><StateTag s={s} compact /></span>
+        </Tooltip>
       ))}
     </Link>
   );
@@ -124,8 +139,8 @@ export function ServicesCard() {
         <div className="p-5"><ErrorBox error={q.error} /></div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-[13px]">
-            <thead className="border-b border-slate-100 text-[11.5px] uppercase tracking-wide text-slate-500">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-5 py-2 font-medium">Dịch vụ</th>
                 <th className="px-3 py-2 font-medium">Cổng</th>
@@ -140,22 +155,22 @@ export function ServicesCard() {
                 <tr key={s.id}>
                   <td className="px-5 py-2.5">
                     <div className="font-semibold text-slate-800">{s.label}</div>
-                    <div className="text-[12px] text-slate-500">{s.role}</div>
+                    <div className="text-xs text-slate-500">{s.role}</div>
                   </td>
                   <td className="px-3 py-2.5"><Mono>{s.port ?? "—"}</Mono></td>
                   <td className="px-3 py-2.5"><StateTag s={s} /></td>
-                  <td className="px-3 py-2.5 text-[12px] text-slate-600">
+                  <td className="px-3 py-2.5 text-xs text-slate-600">
                     {s.kind === "config" ? "Không gửi request" : s.latency_ms != null ? `${Math.round(s.latency_ms)} ms` : "—"}
                     <div className="text-slate-400">lúc {when(s.checked_at)}</div>
                   </td>
-                  <td className="px-3 py-2.5 text-[12px] text-attack-700">{s.error ?? ""}</td>
+                  <td className="px-3 py-2.5 text-xs text-attack-700">{s.error ?? ""}</td>
                   <td className="px-5 py-2.5 text-right">
                     {s.public_url ? (
-                      <a href={s.public_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-brand-700 hover:underline">
+                      <a href={s.public_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline">
                         Mở <ExternalLink size={12} />
                       </a>
                     ) : s.id === "canary" ? (
-                      <Link to="/lab" className="text-[12.5px] text-slate-500 hover:text-brand-700">Xem ở Thí nghiệm</Link>
+                      <Link to="/lab" className="text-xs text-slate-500 hover:text-brand-700">Xem ở Thí nghiệm</Link>
                     ) : (
                       <span className="text-slate-300">—</span>
                     )}
@@ -164,7 +179,7 @@ export function ServicesCard() {
               ))}
             </tbody>
           </table>
-          <div className="border-t border-slate-100 px-5 py-2 text-[11.5px] text-slate-500">
+          <div className="border-t border-slate-100 px-5 py-2 text-xs text-slate-500">
             Kiểm tra lúc {when(q.data!.checked_at)} · tự hỏi lại mỗi {SERVICES_REFRESH_MS / 1000}s khi tab đang mở
           </div>
         </div>
@@ -218,7 +233,7 @@ export function VerifyPanel({ runIds, channel, goal }: { runIds: string[]; chann
           <Button onClick={() => toggle("canary")} icon={<RadioTower size={14} />} variant={open === "canary" ? "primary" : "secondary"}>Xem sự kiện Canary</Button>
         )}
         {channel === "K1" && qdrant?.public_url && (
-          <a href={`${qdrant.public_url}#/collections`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">
+          <a href={`${qdrant.public_url}#/collections`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">
             <ExternalLink size={14} /> Mở Qdrant
           </a>
         )}
@@ -228,19 +243,19 @@ export function VerifyPanel({ runIds, channel, goal }: { runIds: string[]; chann
           {mail.isLoading ? <Loading /> : mail.error ? <ErrorBox error={mail.error} /> : mail.data!.status !== "up" ? (
             <Callout tone="warn">MailHog: {mail.data!.status}{mail.data!.error ? ` — ${mail.data!.error}` : ""}</Callout>
           ) : !mail.data!.items.length ? (
-            <p className="text-[13px] text-slate-500">Hộp thư trống — không email nào rời agent ở run cuối.</p>
+            <p className="text-sm text-slate-500">Hộp thư trống — không email nào rời agent ở run cuối.</p>
           ) : (
             <ul className="space-y-3">
               {mail.data!.items.map((m) => (
                 <li key={m.id} className="rounded-lg border border-slate-100 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-[12px] text-slate-500">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
                     <span>Nhận lúc {when(m.received_at)}</span>
                     {m.run_id ? <Link to={`/runs/${m.run_id}`} className="font-mono text-brand-700 hover:underline">{m.run_id}</Link> : <span>không khớp run nào của lượt này</span>}
                   </div>
-                  <div className="mt-1 text-[13.5px] font-semibold text-slate-800">{m.subject || "(không tiêu đề)"}</div>
-                  <div className="text-[12px] text-slate-600">{m.from} → {m.to.join(", ")}</div>
-                  {m.attachments.length > 0 && <div className="text-[12px] text-slate-500">Đính kèm: {m.attachments.join(", ")}</div>}
-                  <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-slate-50 p-2 text-[12px] text-slate-700">{m.snippet}{m.truncated ? "…" : ""}</pre>
+                  <div className="mt-1 text-sm font-semibold text-slate-800">{m.subject || "(không tiêu đề)"}</div>
+                  <div className="text-xs text-slate-600">{m.from} → {m.to.join(", ")}</div>
+                  {m.attachments.length > 0 && <div className="text-xs text-slate-500">Đính kèm: {m.attachments.join(", ")}</div>}
+                  <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs text-slate-700">{m.snippet}{m.truncated ? "…" : ""}</pre>
                 </li>
               ))}
             </ul>
@@ -252,18 +267,18 @@ export function VerifyPanel({ runIds, channel, goal }: { runIds: string[]; chann
           {hits.isLoading ? <Loading /> : hits.error ? <ErrorBox error={hits.error} /> : hits.data!.status !== "up" ? (
             <Callout tone="warn">Canary listener: {hits.data!.status}{hits.data!.error ? ` — ${hits.data!.error}` : ""}</Callout>
           ) : !hits.data!.items.length ? (
-            <p className="text-[13px] text-slate-500">Listener không nhận request nào gắn với các run của lượt này.</p>
+            <p className="text-sm text-slate-500">Listener không nhận request nào gắn với các run của lượt này.</p>
           ) : (
             <ul className="space-y-3">
               {hits.data!.items.map((h) => (
                 <li key={h.id} className="rounded-lg border border-slate-100 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-[12px] text-slate-500">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
                     <span>Nhận lúc {when(h.received_at)}</span>
                     {h.run_id && <Link to={`/runs/${h.run_id}`} className="font-mono text-brand-700 hover:underline">{h.run_id}</Link>}
                   </div>
-                  <div className="mt-1 break-all font-mono text-[12.5px] text-slate-800">{h.method} {h.original_url ?? "—"}</div>
+                  <div className="mt-1 break-all font-mono text-xs text-slate-800">{h.method} {h.original_url ?? "—"}</div>
                   {h.body_preview && (
-                    <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-slate-50 p-2 text-[12px] text-slate-700">
+                    <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs text-slate-700">
                       {h.body_encoding === "base64" ? `[base64] ${h.body_preview}` : h.body_preview}{h.truncated ? "…" : ""}
                     </pre>
                   )}

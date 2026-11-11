@@ -48,7 +48,7 @@ export function OutcomeBar({ o, className }: { o: Outcomes; className?: string }
 
 export function OutcomeLegend() {
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-slate-500">
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
       {OUTCOME_SEG.map((s) => (
         <span key={s.key} className="inline-flex items-center gap-1.5">
           <span className={clsx("h-2.5 w-2.5 rounded-sm", s.cls)} />
@@ -62,10 +62,10 @@ export function OutcomeLegend() {
 export function Rate({ r, strong = false, good = false }: { r: CiRate; strong?: boolean; good?: boolean }) {
   return (
     <span className="whitespace-nowrap">
-      <span className={clsx("num", strong ? "text-[15px] font-semibold" : "font-medium", good ? "text-slate-800" : (r.p ?? 0) > 0 ? "text-attack-600" : "text-slate-700")}>
+      <span className={clsx("num", strong ? "text-md font-semibold" : "font-medium", good ? "text-slate-800" : (r.p ?? 0) > 0 ? "text-attack-600" : "text-slate-700")}>
         {pct(r.p)}
       </span>
-      <span className="num ml-1.5 text-[11.5px] text-slate-400">
+      <span className="num ml-1.5 text-xs text-slate-400">
         {r.x}/{r.n}
         {r.n > 0 && ` · ${ci(r.lo, r.hi)}`}
       </span>
@@ -84,7 +84,7 @@ export function ScopeNote({ s }: { s: ScopeProfile }) {
       icon={mixed ? <AlertTriangle size={16} /> : <Info size={16} />}
       title={mixed ? "Số liệu đang gộp nhiều điều kiện khác nhau — đọc như xu hướng, chưa phải kết quả chính thức" : "Phạm vi số liệu"}
     >
-      <div className="space-y-0.5 text-[12.5px]">
+      <div className="space-y-0.5 text-xs">
         <div>
           {int(s.n_batches)} lô · run tấn công theo vai trò lô: {roles || "—"}
         </div>
@@ -95,7 +95,7 @@ export function ScopeNote({ s }: { s: ScopeProfile }) {
           {" · "}phòng thủ: {Object.keys(s.presets).map(presetLabel).join(", ")}
         </div>
         {mixed && (
-          <div className="pt-1 text-[12px] opacity-90">
+          <div className="pt-1 text-xs opacity-90">
             Tập so sánh được = cùng khối thí nghiệm, cùng phiên bản harness và biến thể prompt. Chọn một lô ở thanh phạm vi để xem
             một điều kiện duy nhất.
           </div>

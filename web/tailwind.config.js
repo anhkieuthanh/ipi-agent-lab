@@ -1,30 +1,63 @@
-/** Design system của IPI Guard Console — màu ngữ nghĩa dùng thống nhất trên mọi trang:
- *  attack (đỏ) = tấn công thành công · defense (xanh lá) = phòng thủ chặn ·
- *  refusal (tím) = model tự từ chối · payload (cam) · canary (xanh dương). */
+/** Tailwind chỉ là lớp ánh xạ: mọi giá trị màu và chữ lấy từ src/tokens.css.
+ *  Thang trung tính `slate` và các màu ngữ nghĩa trỏ tới biến CSS nên tự đổi theo chế độ sáng/tối. */
+
+const v = (name) => `rgb(var(--${name}) / <alpha-value>)`;
+const scale = (name, shades) => Object.fromEntries(shades.map((s) => [s, v(`${name}-${s}`)]));
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  darkMode: ["selector", '[data-theme="dark"]'],
   theme: {
+    fontFamily: {
+      sans: ["var(--font-sans)"],
+      mono: ["var(--font-mono)"],
+    },
+    // Thang chữ năm bậc cho giao diện + ba bậc tiêu đề. Không dùng cỡ tùy ý `text-[..px]`.
+    fontSize: {
+      "2xs": ["11px", { lineHeight: "16px" }],
+      xs: ["12px", { lineHeight: "16px" }],
+      sm: ["13px", { lineHeight: "20px" }],
+      base: ["14px", { lineHeight: "20px" }],
+      md: ["15px", { lineHeight: "22px" }],
+      lg: ["16px", { lineHeight: "24px" }],
+      xl: ["20px", { lineHeight: "28px", letterSpacing: "-0.012em" }],
+      "2xl": ["24px", { lineHeight: "32px", letterSpacing: "-0.016em" }],
+      "3xl": ["28px", { lineHeight: "34px", letterSpacing: "-0.02em" }],
+    },
+    borderRadius: {
+      none: "0",
+      sm: "3px",
+      DEFAULT: "4px",
+      md: "6px",
+      lg: "8px",
+      xl: "10px",
+      full: "9999px",
+    },
     extend: {
-      fontFamily: {
-        sans: ['"Be Vietnam Pro"', "system-ui", "sans-serif"],
-        mono: ['"JetBrains Mono"', "ui-monospace", "monospace"],
-      },
       colors: {
-        ink: { 950: "#0b1020", 900: "#111831", 800: "#1a2342", 700: "#26305a", 600: "#3a4577" },
-        brand: { 50: "#edf2f7", 100: "#dce5ef", 500: "#345e8e", 600: "#203c60", 700: "#172f4e" },
-        attack: { 50: "#fef2f2", 100: "#fee2e2", 500: "#e5484d", 600: "#d0353a", 700: "#a8262b" },
-        defense: { 50: "#ecfdf3", 100: "#d1fadf", 500: "#16a34a", 600: "#15803d", 700: "#166534" },
-        refusal: { 50: "#f5f3ff", 100: "#ede9fe", 500: "#8b5cf6", 600: "#7c3aed", 700: "#6d28d9" },
-        payload: { 50: "#fff7ed", 100: "#ffedd5", 500: "#f97316", 600: "#ea580c" },
-        canary: { 50: "#eff6ff", 100: "#dbeafe", 500: "#3b82f6", 600: "#2563eb" },
+        surface: v("surface"),
+        slate: scale("n", [50, 100, 200, 300, 400, 500, 600, 700, 800, 900]),
+        brand: scale("brand", [50, 100, 500, 600, 700]),
+        attack: scale("attack", [50, 100, 500, 600, 700]),
+        defense: scale("defense", [50, 100, 500, 600, 700]),
+        refusal: scale("refusal", [50, 100, 500, 600, 700]),
+        payload: scale("payload", [50, 100, 200, 500, 600]),
+        canary: scale("canary", [50, 100, 500, 600]),
+        amber: scale("amber", [50, 200, 400, 600, 700, 800]),
+      },
+      boxShadow: {
+        pop: "var(--shadow-pop)",
+      },
+      transitionDuration: {
+        DEFAULT: "120ms",
       },
       keyframes: {
         dash: { to: { strokeDashoffset: "-28" } },
+        shimmer: { "100%": { transform: "translateX(100%)" } },
       },
-      boxShadow: {
-        card: "none",
-        pop: "0 12px 32px -8px rgba(16,24,40,.18)",
+      animation: {
+        shimmer: "shimmer 1.4s infinite",
       },
     },
   },

@@ -178,7 +178,7 @@ export function RunsPage() {
           </div>
         </div>
         {drillChips.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-5 py-3 text-[12.5px]">
+          <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-5 py-3 text-xs">
             <span className="text-slate-500">Lọc thêm:</span>
             {drillChips.map((c, i) => (
               <button
@@ -222,7 +222,7 @@ export function RunsPage() {
                       <td>
                         <Link
                           to={`/runs/${r.run_id}${sp.toString() ? `?${sp}` : ""}`}
-                          title={r.run_id} aria-label={`Mở run ${r.run_id}`} className="inline-flex min-h-9 items-center font-mono text-[12.5px] font-medium text-brand-600 hover:underline"
+                          title={r.run_id} aria-label={`Mở run ${r.run_id}`} className="inline-flex min-h-9 items-center font-mono text-xs font-medium text-brand-600 hover:underline"
                         >
                           {r.run_id.slice(0, 12)}
                         </Link>
@@ -233,13 +233,13 @@ export function RunsPage() {
                           {r.run_kind === "attack" ? "Tấn công" : "Lành tính"}
                         </Badge>
                       </td>
-                      <td className="text-[13px] text-slate-600">
+                      <td className="text-sm text-slate-600">
                         {r.run_kind === "attack" ? (
                           <>
                             <div className="font-medium text-slate-700">
                               {r.goal} · {r.goal ? GOAL_LABEL[r.goal] : ""}
                             </div>
-                            <div className="text-[12px] text-slate-500">
+                            <div className="text-xs text-slate-500">
                               {r.channel ? CHANNEL_LABEL[r.channel] ?? r.channel : ""} · {r.technique} · {r.payload_id}
                             </div>
                           </>
@@ -247,14 +247,14 @@ export function RunsPage() {
                           <Mono>{r.benign_query_id}</Mono>
                         )}
                         {r.user_query && (
-                          <div className="mt-0.5 max-w-[420px] truncate text-[12px] italic text-slate-400" title={r.user_query}>
+                          <div className="mt-0.5 max-w-[420px] truncate text-xs italic text-slate-400" title={r.user_query}>
                             “{r.user_query}”
                           </div>
                         )}
                       </td>
-                      <td className="text-[13px]">
+                      <td className="text-sm">
                         <div className="text-slate-700">{r.target_id}</div>
-                        <div className="text-[12px] text-slate-500">{presetLabel(r.preset)}</div>
+                        <div className="text-xs text-slate-500">{presetLabel(r.preset)}</div>
                       </td>
                       <td>
                         {r.parse_error ? (
@@ -264,12 +264,12 @@ export function RunsPage() {
                         )}
                       </td>
                       <td className="num text-right text-slate-600">{int(r.n_steps)}</td>
-                      <td className="text-right text-[13px] text-slate-500">{when(r.created_at)}</td>
+                      <td className="text-right text-sm text-slate-500">{when(r.created_at)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table></div>
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 text-[13px] text-slate-500">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 text-sm text-slate-500">
                 <span>
                   {int(data.total)} run · trang {page + 1}/{Math.max(pages, 1)}
                 </span>
@@ -349,11 +349,11 @@ function PayloadView({ params, drill, search }: { params: Params; drill: Drill; 
                 {d.items.map((r) => (
                   <tr key={r.payload_id} className="hover:bg-slate-50/70">
                     <td>
-                      <Link to={toRuns(r.payload_id)} className="font-mono text-[12.5px] font-medium text-brand-600 hover:underline">
+                      <Link to={toRuns(r.payload_id)} className="font-mono text-xs font-medium text-brand-600 hover:underline">
                         {r.payload_id}
                       </Link>
                     </td>
-                    <td className="text-[12.5px] text-slate-600">
+                    <td className="text-xs text-slate-600">
                       {r.channels.join(", ")} · {r.technique} · {r.goal} {r.goal ? GOAL_LABEL[r.goal] : ""}
                     </td>
                     <td><Rate r={r.asr} /></td>
@@ -365,7 +365,7 @@ function PayloadView({ params, drill, search }: { params: Params; drill: Drill; 
                             <Link
                               to={toRuns(r.payload_id, t)}
                               title={`${v.x}/${v.n}`}
-                              className={clsx("num inline-block min-w-12 rounded px-1.5 py-0.5 text-[12.5px]",
+                              className={clsx("num inline-block min-w-12 rounded px-1.5 py-0.5 text-xs",
                                 v.x > 0 ? "bg-attack-50 font-semibold text-attack-700" : "text-slate-400")}
                             >
                               {v.x}/{v.n}

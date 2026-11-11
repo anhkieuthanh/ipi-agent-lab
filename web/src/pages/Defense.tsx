@@ -80,7 +80,7 @@ function ParetoChart({ points }: { points: DefensePoint[] }) {
               const p = payload?.[0]?.payload as (DefensePoint & { x: number; y: number }) | undefined;
               if (!p) return null;
               return (
-                <div className="rounded-lg border border-slate-200 bg-white p-3 text-[12.5px] shadow-pop">
+                <div className="rounded-lg border border-slate-200 bg-surface p-3 text-xs shadow-pop">
                   <div className="font-semibold text-slate-900">
                     {presetLabel(p.preset)} · {p.target_id}
                   </div>
@@ -115,9 +115,9 @@ function Delta({ v, better }: { v: number | null; better: "down" | "up" }) {
   if (v === null || v === undefined) return null;
   const good = better === "down" ? v < 0 : v > 0;
   const Icon = v < 0 ? ArrowDown : ArrowUp;
-  if (Math.abs(v) < 0.0005) return <span className="ml-1.5 text-[11.5px] text-slate-400">±0</span>;
+  if (Math.abs(v) < 0.0005) return <span className="ml-1.5 text-xs text-slate-400">±0</span>;
   return (
-    <span className={clsx("num ml-1.5 inline-flex items-center text-[11.5px] font-medium", good ? "text-defense-600" : "text-attack-600")}>
+    <span className={clsx("num ml-1.5 inline-flex items-center text-xs font-medium", good ? "text-defense-600" : "text-attack-600")}>
       <Icon size={11} />
       {pct(Math.abs(v))}
     </span>
@@ -129,7 +129,7 @@ function Baseline({ d }: { d: DefenseSummary }) {
   return (
     <Card>
       <CardHeader title="Mốc so sánh · tắt phòng thủ" icon={<Gauge size={16} />} />
-      <p className="px-5 pb-3 text-[12.5px] leading-relaxed text-slate-500">
+      <p className="px-5 pb-3 text-xs leading-relaxed text-slate-500">
         Mọi cấu hình phòng thủ được so với mốc này của CÙNG model. Phần “Model từ chối” là lớp an toàn sẵn có của
         model — phòng thủ D1–D4 không được tính công cho phần đó.
       </p>
@@ -160,9 +160,9 @@ function Baseline({ d }: { d: DefenseSummary }) {
                       <Rate r={b.usr} good />
                       <RateBar p={b.usr.p} lo={b.usr.lo} hi={b.usr.hi} tone="brand" />
                     </>
-                  ) : <span className="text-[12.5px] text-slate-400">chưa đo</span>}
+                  ) : <span className="text-xs text-slate-400">chưa đo</span>}
                 </td>
-                <td>{b.frr.n ? <Rate r={b.frr} good /> : <span className="text-[12.5px] text-slate-400">—</span>}</td>
+                <td>{b.frr.n ? <Rate r={b.frr} good /> : <span className="text-xs text-slate-400">—</span>}</td>
                 <td>{b.outcomes && <OutcomeBar o={b.outcomes} />}</td>
               </tr>
             ))}
@@ -179,7 +179,7 @@ function Effects({ d }: { d: DefenseSummary }) {
   return (
     <Card>
       <CardHeader title="RQ4 · Mỗi cấu hình giảm bao nhiêu tấn công, mất bao nhiêu hữu dụng?" icon={<Scale size={16} />} />
-      <p className="px-5 pb-3 text-[12.5px] leading-relaxed text-slate-500">
+      <p className="px-5 pb-3 text-xs leading-relaxed text-slate-500">
         Mũi tên so với lúc tắt phòng thủ của cùng model: ASR giảm (xanh) là tốt, USR giảm (đỏ) là cái giá phải trả.
         “Cắt được” = phần tấn công thành công bị loại bỏ.
       </p>
@@ -216,7 +216,7 @@ function Effects({ d }: { d: DefenseSummary }) {
                     </td>
                     <td className="num text-right">{e.asr_cut === null ? "—" : pct(e.asr_cut, 0)}</td>
                     <td>
-                      {e.usr.n ? (<><Rate r={e.usr} good /><Delta v={e.d_usr} better="up" /></>) : <span className="text-[12.5px] text-slate-400">chưa đo</span>}
+                      {e.usr.n ? (<><Rate r={e.usr} good /><Delta v={e.d_usr} better="up" /></>) : <span className="text-xs text-slate-400">chưa đo</span>}
                     </td>
                     <td className="num text-right">{e.frr.n ? pct(e.frr.p) : "—"}</td>
                     <td>{e.outcomes && <OutcomeBar o={e.outcomes} />}</td>
@@ -238,14 +238,14 @@ function Rq3({ d }: { d: DefenseSummary }) {
       <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-3">
         {d.rq3.map((r) => (
           <div key={r.target_id} className="rounded-lg border border-slate-200 p-4">
-            <div className="font-mono text-[13px] font-semibold text-slate-800">{r.target_id}</div>
-            <div className="mt-2 text-[12.5px] text-slate-600">
+            <div className="font-mono text-sm font-semibold text-slate-800">{r.target_id}</div>
+            <div className="mt-2 text-xs text-slate-600">
               Bật D1–D4: <Rate r={r.all.asr} />
             </div>
-            <div className="text-[12.5px] text-slate-600">
+            <div className="text-xs text-slate-600">
               Tốt nhất đơn lẻ ({presetLabel(r.best_single)}): <Rate r={r.single.asr} />
             </div>
-            <div className={clsx("mt-2 text-[13px] font-medium", r.gain > 0 ? "text-defense-700" : "text-slate-600")}>
+            <div className={clsx("mt-2 text-sm font-medium", r.gain > 0 ? "text-defense-700" : "text-slate-600")}>
               {r.gain > 0 ? `Tổ hợp giảm thêm ${pct(r.gain)} ASR` : "Tổ hợp không giảm thêm ASR"}
               {r.usr_cost !== null && `, USR ${r.usr_cost >= 0 ? "+" : "−"}${pct(Math.abs(r.usr_cost))}`}
             </div>
@@ -263,7 +263,7 @@ function FrrByTask({ d }: { d: DefenseSummary }) {
   return (
     <Card>
       <CardHeader title="Chặn nhầm theo tác vụ" icon={<Ban size={16} />} />
-      <p className="px-5 pb-3 text-[12.5px] text-slate-500">Tỉ lệ câu lành tính bị phòng thủ chặn, theo tác vụ chở (giả thuyết H4: D3 chặn nhầm ở CT-05, CT-06).</p>
+      <p className="px-5 pb-3 text-xs text-slate-500">Tỉ lệ câu lành tính bị phòng thủ chặn, theo tác vụ chở (giả thuyết H4: D3 chặn nhầm ở CT-05, CT-06).</p>
       <div className="max-w-full overflow-x-auto">
         <table className="table-base">
           <thead>
@@ -281,7 +281,7 @@ function FrrByTask({ d }: { d: DefenseSummary }) {
                   return (
                     <td key={p} className="text-center">
                       {v ? (
-                        <span title={`${v.frr.x}/${v.frr.n}`} className={clsx("num rounded px-1.5 py-0.5 text-[12.5px]", (v.frr.p ?? 0) > 0 ? "bg-attack-50 font-semibold text-attack-700" : "text-slate-400")}>
+                        <span title={`${v.frr.x}/${v.frr.n}`} className={clsx("num rounded px-1.5 py-0.5 text-xs", (v.frr.p ?? 0) > 0 ? "bg-attack-50 font-semibold text-attack-700" : "text-slate-400")}>
                           {pct(v.frr.p, 0)}
                         </span>
                       ) : <span className="text-slate-300">—</span>}
@@ -301,7 +301,7 @@ function NotMeasured({ d }: { d: DefenseSummary }) {
   const pending = d.presets.filter((p) => !d.measured.includes(p.name));
   return (
     <Callout tone="brand" icon={<Info size={16} />} title="Chưa có lô đo phòng thủ (khối B2) trong phạm vi này">
-      <div className="text-[12.5px] leading-relaxed">
+      <div className="text-xs leading-relaxed">
         Hiện chỉ có run tắt phòng thủ — dùng làm mốc so sánh bên dưới. Khi chạy khối B2, trang này sẽ hiện: mỗi cấu hình
         giảm bao nhiêu tấn công và mất bao nhiêu hữu dụng (RQ4), tổ hợp D1–D4 so với cơ chế đơn lẻ tốt nhất (RQ3),
         và chặn nhầm theo tác vụ.
@@ -327,7 +327,7 @@ function Mechanisms({ presets }: { presets: Preset[] }) {
                 <span className="block-icon" aria-hidden="true"><Icon size={22} /></span>
                 <Badge tone="defense">{code}</Badge>
                 <h3>{DEFENSE_LABEL[code]}</h3>
-                <p className="text-[12.5px] text-slate-500">{DEFENSE_DESC[code]}</p>
+                <p className="text-xs text-slate-500">{DEFENSE_DESC[code]}</p>
               </div>
             );
           })}
@@ -349,7 +349,7 @@ function Mechanisms({ presets }: { presets: Preset[] }) {
                       <span className="inline-flex items-center gap-2">
                         <span className="h-2.5 w-2.5 rounded-full" style={{ background: PRESET_COLOR[p.name] ?? "#334155" }} />
                         <span className="font-medium text-slate-800">{presetLabel(p.name)}</span>
-                        <span className="font-mono text-[11.5px] text-slate-400">{p.name}</span>
+                        <span className="font-mono text-xs text-slate-400">{p.name}</span>
                       </span>
                     </td>
                     {["D1", "D2", "D3", "D4"].map((c) => (
@@ -377,7 +377,7 @@ function Mechanisms({ presets }: { presets: Preset[] }) {
                             <div key={code}>
                               <div className="mb-1 flex items-center gap-2">
                                 <Badge tone="defense">{code}</Badge>
-                                <span className="text-[12.5px] font-medium text-slate-700">{DEFENSE_LABEL[code]}</span>
+                                <span className="text-xs font-medium text-slate-700">{DEFENSE_LABEL[code]}</span>
                               </div>
                               <pre className="code-block max-h-64 overflow-auto">{JSON.stringify(params, null, 2)}</pre>
                             </div>
@@ -424,7 +424,7 @@ export function DefensePage() {
               <Rq3 d={d} />
               <Card>
                 <CardHeader title="Bản đồ đánh đổi an toàn – hữu dụng" icon={<ChartScatter size={16} />} />
-                <p className="px-5 text-[12.5px] text-slate-500">Mỗi điểm là một cấu hình trên một model. Điểm tốt nằm góc trên bên trái: ít tấn công thành công, nhiều câu lành tính đạt.</p>
+                <p className="px-5 text-xs text-slate-500">Mỗi điểm là một cấu hình trên một model. Điểm tốt nằm góc trên bên trái: ít tấn công thành công, nhiều câu lành tính đạt.</p>
                 {points.data && <ParetoChart points={points.data.points} />}
               </Card>
               <FrrByTask d={d} />

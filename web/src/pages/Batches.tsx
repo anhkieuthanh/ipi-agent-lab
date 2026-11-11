@@ -15,7 +15,7 @@ function Result({ b }: { b: Batch }) {
     const p = b.n_success / b.n_attack;
     return (
       <div className="w-36">
-        <div className="mb-1 flex justify-between text-[12.5px]">
+        <div className="mb-1 flex justify-between text-xs">
           <span className="text-slate-500" title="ASR">Tấn công đạt</span>
           <span className="num font-medium text-slate-800">
             {pct(p, 0)} · {b.n_success}/{b.n_attack}
@@ -28,7 +28,7 @@ function Result({ b }: { b: Batch }) {
   const p = b.n_benign ? b.n_pass / b.n_benign : null;
   return (
     <div className="w-36">
-      <div className="mb-1 flex justify-between text-[12.5px]">
+      <div className="mb-1 flex justify-between text-xs">
         <span className="text-slate-500" title="USR">Lành tính đạt</span>
         <span className="num font-medium text-slate-800">
           {pct(p, 0)} · {b.n_pass}/{b.n_benign}
@@ -91,8 +91,8 @@ export function BatchesPage() {
               {rows.map((b) => (
                 <tr key={b.batch_id} className="group hover:bg-slate-50/70">
                   <td className="max-w-[260px]">
-                    <Link to={{ pathname: "/runs", search: `?batch=${encodeURIComponent(b.batch_id)}&scope=${b.kind}` }} title={b.batch_id} className="block truncate font-mono text-[12px] font-medium text-brand-600 hover:underline">{b.batch_id}</Link>
-                    <div title={b.store} className="mt-0.5 max-w-[240px] truncate text-[12px] text-slate-500">{b.store}</div>
+                    <Link to={{ pathname: "/runs", search: `?batch=${encodeURIComponent(b.batch_id)}&scope=${b.kind}` }} title={b.batch_id} className="block truncate font-mono text-xs font-medium text-brand-600 hover:underline">{b.batch_id}</Link>
+                    <div title={b.store} className="mt-0.5 max-w-[240px] truncate text-xs text-slate-500">{b.store}</div>
                   </td>
                   <td>
                     <Badge tone={b.kind === "experiment" ? "brand" : b.kind === "demo" ? "payload" : "neutral"}>
@@ -100,13 +100,13 @@ export function BatchesPage() {
                       {KIND_LABEL[b.kind]}
                     </Badge>
                   </td>
-                  <td className="text-[13px] text-slate-600">
+                  <td className="text-sm text-slate-600">
                     {b.scenario ? (
                       <>
                         <div className="font-medium text-slate-700">
                           {b.scenario.goal} · {GOAL_LABEL[b.scenario.goal]}
                         </div>
-                        <div className="text-[12px] text-slate-500">
+                        <div className="text-xs text-slate-500">
                           {CHANNEL_LABEL[b.scenario.channel] ?? b.scenario.channel} · {b.scenario.technique} ·{" "}
                           {b.scenario.carrier_task_id}
                         </div>
@@ -116,22 +116,22 @@ export function BatchesPage() {
                         <div className="font-medium text-slate-700">
                           Tấn công{b.manifest?.block ? ` · khối ${b.manifest.block}` : ""}
                         </div>
-                        <div className="text-[12px] text-slate-500">{b.channels.join(", ") || "—"}</div>
+                        <div className="text-xs text-slate-500">{b.channels.join(", ") || "—"}</div>
                       </>
                     ) : (
                       <>
                         <div className="font-medium text-slate-700">Bench hữu dụng</div>
-                        <div className="text-[12px] text-slate-500">
+                        <div className="text-xs text-slate-500">
                           {b.manifest?.task ? `${b.manifest.task} · ` : ""}câu lành tính
                         </div>
                       </>
                     )}
                   </td>
-                  <td className="text-[13px]">
+                  <td className="text-sm">
                     <div className="text-slate-700">{b.targets.join(", ")}</div>
                     <div className="mt-0.5 flex flex-wrap gap-1">
                       {b.presets.map((p) => (
-                        <Badge key={p} tone={p === "off" ? "neutral" : "defense"} className="!text-[11px]">
+                        <Badge key={p} tone={p === "off" ? "neutral" : "defense"} className="!text-2xs">
                           {presetLabel(p)}
                         </Badge>
                       ))}
@@ -140,17 +140,17 @@ export function BatchesPage() {
                   <td className="num text-right">
                     {int(b.n_runs)}
                     {b.n_parse_error > 0 && (
-                      <div className="text-[11.5px] text-amber-600">{b.n_parse_error} lỗi</div>
+                      <div className="text-xs text-amber-600">{b.n_parse_error} lỗi</div>
                     )}
                   </td>
                   <td>
                     <Result b={b} />
                   </td>
-                  <td className="num text-right text-[13px]">
+                  <td className="num text-right text-sm">
                     <div className="text-slate-700">{kilo(b.tokens)}</div>
-                    <div className="text-[12px] text-slate-500">{usd(b.manifest?.spent_usd)}</div>
+                    <div className="text-xs text-slate-500">{usd(b.manifest?.spent_usd)}</div>
                   </td>
-                  <td className="text-right text-[13px] text-slate-500">{when(b.created_at)}</td>
+                  <td className="text-right text-sm text-slate-500">{when(b.created_at)}</td>
                   <td className="w-8 pr-4">
                     <Link
                       to={{ pathname: "/runs", search: `?batch=${encodeURIComponent(b.batch_id)}&scope=${b.kind}` }}

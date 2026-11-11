@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>IPI Guard Console</title>
+    <script>
+      // Áp chế độ sáng/tối trước khi vẽ để không nháy màu (xem src/lib/theme.ts).
+      (function () {
+        var c = null;
+        try { c = localStorage.getItem("ipi-theme"); } catch (e) {}
+        var dark = c === "dark" || (c !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.dataset.theme = dark ? "dark" : "light";
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

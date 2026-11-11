@@ -16,8 +16,8 @@ type Tab = "evidence" | "trace" | "tools" | "answer" | "payload" | "replay";
 function Meta({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
-      <div className="text-[11px] uppercase tracking-wide text-slate-400">{label}</div>
-      <div className="break-words text-[13px] text-slate-800">{children}</div>
+      <div className="text-2xs uppercase tracking-wide text-slate-400">{label}</div>
+      <div className="break-words text-sm text-slate-800">{children}</div>
     </div>
   );
 }
@@ -47,8 +47,8 @@ function Summary({ d }: { d: RunDetail }) {
       <div className="space-y-4 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <div className="text-[15px] font-semibold text-slate-900">{d.verdict?.label ?? "Lượt lành tính"}</div>
-            {d.verdict?.detail && <div className="mt-0.5 text-[13px] text-slate-600">{d.verdict.detail}</div>}
+            <div className="text-md font-semibold text-slate-900">{d.verdict?.label ?? "Lượt lành tính"}</div>
+            {d.verdict?.detail && <div className="mt-0.5 text-sm text-slate-600">{d.verdict.detail}</div>}
           </div>
           {attack && (
             <div className="flex flex-wrap items-center gap-1.5">
@@ -64,10 +64,10 @@ function Summary({ d }: { d: RunDetail }) {
 
         {d.user_query && (
           <div className="rounded-lg bg-slate-50 px-4 py-2.5">
-            <div className="text-[11px] uppercase tracking-wide text-slate-400">
+            <div className="text-2xs uppercase tracking-wide text-slate-400">
               {attack ? `Nhân viên hỏi · tác vụ chở ${d.user_query.id}` : `Câu lành tính ${d.user_query.id}`}
             </div>
-            <div className="mt-0.5 text-[13.5px] leading-relaxed text-slate-800">{d.user_query.text}</div>
+            <div className="mt-0.5 text-sm leading-relaxed text-slate-800">{d.user_query.text}</div>
           </div>
         )}
 
@@ -127,7 +127,7 @@ export function RunDetailPage() {
         actions={
           <Link
             to={`/runs${sp.toString() ? `?${sp}` : ""}`}
-            className="inline-flex h-9 items-center gap-2 rounded-lg px-3 text-[13.5px] font-medium text-slate-600 ring-1 ring-inset ring-slate-300 hover:bg-slate-50"
+            className="inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium text-slate-600 ring-1 ring-inset ring-slate-300 hover:bg-slate-50"
           >
             <ArrowLeft size={15} /> Lượt chạy
           </Link>
@@ -164,7 +164,7 @@ export function RunDetailPage() {
                 {d.payload_text ? (
                   <>
                     <pre className="code-block ring-payload-200">{d.payload_text}</pre>
-                    <p className="text-[12.5px] text-slate-500">
+                    <p className="text-xs text-slate-500">
                       Nhân viên không nhìn thấy đoạn này — nó nằm trong{" "}
                       {run.channel ? CHANNEL_LABEL[String(run.channel)] ?? String(run.channel) : "dữ liệu"} mà agent đọc.
                     </p>
@@ -174,7 +174,7 @@ export function RunDetailPage() {
                     {missingReason(d.payload_source)}
                   </Callout>
                 )}
-                <p className="text-[12px] text-slate-400">{sourceNote(d.payload_source)}</p>
+                <p className="text-xs text-slate-400">{sourceNote(d.payload_source)}</p>
               </div>
             )}
             {active === "replay" && (

@@ -20,7 +20,7 @@ function highlightCanary(text: string, placeholder: string) {
     <span key={i}>
       {part}
       {i < parts.length - 1 && (
-        <mark className="rounded bg-amber-100 px-1 font-mono text-[12px] text-amber-800">{placeholder}</mark>
+        <mark className="rounded bg-amber-100 px-1 font-mono text-xs text-amber-800">{placeholder}</mark>
       )}
     </span>
   ));
@@ -33,16 +33,16 @@ function SystemPromptView() {
   const d = q.data!;
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-slate-500">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
         <Badge tone="neutral" className="font-mono">biến thể: {d.variant}</Badge>
         <span>{d.chars} ký tự</span>
-        <Mono className="text-[11px]">hash {d.template_hash.slice(0, 12)}</Mono>
+        <Mono className="text-2xs">hash {d.template_hash.slice(0, 12)}</Mono>
       </div>
-      <pre className="whitespace-pre-wrap break-words rounded-lg border border-slate-200 bg-slate-50 p-4 text-[12.5px] leading-relaxed text-slate-800">
+      <pre className="whitespace-pre-wrap break-words rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs leading-relaxed text-slate-800">
         {highlightCanary(d.text, d.canary_placeholder)}
       </pre>
-      <p className="text-[12px] text-slate-500">
-        Vệt vàng <Mono className="text-[11px]">{d.canary_placeholder}</Mono> là nơi gieo canary TS1 lúc chạy —
+      <p className="text-xs text-slate-500">
+        Vệt vàng <Mono className="text-2xs">{d.canary_placeholder}</Mono> là nơi gieo canary TS1 lúc chạy —
         ở đây giữ placeholder, không lộ canary thật.
       </p>
     </div>
@@ -57,7 +57,7 @@ function CustomersView() {
   const cols = d.columns.map((c) => c.name);
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-slate-500">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
         <Badge tone="neutral" className="font-mono">{d.table}</Badge>
         <span>{d.total} bản ghi</span>
         <span>· {d.seeded_rows} bản ghi mồi canary</span>
@@ -69,7 +69,7 @@ function CustomersView() {
               {d.columns.map((c) => (
                 <th key={c.name} className="whitespace-nowrap">
                   {c.name}
-                  <span className="ml-1 font-mono text-[10px] font-normal text-slate-400">{c.type}</span>
+                  <span className="ml-1 font-mono text-2xs font-normal text-slate-400">{c.type}</span>
                 </th>
               ))}
             </tr>
@@ -78,7 +78,7 @@ function CustomersView() {
             {d.rows.map((r, i) => (
               <tr key={i} className={r._seeded ? "bg-amber-50" : undefined}>
                 {cols.map((c) => (
-                  <td key={c} className="whitespace-nowrap text-[12px] text-slate-700">
+                  <td key={c} className="whitespace-nowrap text-xs text-slate-700">
                     {String(r[c] ?? "")}
                   </td>
                 ))}
@@ -87,8 +87,8 @@ function CustomersView() {
           </tbody>
         </table></div>
       </div>
-      <p className="text-[12px] text-slate-500">
-        {d.note} Hàng tô vàng là bản ghi mồi (id {d.canary_row_id}); cột <Mono className="text-[11px]">canary_note</Mono> đã ẩn.
+      <p className="text-xs text-slate-500">
+        {d.note} Hàng tô vàng là bản ghi mồi (id {d.canary_row_id}); cột <Mono className="text-2xs">canary_note</Mono> đã ẩn.
         Hiển thị {d.rows.length}/{d.total} bản ghi đầu.
       </p>
     </div>
@@ -110,11 +110,11 @@ function ToolsView() {
               {t.code && <Badge tone="neutral">{t.code}</Badge>}
               <Badge tone={t.side_effect ? "attack" : "defense"}>{t.kind}</Badge>
             </div>
-            <p className="mt-1 text-[12.5px] text-slate-600">{t.description}</p>
+            <p className="mt-1 text-xs text-slate-600">{t.description}</p>
             {t.args.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
                 {t.args.map((a) => (
-                  <span key={a.name} className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600">
+                  <span key={a.name} className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-2xs text-slate-600">
                     {a.name}
                     {a.required && <span className="text-attack-600">*</span>}
                     <span className="text-slate-400">:{a.type}</span>
@@ -126,14 +126,14 @@ function ToolsView() {
         ))}
       </div>
       <div>
-        <div className="mb-2 text-[13px] font-semibold text-slate-700">Tool được phép theo tác vụ chở</div>
+        <div className="mb-2 text-sm font-semibold text-slate-700">Tool được phép theo tác vụ chở</div>
         <div className="overflow-x-auto rounded-lg border border-slate-200">
           <div className="max-w-full overflow-x-auto"><table className="table-base min-w-max">
             <thead>
               <tr>
                 <th>Tác vụ</th>
                 {d.tools.map((t) => (
-                  <th key={t.name} className="text-center font-mono text-[11px]">{t.name}</th>
+                  <th key={t.name} className="text-center font-mono text-2xs">{t.name}</th>
                 ))}
               </tr>
             </thead>
@@ -155,7 +155,7 @@ function ToolsView() {
             </tbody>
           </table></div>
         </div>
-        <p className="mt-2 text-[12px] text-slate-500">● = tool nằm trong allowlist của tác vụ; D3 chặn tool ngoài danh sách.</p>
+        <p className="mt-2 text-xs text-slate-500">● = tool nằm trong allowlist của tác vụ; D3 chặn tool ngoài danh sách.</p>
       </div>
     </div>
   );
@@ -190,7 +190,7 @@ export function AssetPanel({ code, onClose }: { code: AssetCode | null; onClose:
   return (
     <div className="fixed inset-0 z-40">
       <div className="absolute inset-0 bg-slate-900/30" onClick={onClose} />
-      <aside ref={panelRef} role="dialog" aria-modal="true" aria-label={m.title} tabIndex={-1} className="absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col bg-white shadow-xl">
+      <aside ref={panelRef} role="dialog" aria-modal="true" aria-label={m.title} tabIndex={-1} className="absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col bg-surface shadow-xl">
         <div className="flex items-start gap-3 border-b border-slate-100 px-6 py-4">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
             <Icon size={18} />
@@ -198,9 +198,9 @@ export function AssetPanel({ code, onClose }: { code: AssetCode | null; onClose:
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <Badge tone="neutral" className="font-mono">{code}</Badge>
-              <span className="text-[15px] font-semibold text-slate-900">{m.title}</span>
+              <span className="text-md font-semibold text-slate-900">{m.title}</span>
             </div>
-            <p className="text-[12.5px] text-slate-500">{m.sub}</p>
+            <p className="text-xs text-slate-500">{m.sub}</p>
           </div>
           <button
             onClick={onClose}

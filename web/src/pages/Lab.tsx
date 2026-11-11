@@ -72,8 +72,8 @@ function HookChips({ codes, status }: { codes: string[]; status: Partial<Record<
             title={`${c} · ${st ? STATUS_LABEL[st] : "tắt"}`}
             className={clsx("rounded-md px-2 py-1 text-center ring-1 ring-inset", STATUS_CHIP[st ?? "off"])}
           >
-            <div className="text-[12px] font-bold">{c}</div>
-            <div className="truncate text-[10.5px]">{st ? STATUS_LABEL[st] : "tắt"}</div>
+            <div className="text-xs font-bold">{c}</div>
+            <div className="truncate text-2xs">{st ? STATUS_LABEL[st] : "tắt"}</div>
           </div>
         );
       })}
@@ -102,7 +102,7 @@ function ResultColumn({
   return (
     <Card className={clsx("flex flex-col", showing && "ring-2 ring-brand-500")}>
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-        <span className="flex items-center gap-2 text-[13px] font-semibold text-slate-700">
+        <span className="flex items-center gap-2 text-sm font-semibold text-slate-700">
           <Shield size={15} className="text-slate-400" />
           Phòng thủ: {presetLabel(String(run.preset))}
         </span>
@@ -120,8 +120,8 @@ function ResultColumn({
             ["Thời gian", seconds(Number(run.latency_ms))],
           ].map(([k, v]) => (
             <div key={k} className="rounded-lg bg-slate-50 py-2">
-              <div className="num text-[16px] font-semibold text-slate-900">{v}</div>
-              <div className="text-[11px] text-slate-500">{k}</div>
+              <div className="num text-lg font-semibold text-slate-900">{v}</div>
+              <div className="text-2xs text-slate-500">{k}</div>
             </div>
           ))}
         </div>
@@ -131,7 +131,7 @@ function ResultColumn({
             <button
               onClick={onShow}
               disabled={showing}
-              className="flex items-center gap-1 text-[12px] font-medium text-brand-600 hover:text-brand-700 disabled:text-slate-400"
+              className="flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 disabled:text-slate-400"
             >
               <MapIcon size={12} /> {showing ? "Đang phát trên sơ đồ" : "Phát lại trên sơ đồ"}
             </button>
@@ -143,13 +143,13 @@ function ResultColumn({
           <ToolActions actions={d.tool_actions} />
         </div>
         <details className="group">
-          <summary className="cursor-pointer text-[13px] font-medium text-brand-600">Xem từng bước</summary>
+          <summary className="cursor-pointer text-sm font-medium text-brand-600">Xem từng bước</summary>
           <div className="mt-2 space-y-2">
             <InjectedContext ctx={d.injected_context} />
             <StepTimeline steps={d.steps} />
           </div>
         </details>
-        <Link to={`/runs/${run.run_id}`} className="text-[13px] font-medium text-brand-600 hover:text-brand-700">
+        <Link to={`/runs/${run.run_id}`} className="text-sm font-medium text-brand-600 hover:text-brand-700">
           Mở chi tiết đầy đủ →
         </Link>
       </div>
@@ -177,7 +177,7 @@ function Results({
   if (!items.length) return null;
   return (
     <div className="mt-6">
-      <h2 className="mb-3 flex items-center gap-2 text-[15px] font-semibold text-slate-900">
+      <h2 className="mb-3 flex items-center gap-2 text-md font-semibold text-slate-900">
         <Columns2 size={17} className="text-slate-400" />
         Kết quả so sánh
       </h2>
@@ -219,7 +219,7 @@ function DefenseMap({
           view ? (
             <Button onClick={onBack}>Quay lại thiết lập</Button>
           ) : (
-            <span className="text-[12px] text-slate-500">Bấm D1–D4 để bật/tắt</span>
+            <span className="text-xs text-slate-500">Bấm D1–D4 để bật/tắt</span>
           )
         }
       />
@@ -279,7 +279,7 @@ function LivePanel({ job, attack }: { job: Job; attack?: string }) {
         {steps.length || isLive ? (
           <StepTimeline steps={steps} live={isLive} />
         ) : (
-          <p className="text-[13px] text-slate-500">Preset này chưa chạy.</p>
+          <p className="text-sm text-slate-500">Preset này chưa chạy.</p>
         )}
       </div>
     </Card>
@@ -471,11 +471,11 @@ export function LabPage() {
                 ]}
               />
               {target === SANDBOX_ID ? (
-                <div className="mt-1.5 text-[12px] text-amber-700">
+                <div className="mt-1.5 text-xs text-amber-700">
                   Model ngoài bộ đo — lượt này chỉ là demo, không vào số liệu báo cáo.
                 </div>
               ) : (
-                <Link to="/config" className="mt-1.5 inline-block text-[12px] text-slate-500 hover:text-brand-700">
+                <Link to="/config" className="mt-1.5 inline-block text-xs text-slate-500 hover:text-brand-700">
                   {sandbox ? "Đổi model thử ở trang Cấu hình" : "Thử model khác ở trang Cấu hình"}
                 </Link>
               )}
@@ -493,14 +493,14 @@ export function LabPage() {
                   <span
                     key={c}
                     className={clsx(
-                      "rounded-md px-2 py-0.5 text-[12px] font-bold ring-1 ring-inset",
+                      "rounded-md px-2 py-0.5 text-xs font-bold ring-1 ring-inset",
                       enabled[c] ? STATUS_CHIP.pass : STATUS_CHIP.off,
                     )}
                   >
                     {c}
                   </span>
                 ))}
-                {chosen && <span className="text-[12.5px] text-slate-600">→ {presetLabel(chosen)}</span>}
+                {chosen && <span className="text-xs text-slate-600">→ {presetLabel(chosen)}</span>}
               </div>
               {matches.length > 1 && (
                 <Select
@@ -515,7 +515,7 @@ export function LabPage() {
                   <Callout tone="warn">Tổ hợp này chưa có preset trong config/defenses.yaml.</Callout>
                 </div>
               )}
-              <label className="mt-2.5 flex items-center gap-2 text-[12.5px] text-slate-600">
+              <label className="mt-2.5 flex items-center gap-2 text-xs text-slate-600">
                 <input
                   type="checkbox"
                   checked={compareOff}
@@ -549,7 +549,7 @@ export function LabPage() {
 
             {job.data && (
               <div className="rounded-lg bg-slate-50 p-3">
-                <div className="mb-2 flex items-center justify-between text-[12.5px]">
+                <div className="mb-2 flex items-center justify-between text-xs">
                   <span className="font-medium text-slate-700">Tiến độ</span>
                   <Badge tone={job.data.status === "done" ? "defense" : job.data.status === "error" ? "attack" : "brand"}>
                     {job.data.status}
@@ -560,7 +560,7 @@ export function LabPage() {
                     const done = job.data!.events.some((e) => e.preset === p && e.event === "done");
                     const started = job.data!.events.some((e) => e.preset === p && e.event === "start");
                     return (
-                      <div key={p} className="flex items-center gap-2 text-[12.5px] text-slate-600">
+                      <div key={p} className="flex items-center gap-2 text-xs text-slate-600">
                         {done ? (
                           <span className="text-defense-500">✓</span>
                         ) : started ? (
@@ -574,11 +574,11 @@ export function LabPage() {
                   })}
                 </div>
                 {job.data.status === "done" && (
-                  <div className="mt-2 text-[12px] text-slate-500">
+                  <div className="mt-2 text-xs text-slate-500">
                     Chi phí {usd(job.data.spent_usd, 4)} · ngân sách {job.data.budget_status}
                   </div>
                 )}
-                {job.data.error && <div className="mt-2 text-[12px] text-attack-600">{job.data.error}</div>}
+                {job.data.error && <div className="mt-2 text-xs text-attack-600">{job.data.error}</div>}
               </div>
             )}
           </div>

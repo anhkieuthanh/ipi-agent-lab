@@ -204,7 +204,7 @@ export function TraceReplay({ detail, codes, autoplay = false }: { detail: RunDe
             <SkipBack size={14} />
           </button>
           <button
-            className={clsx(btn, "w-auto gap-1.5 px-3 text-[12.5px] font-medium text-brand-700 ring-brand-100")}
+            className={clsx(btn, "w-auto gap-1.5 px-3 text-xs font-medium text-brand-700 ring-brand-100")}
             onClick={() => {
               if (i >= last) setI(0);
               setPlaying(!playing || i >= last);
@@ -225,13 +225,13 @@ export function TraceReplay({ detail, codes, autoplay = false }: { detail: RunDe
             className="mx-2 min-w-[120px] flex-1 accent-brand-600"
             aria-label="Khung phát lại"
           />
-          <span className="num text-[12px] text-slate-500">
+          <span className="num text-xs text-slate-500">
             {i + 1}/{frames.length}
           </span>
           <select
             value={speed}
             onChange={(e) => setSpeed(Number(e.target.value))}
-            className="h-8 rounded-md border-slate-200 py-0 text-[12px]"
+            className="h-8 rounded-md border-slate-200 py-0 text-xs"
             aria-label="Tốc độ"
           >
             {SPEEDS.map((s) => (
@@ -243,13 +243,13 @@ export function TraceReplay({ detail, codes, autoplay = false }: { detail: RunDe
         </div>
 
         <div className={clsx("mt-3 rounded-lg border-l-4 px-4 py-2.5", TONE_STYLE[f.tone])}>
-          <div className="flex items-center gap-2 text-[13.5px] font-semibold text-slate-800">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
             <ToneIcon size={15} className={clsx("shrink-0", toneInk)} />
             {f.title}
           </div>
-          {f.detail && <div className="mt-0.5 text-[12.5px] text-slate-600">{f.detail}</div>}
+          {f.detail && <div className="mt-0.5 text-xs text-slate-600">{f.detail}</div>}
           {f.notes.length > 0 && (
-            <ul className="mt-1.5 space-y-0.5 text-[12px] text-slate-600">
+            <ul className="mt-1.5 space-y-0.5 text-xs text-slate-600">
               {f.notes.map((x) => (
                 <li key={x} className="font-mono">
                   {x}

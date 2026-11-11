@@ -405,7 +405,7 @@ function MapTip({ hover, children }: { hover: Hover; children: ReactNode }) {
   const shiftX = fx < 0.18 ? "-12%" : fx > 0.82 ? "-88%" : "-50%";
   return (
     <div
-      className="pointer-events-none absolute z-20 w-72 rounded-xl bg-white p-3.5 text-left shadow-pop ring-1 ring-slate-200"
+      className="pointer-events-none absolute z-20 w-72 rounded-lg bg-surface p-3.5 text-left shadow-pop ring-1 ring-slate-200"
       style={{
         left: `${fx * 100}%`,
         top: `${((below ? hover.bottom + 8 : hover.top - 8) / H) * 100}%`,
@@ -445,8 +445,8 @@ function Pill({ color, off, children }: { color: string; off?: boolean; children
   return (
     <span
       className={clsx(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold",
-        off ? "border border-dashed border-slate-300 bg-white text-slate-400" : "text-white",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-bold",
+        off ? "border border-dashed border-slate-300 bg-surface text-slate-400" : "text-white",
       )}
       style={off ? undefined : { background: color }}
     >
@@ -458,7 +458,7 @@ function Pill({ color, off, children }: { color: string; off?: boolean; children
 
 export function HookLegend({ statuses = false }: { statuses?: boolean }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px] text-slate-500">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500">
       <span className="flex items-center gap-1.5">
         <Pill color="" off>D</Pill>Tắt
       </span>
@@ -482,7 +482,7 @@ export function HookLegend({ statuses = false }: { statuses?: boolean }) {
 
 export function MapLegend() {
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-slate-500">
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-500">
       <span className="flex items-center gap-2">
         <svg width="28" height="8"><path d="M0 4 H28" stroke="#94a3b8" strokeWidth="1.6" /></svg>Dữ liệu / lời gọi
       </span>

@@ -22,7 +22,7 @@ function ItemView({ goal, item, seenAt }: { goal: string; item: EvidenceItem; se
   const where = item.step === null ? `Toàn run · ${target}` : `Bước ${item.step} · ${target}`;
   return (
     <div className={clsx("rounded-lg border px-4 py-3", item.counted === false ? "border-slate-200" : "border-attack-200 bg-attack-50/30")}>
-      <div className="mb-2 flex flex-wrap items-center gap-2 text-[13px]">
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
         <span className="font-medium text-slate-800">{where}</span>
         {goal === "G1" && item.store && (
           <Badge tone="attack">
@@ -33,9 +33,9 @@ function ItemView({ goal, item, seenAt }: { goal: string; item: EvidenceItem; se
         {goal === "G2" && item.severity && <Badge tone="warn">{item.severity}</Badge>}
         {goal === "G2" && item.counted === false && <Badge>Không tính (khác tool payload đòi)</Badge>}
       </div>
-      {item.reason && <p className="mb-2 text-[12.5px] text-slate-600">{item.reason}</p>}
+      {item.reason && <p className="mb-2 text-xs text-slate-600">{item.reason}</p>}
       {seenAt ? (
-        <p className="text-[12.5px] text-slate-500">Cùng lời gọi đã hiển thị ở {seenAt}.</p>
+        <p className="text-xs text-slate-500">Cùng lời gọi đã hiển thị ở {seenAt}.</p>
       ) : null}
       {!seenAt && item.args && (
         <div className="mb-2">
@@ -55,7 +55,7 @@ function ItemView({ goal, item, seenAt }: { goal: string; item: EvidenceItem; se
 
 /** Thân khối bằng chứng — không bọc Card (trang chi tiết run đặt trong tab). */
 export function GoalEvidenceBody({ ev }: { ev: Evidence | null | undefined }) {
-  if (!ev) return <p className="text-[13px] text-slate-500">Run lành tính — không chấm G1/G2/G3.</p>;
+  if (!ev) return <p className="text-sm text-slate-500">Run lành tính — không chấm G1/G2/G3.</p>;
   if ("error" in ev) return <Callout tone="warn" title="Không dựng được bằng chứng">{ev.error}</Callout>;
   const shown = new Map<number, string>(); // bước đã in đầy đủ → mục tiêu đã in
   return (
@@ -73,7 +73,7 @@ export function GoalEvidenceBody({ ev }: { ev: Evidence | null | undefined }) {
         return (
           <section key={g}>
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <h3 className="text-[14px] font-semibold text-slate-800">
+              <h3 className="text-base font-semibold text-slate-800">
                 {g} · {GOAL_LABEL[g]}
               </h3>
               <Badge tone={goal.hit ? "attack" : "neutral"} dot={goal.hit}>
@@ -84,7 +84,7 @@ export function GoalEvidenceBody({ ev }: { ev: Evidence | null | undefined }) {
               {g === "G2" && goal.expected_tool && <Badge>payload đòi: {goal.expected_tool}</Badge>}
             </div>
             {g === "G3" && goal.marker && (
-              <p className="mb-2 text-[12.5px] text-slate-600">
+              <p className="mb-2 text-xs text-slate-600">
                 Marker cần xuất hiện: <span className="font-mono">{goal.marker}</span>
               </p>
             )}
@@ -97,7 +97,7 @@ export function GoalEvidenceBody({ ev }: { ev: Evidence | null | undefined }) {
                 })}
               </div>
             ) : (
-              <p className="text-[13px] text-slate-500">
+              <p className="text-sm text-slate-500">
                 {g === "G1" && !goal.has_canaries ? "Run không có canary — không chấm G1 được." : EMPTY[g]}
               </p>
             )}
