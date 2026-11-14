@@ -36,14 +36,14 @@ function presetShort(p: string): string {
 function PresetName({ name, code }: { name: string; code?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2 whitespace-nowrap">
-      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: `rgb(var(--${presetToken(name)}))` }} aria-hidden="true" />
+      <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: `rgb(var(--${presetToken(name)}))` }} aria-hidden="true" />
       <span className="text-slate-800">{presetLabel(name)}</span>
-      {code && <span className="font-mono text-xs text-slate-400">{name}</span>}
+      {code && <span className="font-mono text-xs text-muted">{name}</span>}
     </span>
   );
 }
 
-const Unmeasured = () => <span className="text-xs text-slate-400">chưa đo</span>;
+const Unmeasured = () => <span className="text-xs text-muted">chưa đo</span>;
 
 const DEFENSE_DESC: Record<string, string> = {
   D1: "Bọc ranh giới dữ liệu / chỉ thị để model phân biệt nội dung ngoài.",
@@ -53,8 +53,8 @@ const DEFENSE_DESC: Record<string, string> = {
 };
 
 function Delta({ v, better }: { v: number | null; better: "down" | "up" }) {
-  if (v === null || v === undefined) return <span className="text-slate-300">—</span>;
-  if (Math.abs(v) < 0.0005) return <span className="num text-xs text-slate-400">±0</span>;
+  if (v === null || v === undefined) return <span className="text-xs text-muted">chưa đo</span>;
+  if (Math.abs(v) < 0.0005) return <span className="num text-xs text-muted">±0</span>;
   const good = better === "down" ? v < 0 : v > 0;
   const Icon = v < 0 ? ArrowDown : ArrowUp;
   return (
@@ -70,7 +70,7 @@ function NotMeasuredNote() {
   return (
     <p className="text-sm text-slate-600">
       <span className="font-medium text-slate-900">Chưa có lô đo phòng thủ (khối B2) trong phạm vi này.</span>{" "}
-      Hiện chỉ có run tắt phòng thủ — dùng làm mốc so sánh bên dưới.
+      Hiện chỉ có run tắt phòng thủ, dùng làm mốc so sánh bên dưới.
     </p>
   );
 }
@@ -140,7 +140,7 @@ function Baseline({ d }: { d: DefenseSummary }) {
       <div className="space-y-2 border-t border-slate-200 px-4 py-3">
         <div className="flex items-center gap-2">
           <OutcomeLegend />
-          <InfoDot>Phần “Model từ chối” là lớp an toàn sẵn có của model — phòng thủ D1–D4 không được tính công cho phần đó.</InfoDot>
+          <InfoDot>Phần “Model từ chối” là lớp an toàn sẵn có của model, phòng thủ D1–D4 không được tính công cho phần đó.</InfoDot>
         </div>
       </div>
     </Card>
@@ -189,9 +189,9 @@ function Effects({ d }: { d: DefenseSummary }) {
                     <td className="text-right">
                       <Delta v={e.d_asr} better="down" />
                     </td>
-                    <td className="num text-right">{e.asr_cut === null ? <span className="text-slate-300">—</span> : pct(e.asr_cut, 0)}</td>
+                    <td className="num text-right">{e.asr_cut === null ? <span className="text-xs text-muted">không có</span> : pct(e.asr_cut, 0)}</td>
                     <td>{e.usr.n ? <Rate r={e.usr} good /> : <Unmeasured />}</td>
-                    <td className="text-right">{e.usr.n ? <Delta v={e.d_usr} better="up" /> : <span className="text-slate-300">—</span>}</td>
+                    <td className="text-right">{e.usr.n ? <Delta v={e.d_usr} better="up" /> : <span className="text-xs text-muted">không có</span>}</td>
                     <td>{e.frr.n ? <Rate r={e.frr} good /> : <Unmeasured />}</td>
                     <td>{e.outcomes && <OutcomeBar o={e.outcomes} />}</td>
                   </tr>
@@ -295,9 +295,9 @@ function Tradeoff({ points }: { points: DefensePoint[] }) {
       <div className="max-w-full overflow-x-auto px-4 pb-2">
         <ScatterPlot
           points={data}
-          xTitle="Tấn công thành công (ASR) — thấp hơn là an toàn hơn"
-          yTitle="Câu lành tính đạt (USR) — cao hơn là hữu dụng hơn"
-          ariaLabel={`Biểu đồ phân tán ASR – USR của ${data.length} cấu hình phòng thủ theo model. Số liệu đầy đủ ở bảng bên dưới biểu đồ.`}
+          xTitle="Tấn công thành công (ASR), thấp hơn là an toàn hơn"
+          yTitle="Câu lành tính đạt (USR), cao hơn là hữu dụng hơn"
+          ariaLabel={`Biểu đồ phân tán ASR và USR của ${data.length} cấu hình phòng thủ theo model. Số liệu đầy đủ ở bảng bên dưới biểu đồ.`}
         />
       </div>
       <div className="space-y-2 border-t border-slate-200 px-4 py-3">
@@ -373,7 +373,7 @@ function FrrByTask({ d }: { d: DefenseSummary }) {
                   const v = d.frr_by_task.find((r) => r.preset === p && (r.carrier_task_id ?? "?") === t);
                   return (
                     <td key={p} className="text-right">
-                      {!v ? <span className="text-slate-300">—</span> : v.frr.n ? <Rate r={v.frr} /> : <Unmeasured />}
+                      {!v ? <span className="text-xs text-muted">không có</span> : v.frr.n ? <Rate r={v.frr} /> : <Unmeasured />}
                     </td>
                   );
                 })}
@@ -500,7 +500,7 @@ export function DefensePage() {
     <>
       <PageHeader
         title="Phòng thủ"
-        info="Trả lời RQ3 (tổ hợp D1–D4 có hơn cơ chế đơn lẻ) và RQ4 (cái giá về hữu dụng). Mọi so sánh đều với lúc tắt phòng thủ của cùng model."
+        description="Trả lời RQ3 (tổ hợp D1–D4 có hơn cơ chế đơn lẻ) và RQ4 (cái giá về hữu dụng). Mọi so sánh đều với lúc tắt phòng thủ của cùng model."
       />
       {q.isLoading && <Loading />}
       {q.error && <ErrorBox error={q.error} />}
@@ -516,7 +516,7 @@ export function DefensePage() {
               <Rq3 d={d} />
               <Card>
                 <CardHeader
-                  title="Bản đồ đánh đổi an toàn – hữu dụng"
+                  title="Bản đồ đánh đổi an toàn và hữu dụng"
                   subtitle="Mỗi điểm là một cấu hình trên một model. Điểm tốt nằm góc trên bên trái: ít tấn công thành công, nhiều câu lành tính đạt."
                 />
                 {points.isLoading && <Loading rows={4} />}

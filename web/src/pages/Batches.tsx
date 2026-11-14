@@ -18,15 +18,15 @@ function Result({ b }: { b: Batch }) {
   const p = n ? k / n : null;
   return (
     <span className="num inline-flex items-baseline gap-1.5 whitespace-nowrap">
-      <span className="w-8 font-mono text-2xs text-slate-400" title={attack ? "Tỉ lệ tấn công thành công" : "Tỉ lệ câu lành tính đạt"}>
+      <span className="w-8 font-mono text-2xs text-muted" title={attack ? "Tỉ lệ tấn công thành công" : "Tỉ lệ câu lành tính đạt"}>
         {attack ? "ASR" : "USR"}
       </span>
       {p === null ? (
-        <span className="text-slate-400">Chưa đo</span>
+        <span className="text-muted">Chưa đo</span>
       ) : (
         <>
           <span className={attack && p > 0 ? "font-medium text-attack-600" : "font-medium text-slate-900"}>{pct(p, 0)}</span>
-          <span className="text-xs text-slate-400">{k}/{n}</span>
+          <span className="text-xs text-muted">{k}/{n}</span>
         </>
       )}
     </span>
@@ -47,7 +47,7 @@ function Scenario({ b }: { b: Batch }) {
     sub = `${b.manifest?.task ? `${b.manifest.task} · ` : ""}câu lành tính`;
   }
   return (
-    <span className="block max-w-[280px] truncate whitespace-nowrap text-slate-800" title={`${title} — ${sub}`}>
+    <span className="block max-w-[280px] truncate whitespace-nowrap text-slate-800" title={`${title}: ${sub}`}>
       {title}
     </span>
   );
@@ -78,7 +78,7 @@ export function BatchesPage() {
     <>
       <PageHeader
         title="Lô thực nghiệm"
-        info="Mỗi lô là một lần chạy có kiểm soát: cùng harness, bộ model đã pin, chi phí canh theo dự toán. Chạy thử và demo tách riêng, không vào số liệu chính."
+        description="Mỗi lô là một lần chạy có kiểm soát: cùng harness, bộ model đã pin, chi phí canh theo dự toán. Chạy thử và demo tách riêng, không vào số liệu chính."
         actions={
           <Segmented
             value={filter}
@@ -95,7 +95,7 @@ export function BatchesPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <label className="relative block w-full max-w-xs">
             <span className="sr-only">Tìm lô hoặc model</span>
-            <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden="true" />
             <input
               className="input w-full pl-8"
               type="search"
@@ -153,7 +153,7 @@ export function BatchesPage() {
                           </Link>
                         </td>
                         <td>
-                          <Badge tone={b.kind === "experiment" ? "brand" : b.kind === "demo" ? "payload" : "neutral"}>{KIND_LABEL[b.kind]}</Badge>
+                          <Badge tone={b.kind === "experiment" ? "canary" : b.kind === "demo" ? "brand" : "neutral"}>{KIND_LABEL[b.kind]}</Badge>
                         </td>
                         <td>
                           <Scenario b={b} />
@@ -183,7 +183,7 @@ export function BatchesPage() {
                             to={to}
                             aria-label={`Xem run của lô ${b.batch_id}`}
                             title="Xem các run"
-                            className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                            className="flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-slate-100 hover:text-slate-700"
                           >
                             <ChevronRight size={16} />
                           </Link>

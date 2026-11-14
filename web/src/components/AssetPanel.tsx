@@ -10,7 +10,7 @@ export type AssetCode = "TS1" | "TS2" | "TS3";
 
 const META: Record<AssetCode, { title: string; sub: string }> = {
   TS1: { title: "System prompt", sub: "Quy tắc nghiệp vụ và danh sách tool đưa vào mỗi run" },
-  TS2: { title: "customers.db", sub: "Dữ liệu khách hàng mô phỏng — nguồn kẻ tấn công muốn rò" },
+  TS2: { title: "customers.db", sub: "Dữ liệu khách hàng mô phỏng, nguồn kẻ tấn công muốn rò" },
   TS3: { title: "Quyền gọi tool", sub: "Năm tool và quyền hành động của agent" },
 };
 
@@ -42,7 +42,7 @@ function SystemPromptView() {
         {highlightCanary(d.text, d.canary_placeholder)}
       </pre>
       <p className="text-xs text-slate-500">
-        Vệt vàng <Mono className="text-2xs">{d.canary_placeholder}</Mono> là nơi gieo canary TS1 lúc chạy —
+        Vệt vàng <Mono className="text-2xs">{d.canary_placeholder}</Mono> là nơi gieo canary TS1 lúc chạy;
         ở đây giữ placeholder, không lộ canary thật.
       </p>
     </div>
@@ -69,7 +69,7 @@ function CustomersView() {
               {d.columns.map((c) => (
                 <th key={c.name}>
                   {c.name}
-                  <span className="ml-1 font-mono text-2xs font-normal text-slate-400">{c.type}</span>
+                  <span className="ml-1 font-mono text-2xs font-normal text-muted">{c.type}</span>
                 </th>
               ))}
             </tr>
@@ -117,7 +117,7 @@ function ToolsView() {
                   <span key={a.name} className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-2xs text-slate-600">
                     {a.name}
                     {a.required && <span className="text-attack-600">*</span>}
-                    <span className="text-slate-400">:{a.type}</span>
+                    <span className="text-muted">:{a.type}</span>
                   </span>
                 ))}
               </div>
@@ -126,7 +126,7 @@ function ToolsView() {
         ))}
       </div>
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-slate-900">Tool được phép theo tác vụ chở</h3>
+        <h3 className="mb-2 text-base font-medium text-slate-900">Tool được phép theo tác vụ chở</h3>
         <div className="overflow-x-auto rounded-lg border border-slate-200">
           <table className="table-base min-w-max">
             <thead>
@@ -207,7 +207,7 @@ export function AssetPanel({ code, onClose }: { code: AssetCode | null; onClose:
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone="neutral" className="font-mono">{code}</Badge>
-              <h2 className="min-w-0 break-words text-md font-semibold text-slate-900">{m.title}</h2>
+              <h2 className="min-w-0 break-words text-lg font-medium text-slate-900">{m.title}</h2>
             </div>
             <p className="mt-0.5 text-xs text-slate-500">{m.sub}</p>
           </div>

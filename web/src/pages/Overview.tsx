@@ -13,23 +13,23 @@ function Sample({ rate, noun }: { rate: Rate; noun: string }) {
   if (!rate) return <>Chưa có {noun}</>;
   return (
     <>
-      <span className="num">{int(rate.x)}/{int(rate.n)}</span> {noun}
-      <span className="whitespace-nowrap"> · CI 95% <span className="num">{ci(rate.lo, rate.hi)}</span></span>
+      <span className="block"><span className="num font-mono text-slate-800">{int(rate.x)}/{int(rate.n)}</span> {noun}</span>
+      <span className="block whitespace-nowrap">CI 95% <span className="num font-mono">{ci(rate.lo, rate.hi)}</span></span>
     </>
   );
 }
 
 /** Ô tỉ lệ trong bảng theo model: số, thanh có dải CI, mẫu số. */
 function RateCell({ r, tone }: { r: Rate; tone: "attack" | "defense" | "brand" }) {
-  if (!r) return <span className="text-sm text-slate-400">Chưa đo</span>;
+  if (!r) return <span className="text-sm text-muted">Chưa đo</span>;
   return (
     <div className="min-w-[150px] max-w-[220px]">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="num text-base font-medium text-slate-900">{pct(r.p)}</span>
-        <span className="num text-xs text-slate-400">{int(r.x)}/{int(r.n)}</span>
+        <span className="reading text-xl">{pct(r.p)}</span>
+        <span className="num font-mono text-xs text-muted">{int(r.x)}/{int(r.n)}</span>
       </div>
       <div className="mt-1.5"><RateBar p={r.p} lo={r.lo} hi={r.hi} tone={tone} /></div>
-      <div className="num mt-1 text-2xs text-slate-400">CI {ci(r.lo, r.hi)}</div>
+      <div className="num mt-1 font-mono text-2xs text-muted">CI {ci(r.lo, r.hi)}</div>
     </div>
   );
 }
@@ -37,7 +37,7 @@ function RateCell({ r, tone }: { r: Rate; tone: "attack" | "defense" | "brand" }
 function Count({ label, value }: { label: ReactNode; value: number }) {
   return (
     <span className="whitespace-nowrap">
-      {label} <span className="num font-medium text-slate-700">{int(value)}</span>
+      {label} <span className="num font-mono font-medium text-slate-900">{int(value)}</span>
     </span>
   );
 }
@@ -73,22 +73,26 @@ export function OverviewPage() {
         </Callout>
       )}
 
-      <section aria-label="Chỉ số đánh giá chính">
-        <Card className="grid grid-cols-1 divide-y divide-slate-200 sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x [&>*:nth-child(n+3)]:sm:border-t [&>*:nth-child(n+3)]:sm:border-slate-200 lg:[&>*:nth-child(n+3)]:border-t-0 [&>*:nth-child(2)]:sm:border-l [&>*:nth-child(4)]:sm:border-l [&>*]:border-slate-200">
-          <Metric label="Tấn công thành công · ASR" value={k.asr_off ? pct(k.asr_off.p) : "Chưa đo"} unmeasured={!k.asr_off}>
-            Tắt phòng thủ · <Sample rate={k.asr_off} noun="run tấn công" />
+      {/* Ba số đọc theo đúng câu chuyện của đồ án: tấn công lọt bao nhiêu, phòng thủ kéo xuống bao nhiêu,
+          agent còn làm được việc bao nhiêu. Một mặt phẳng, chia bằng đường kẻ 1px. */}
+      <section aria-label="Chỉ số đánh giá chính" className="space-y-3">
+        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_0.8fr] [&>*]:bg-surface">
+          <Metric step={1} label="Tấn công thành công, tắt phòng thủ (ASR)" value={k.asr_off ? pct(k.asr_off.p) : "Chưa đo"} unmeasured={!k.asr_off}>
+            <Sample rate={k.asr_off} noun="run tấn công" />
           </Metric>
-          <Metric label="ASR khi bật phòng thủ" value={k.asr_on ? pct(k.asr_on.p) : "Chưa đo"} unmeasured={!k.asr_on}>
+          <Metric step={2} label="Tấn công thành công, bật phòng thủ" value={k.asr_on ? pct(k.asr_on.p) : "Chưa đo"} unmeasured={!k.asr_on}>
             <Sample rate={k.asr_on} noun="run tấn công" />
           </Metric>
-          <Metric label="Hoàn thành tác vụ · USR" value={k.usr_off ? pct(k.usr_off.p) : "Chưa đo"} unmeasured={!k.usr_off}>
-            <Sample rate={k.usr_off} noun="câu lành tính" /> · chặn nhầm (FRR) <span className="num font-medium text-slate-700">{k.frr ? pct(k.frr.p) : "chưa đo"}</span>
+          <Metric step={3} label="Hoàn thành tác vụ lành tính (USR)" value={k.usr_off ? pct(k.usr_off.p) : "Chưa đo"} unmeasured={!k.usr_off}>
+            <Sample rate={k.usr_off} noun="câu lành tính" />
+            <span className="block">Chặn nhầm (FRR) <span className="num font-mono text-slate-800">{k.frr ? pct(k.frr.p) : "chưa đo"}</span></span>
           </Metric>
           <Metric label="Lượt chạy hợp lệ" value={int(valid)}>
-            Trên tổng <span className="num">{int(k.n_runs)}</span> · <span className="num">{int(k.n_parse_error)}</span> lỗi hạ tầng loại khỏi mẫu số
+            <span className="block">Trên tổng <span className="num font-mono text-slate-800">{int(k.n_runs)}</span></span>
+            <span className="block"><span className="num font-mono text-slate-800">{int(k.n_parse_error)}</span> lỗi hạ tầng loại khỏi mẫu số</span>
           </Metric>
-        </Card>
-        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
+        </div>
+        <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-600">
           <span>Kết cục bị chặn:</span>
           <Count label={BLOCKED_LABEL.defense} value={k.blocked_by.defense} />
           <Count label={BLOCKED_LABEL.model_refusal} value={k.blocked_by.model_refusal} />

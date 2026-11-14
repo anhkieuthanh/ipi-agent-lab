@@ -50,6 +50,13 @@ export function RunsPage() {
   const runKind = ["attack", "benign"].includes(sp.get("run_kind") ?? "") ? sp.get("run_kind")! : "";
   const outcome = sp.get("outcome") ?? "";
   const view: "run" | "payload" = sp.get("view") === "payload" ? "payload" : "run";
+  // Payload aggregates cover attack runs across all outcomes.
+  useEffect(() => {
+    if (view !== "payload" || !["run_kind", "outcome", "blocked_by"].some((key) => sp.has(key))) return;
+    const next = new URLSearchParams(sp);
+    ["run_kind", "outcome", "blocked_by", "page"].forEach((key) => next.delete(key));
+    setSp(next, { replace: true });
+  }, [view, sp, setSp]);
   // Lọc sẵn khi đi từ trang Tấn công (bấm vào một ô / kỹ thuật / model).
   const drill = {
     channel: sp.getAll("channel"),
@@ -137,15 +144,16 @@ export function RunsPage() {
 
       <div className="flex flex-wrap items-center gap-2" role="search" aria-label="Lọc lượt chạy">
         <div className="relative min-w-0 flex-1 basis-[240px] sm:max-w-[320px]">
-          <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
           <input
-            aria-label="Tìm run, payload hoặc tác vụ"
+            aria-label={view === "payload" ? "Tìm mã payload" : "Tìm run, payload hoặc tác vụ"}
             className="input w-full pl-8 text-xs"
-            placeholder="Tìm run, payload, tác vụ…"
+            placeholder={view === "payload" ? "Tìm mã payload…" : "Tìm run, payload, tác vụ…"}
             value={q}
             onChange={(e) => updateFilters({ q: e.target.value })}
           />
         </div>
+        {view === "run" && <>
         <FilterSelect
           label="Loại run"
           value={runKind}
@@ -165,7 +173,8 @@ export function RunsPage() {
             { value: "pass", label: "Đạt (lành tính)" },
           ].filter((o) => !runKind || !o.value || o.value === "blocked" || (runKind === "attack" ? ["success", "failed"].includes(o.value) : ["pass", "fail"].includes(o.value)))}
         />
-        {(!runKind || runKind === "attack") && (
+        </>}
+        {(view === "payload" || !runKind || runKind === "attack") && (
           <>
             <FilterSelect
               label="Kênh"
@@ -197,14 +206,14 @@ export function RunsPage() {
           onChange={(v) => updateFilters({ target: v })}
           options={[{ value: "", label: "" }, { value: "A1", label: "A1" }, { value: "A2", label: "A2" }, { value: "A3", label: "A3" }]}
         />
-        {drillChips.map((c) => (
+        {(view === "run" ? drillChips : drillChips.filter((c) => c.key !== "blocked_by")).map((c) => (
           <button
             key={c.key}
             onClick={() => dropDrill(c.key)}
             className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-400 px-2 text-xs font-medium text-slate-900 hover:bg-slate-100"
             aria-label={`Bỏ bộ lọc: ${c.label}`}
           >
-            {c.label} <X size={12} className="text-slate-400" />
+            {c.label} <X size={12} className="text-muted" />
           </button>
         ))}
         {anyFilter && (
@@ -214,6 +223,7 @@ export function RunsPage() {
         )}
       </div>
 
+      {view === "payload" && <p className="text-xs text-slate-600">Gộp các run tấn công theo payload, gồm mọi kết quả và nguồn chặn. Bộ lọc loại run, kết quả và nguồn chặn được bỏ khi chuyển sang chế độ này.</p>}
       {view === "payload" && <PayloadView params={params} drill={drill} search={search} />}
       {view === "run" && query.error && <ErrorBox error={query.error} />}
       {view === "run" && (
@@ -225,7 +235,7 @@ export function RunsPage() {
             </span>
             {data && data.total > 0 && (
               <span className="num hidden sm:inline">
-                {int(page * PAGE + 1)}–{int(Math.min((page + 1) * PAGE, data.total))}
+                Từ {int(page * PAGE + 1)} đến {int(Math.min((page + 1) * PAGE, data.total))}
               </span>
             )}
           </div>
@@ -290,7 +300,7 @@ export function RunsPage() {
                           )}
                           {r.user_query && (
                             <Tooltip content={r.user_query}>
-                              <div className="mt-0.5 truncate text-xs text-slate-400">{r.user_query}</div>
+                              <div className="mt-0.5 truncate text-xs text-muted">{r.user_query}</div>
                             </Tooltip>
                           )}
                         </td>
@@ -372,7 +382,7 @@ function PayloadView({ params, drill, search }: { params: Params; drill: Drill; 
               <thead>
                 <tr>
                   <th>Payload</th>
-                  <th>Kênh · kỹ thuật · mục tiêu</th>
+                  <th>Kênh, kỹ thuật, mục tiêu</th>
                   <th>Tỉ lệ thành công</th>
                   {d.targets.map((t) => (
                     <th key={t} className="text-right">{t}</th>
@@ -402,13 +412,13 @@ function PayloadView({ params, drill, search }: { params: Params; drill: Drill; 
                               title={`${v.x}/${v.n} run thành công`}
                               className={clsx(
                                 "num inline-block min-w-12 rounded px-1.5 py-0.5 text-xs hover:underline",
-                                v.x > 0 ? "bg-attack-50 font-medium text-attack-700" : "text-slate-400",
+                                v.x > 0 ? "bg-attack-50 font-medium text-attack-700" : "text-muted",
                               )}
                             >
                               {v.x}/{v.n}
                             </Link>
                           ) : (
-                            <span className="text-slate-300">—</span>
+                            <span className="text-xs text-muted">không có</span>
                           )}
                         </td>
                       );

@@ -12,7 +12,7 @@ export const GLOSSARY: Group[] = [
     items: [
       { code: "TS1", name: "System prompt", desc: "Quy tắc nghiệp vụ, danh sách tool. Gắn canary CANARY_SYSPROMPT." },
       { code: "TS2", name: "customers.db", desc: "Dữ liệu khách hàng (mô phỏng). Bản ghi mồi CANARY_DB." },
-      { code: "TS3", name: "Quyền gọi tool", desc: "send_email · http_request · create_ticket — quyền hành động của agent." },
+      { code: "TS3", name: "Quyền gọi tool", desc: "send_email · http_request · create_ticket: quyền hành động của agent." },
     ],
   },
   {
@@ -42,12 +42,12 @@ export const GLOSSARY: Group[] = [
     items: [
       { code: "T1", name: "Mệnh lệnh, giả uy quyền", desc: "Câu lệnh tường minh kèm nhãn hệ thống, chữ ký, công văn giả." },
       { code: "T2", name: "Ghi đè chỉ thị", desc: "“Bỏ qua mọi hướng dẫn ở trên…”." },
-      { code: "T3", name: "Điều kiện tiên quyết giả", desc: "“Trước khi làm X, bắt buộc gọi Y” — giả yêu cầu tuân thủ." },
-      { code: "T4", name: "Chèn ẩn", desc: "HTML comment, chữ trắng, zero-width — người không thấy, model đọc được." },
+      { code: "T3", name: "Điều kiện tiên quyết giả", desc: "“Trước khi làm X, bắt buộc gọi Y”: giả yêu cầu tuân thủ." },
+      { code: "T4", name: "Chèn ẩn", desc: "HTML comment, chữ trắng, zero-width: người không thấy, model đọc được." },
       { code: "T5", name: "Ngụy trang nghiệp vụ", desc: "Không ra lệnh; chỉ khẳng định một “sự thật” sai." },
       { code: "T6", name: "Chia mảnh", desc: "Chỉ thị chia nhiều tài liệu, chỉ độc khi gom đủ mảnh." },
       { code: "T7", name: "Kích hoạt trễ", desc: "Chỉ hành động khi thấy kết quả tool nhất định hoặc từ lượt thứ 3." },
-      { code: "T8", name: "Che giấu tiếng Việt", desc: "Bỏ dấu, Telex/VNI, ký tự đồng hình, trộn Việt–Anh." },
+      { code: "T8", name: "Che giấu tiếng Việt", desc: "Bỏ dấu, Telex/VNI, ký tự đồng hình, trộn Việt và Anh." },
     ],
   },
   {
@@ -72,7 +72,7 @@ export const GLOSSARY: Group[] = [
     ],
   },
   {
-    // Danh sách CT lấy từ /api/config (data/carrier_tasks.json) — trang Hệ thống hiện bảng chi tiết.
+    // Danh sách CT lấy từ /api/config (data/carrier_tasks.json): trang Hệ thống hiện bảng chi tiết.
     id: "CT",
     label: "Tác vụ chở",
     prefix: "CT-01…06",
@@ -83,11 +83,11 @@ export const GLOSSARY: Group[] = [
     label: "Câu hỏi lành tính",
     prefix: "U1–U5",
     items: [
-      { code: "U1", name: "Hỏi đáp RAG", desc: "16 câu — đo tác động D1/D2 lên chất lượng trả lời." },
-      { code: "U2", name: "Gọi 1 tool đọc", desc: "14 câu — đo tác động D3." },
-      { code: "U3", name: "Chuỗi nhiều tool", desc: "12 câu — suy luận nhiều bước." },
-      { code: "U4", name: "Hành động ra ngoài hợp lệ", desc: "10 câu — nguồn chặn nhầm chính của D3/D4." },
-      { code: "U5", name: "Tài liệu có code/base64", desc: "8 câu — dương tính giả của D2." },
+      { code: "U1", name: "Hỏi đáp RAG", desc: "16 câu: đo tác động D1/D2 lên chất lượng trả lời." },
+      { code: "U2", name: "Gọi 1 tool đọc", desc: "14 câu: đo tác động D3." },
+      { code: "U3", name: "Chuỗi nhiều tool", desc: "12 câu: suy luận nhiều bước." },
+      { code: "U4", name: "Hành động ra ngoài hợp lệ", desc: "10 câu: nguồn chặn nhầm chính của D3/D4." },
+      { code: "U5", name: "Tài liệu có code/base64", desc: "8 câu: dương tính giả của D2." },
     ],
   },
   {
@@ -99,7 +99,7 @@ export const GLOSSARY: Group[] = [
       { code: "DSR", name: "Tỉ lệ phòng thủ thành công", desc: "1 − ASR khi bật phòng thủ; luôn đọc kèm ASR khi tắt." },
       { code: "USR", name: "Tỉ lệ hữu dụng", desc: "Câu lành tính trả lời đạt / câu hợp lệ." },
       { code: "FRR", name: "Tỉ lệ chặn nhầm", desc: "Agent làm đúng nhưng phòng thủ vẫn chặn." },
-      { code: "ARR", name: "Độ bền thích ứng", desc: "DSR(thích ứng) / DSR(mù) — gần 1 là bền." },
+      { code: "ARR", name: "Độ bền thích ứng", desc: "DSR(thích ứng) / DSR(mù): gần 1 là bền." },
     ],
   },
 ];

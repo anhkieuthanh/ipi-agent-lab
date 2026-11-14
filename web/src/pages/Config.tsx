@@ -20,7 +20,7 @@ function PinTag({ tag }: { tag?: string }) {
   if (!tag) return null;
   return (
     <span className="inline-flex h-6 items-center gap-1.5 rounded-md border border-slate-200 px-2 font-mono text-xs font-medium text-slate-800">
-      <Lock size={12} className="text-slate-400" aria-hidden="true" />
+      <Lock size={12} className="text-muted" aria-hidden="true" />
       {tag}
     </span>
   );
@@ -82,7 +82,7 @@ function ModelsCard({ d, tag }: { d: ConfigSummary; tag?: string }) {
             ))}
             <tr>
               <th colSpan={6} scope="colgroup" className="bg-slate-50 text-xs font-medium text-slate-500">
-                Model phụ trợ — không phải model đích
+                Model phụ trợ, không phải model đích
               </th>
             </tr>
             {d.aux_models.map((m) => (
@@ -97,7 +97,7 @@ function ModelsCard({ d, tag }: { d: ConfigSummary; tag?: string }) {
                 <td className="whitespace-nowrap text-slate-700">{channelLabel(m.provider)}</td>
                 <PriceCells m={m} />
                 <td>
-                  <span className="text-slate-300">—</span>
+                  <span className="text-xs text-muted">Không có</span>
                 </td>
               </tr>
             ))}
@@ -165,7 +165,7 @@ function SandboxCard({ limits }: { limits: SandboxLimits }) {
     <Card>
       <CardHeader
         title={limits.label ?? "Model thử ngoài bộ đo"}
-        subtitle="Thay model đích cho lượt demo ở Phòng thí nghiệm — không đổi A1–A3."
+        subtitle="Thay model đích cho lượt demo ở Phòng thí nghiệm, không đổi A1–A3."
         action={
           saved ? (
             <Badge tone="warn" dot>
@@ -234,7 +234,7 @@ function SandboxCard({ limits }: { limits: SandboxLimits }) {
           <Field label="Giá vào (USD/Mtok)" error={show("price_in")}>
             <input className="input num" inputMode="decimal" value={draft.price_in} onChange={set("price_in")} placeholder="0.50" />
           </Field>
-          <Field label={<span className="inline-flex items-center gap-1">Giá ra (USD/Mtok)<InfoDot>Đơn giá dùng để canh ngân sách lượt demo (BudgetGuard) — nhập theo bảng giá của nhà cung cấp.</InfoDot></span>} error={show("price_out")}>
+          <Field label={<span className="inline-flex items-center gap-1">Giá ra (USD/Mtok)<InfoDot>Đơn giá dùng để canh ngân sách lượt demo (BudgetGuard), nhập theo bảng giá của nhà cung cấp.</InfoDot></span>} error={show("price_out")}>
             <input className="input num" inputMode="decimal" value={draft.price_out} onChange={set("price_out")} placeholder="1.50" />
           </Field>
         </div>
@@ -285,7 +285,7 @@ export function ConfigPage() {
     <>
       <PageHeader
         title="Cấu hình"
-        info="Hợp đồng thực nghiệm đã chốt, chỉ đọc — thay đổi đi qua config/ và tài liệu. Riêng model thử ngoài bộ đo đặt được ở đây, chỉ cho demo."
+        description="Hợp đồng thực nghiệm đã chốt, chỉ đọc. Thay đổi đi qua config/ và tài liệu. Riêng model thử ngoài bộ đo đặt được ở đây, chỉ cho demo."
       />
 
       <div className="space-y-4">

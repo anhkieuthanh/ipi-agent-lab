@@ -45,6 +45,13 @@ export function when(raw: string | null | undefined): string {
   return d.toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+/** Nhãn kết luận viết hoa toàn bộ (vd "TẤN CÔNG KHÔNG ĐẠT") hiển thị dạng câu; nhãn đã có chữ thường giữ nguyên. */
+export function sentence(label: string): string {
+  if (label !== label.toUpperCase()) return label;
+  const lower = label.toLocaleLowerCase("vi");
+  return lower.charAt(0).toLocaleUpperCase("vi") + lower.slice(1);
+}
+
 export function ci(lo: number | null | undefined, hi: number | null | undefined): string {
   if (lo === null || lo === undefined || hi === null || hi === undefined) return "";
   return `${pct(lo, 0)}–${pct(hi, 0)}`;

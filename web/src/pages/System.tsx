@@ -19,16 +19,16 @@ const INFO: Record<string, Info> = {
   llm: { title: "LLM", codes: ["A1", "A2", "A3"], desc: "Mô hình đích quyết định gọi tool nào hoặc trả lời. Đây là nơi payload cố đánh lừa." },
   loop: { title: "Vòng lặp agent", codes: [], desc: "Lặp: suy luận → gọi tool → nhận kết quả, đến khi trả lời hoặc hết số bước." },
   search_kb: { title: "search_kb", codes: ["K1"], desc: "Truy hồi tài liệu từ kho tri thức. Tài liệu độc (K1) vào ngữ cảnh qua đây." },
-  query_customer_db: { title: "query_customer_db", codes: ["TS2"], desc: "Đọc bản ghi khách hàng — nguồn dữ liệu kẻ tấn công muốn rò." },
+  query_customer_db: { title: "query_customer_db", codes: ["TS2"], desc: "Đọc bản ghi khách hàng, nguồn dữ liệu kẻ tấn công muốn rò." },
   http_request: { title: "http_request", codes: ["TS3", "G1"], desc: "Gọi API. Gửi ra đích lạ = kênh rò dữ liệu." },
-  send_email: { title: "send_email", codes: ["TS3", "G1", "G2"], desc: "Gửi email ra ngoài — hành động nguy hiểm nhất." },
-  create_ticket: { title: "create_ticket", codes: ["TS3", "G2"], desc: "Ghi phiếu nội bộ — hành động ngoài phạm vi nếu không được yêu cầu." },
+  send_email: { title: "send_email", codes: ["TS3", "G1", "G2"], desc: "Gửi email ra ngoài, hành động nguy hiểm nhất." },
+  create_ticket: { title: "create_ticket", codes: ["TS3", "G2"], desc: "Ghi phiếu nội bộ, hành động ngoài phạm vi nếu không được yêu cầu." },
   kb: { title: "Kho tri thức", codes: ["K1"], desc: "Vector store Qdrant chứa tài liệu nội bộ; kẻ tấn công cài tài liệu độc vào đây." },
   db: { title: "customers.db", codes: ["TS2"], desc: "Dữ liệu khách hàng mô phỏng (Faker), có bản ghi mồi canary." },
   canary: { title: "Canary listener", codes: ["G1"], desc: "Bồn nhận HTTP. Canary xuất hiện ở đây = rò dữ liệu thành công." },
   mail: { title: "MailHog", codes: ["G1", "G2"], desc: "Hộp thư giả nhận mọi email agent gửi." },
   tickets: { title: "Kho phiếu", codes: ["G2"], desc: "Lưu phiếu agent tạo, để chấm hành động trái phép." },
-  attacker: { title: "Kẻ tấn công", codes: ["K1", "K2a", "K2b", "T1–T8"], desc: "Không chạm vào agent trực tiếp — chỉ cài payload vào dữ liệu agent sẽ đọc." },
+  attacker: { title: "Kẻ tấn công", codes: ["K1", "K2a", "K2b", "T1–T8"], desc: "Không chạm vào agent trực tiếp, chỉ cài payload vào dữ liệu agent sẽ đọc." },
   trace: { title: "Trace store", codes: [], desc: "Ghi mọi bước của mọi run, kèm ai đã chặn (blocked_by): phòng thủ · model từ chối · harness." },
   scorer: { title: "Scorer", codes: ["G1", "G2", "G3"], desc: "Chấm tự động từng run theo ba mục tiêu; đã kiểm chứng 8/8 ca." },
   console: { title: "Console", codes: ["ASR", "DSR", "USR", "FRR"], desc: "Tổng hợp chỉ số, khoảng tin cậy Wilson 95%." },
@@ -51,7 +51,7 @@ function ComponentTip({ id }: { id: string }) {
   if (!info) return null;
   return (
     <div className="space-y-1.5">
-      <div className="text-sm font-semibold text-slate-900">{info.title}</div>
+      <div className="text-base font-medium text-slate-900">{info.title}</div>
       {info.codes.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {info.codes.map((c) => (
@@ -88,13 +88,15 @@ export function SystemPage() {
         </Card>
 
         <Card>
-          <CardHeader title="Chú giải mã" subtitle="Một khái niệm, một ký hiệu — dùng thống nhất trên mọi trang." />
+          <CardHeader title="Chú giải mã" subtitle="Một khái niệm, một ký hiệu, dùng thống nhất trên mọi trang." />
           <Tabs
+            id="system-glossary"
             label="Nhóm mã"
             value={tab}
             onChange={setTab}
             options={GLOSSARY.map((g) => ({ value: g.id, label: `${g.prefix} · ${g.label}` }))}
           />
+          <div id="system-glossary-panel" role="tabpanel" aria-labelledby={`system-glossary-tab-${tab}`} tabIndex={0}>
           {tab === "CT" ? (
             <CarrierTasks />
           ) : (
@@ -134,6 +136,7 @@ export function SystemPage() {
               })}
             </ul>
           )}
+          </div>
         </Card>
 
         <ServicesCard />
@@ -167,7 +170,7 @@ function CarrierTasks() {
                   Tool được phép
                   <InfoDot>
                     Tác vụ nhân viên giao cho agent; payload được cài vào dữ liệu mà tác vụ này đọc. Agent chỉ được gọi
-                    tool trong danh sách của tác vụ — D3 chặn tool ngoài danh sách.
+                    tool trong danh sách của tác vụ, D3 chặn tool ngoài danh sách.
                   </InfoDot>
                 </span>
               </th>

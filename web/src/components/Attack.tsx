@@ -155,7 +155,7 @@ export function AttackBrief({ scenario }: { scenario: Scenario }) {
               )}
             </>
           ) : (
-            <p className="text-sm text-slate-700">Không gọi tool — nhắc lại thông tin sai như sự thật.</p>
+            <p className="text-sm text-slate-700">Không gọi tool, nhắc lại thông tin sai như sự thật.</p>
           )}
         </Stage>
       </div>

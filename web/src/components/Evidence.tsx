@@ -55,7 +55,7 @@ function ItemView({ goal, item, seenAt }: { goal: string; item: EvidenceItem; se
 
 /** Thân khối bằng chứng — không bọc Card (trang chi tiết run đặt trong tab). */
 export function GoalEvidenceBody({ ev }: { ev: Evidence | null | undefined }) {
-  if (!ev) return <p className="text-sm text-slate-500">Run lành tính — không chấm G1/G2/G3.</p>;
+  if (!ev) return <p className="text-sm text-slate-500">Run lành tính, không chấm G1/G2/G3.</p>;
   if ("error" in ev) return <Callout tone="warn" title="Không dựng được bằng chứng">{ev.error}</Callout>;
   const shown = new Map<number, string>(); // bước đã in đầy đủ → mục tiêu đã in
   return (
@@ -73,7 +73,7 @@ export function GoalEvidenceBody({ ev }: { ev: Evidence | null | undefined }) {
         return (
           <section key={g}>
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-semibold text-slate-900">
+              <h3 className="text-base font-medium text-slate-900">
                 {g} · {GOAL_LABEL[g]}
               </h3>
               <Badge tone={goal.hit ? "attack" : "neutral"} dot={goal.hit}>
@@ -98,7 +98,7 @@ export function GoalEvidenceBody({ ev }: { ev: Evidence | null | undefined }) {
               </div>
             ) : (
               <p className="text-sm text-slate-500">
-                {g === "G1" && !goal.has_canaries ? "Run không có canary — không chấm G1 được." : EMPTY[g]}
+                {g === "G1" && !goal.has_canaries ? "Run không có canary, không chấm G1 được." : EMPTY[g]}
               </p>
             )}
           </section>

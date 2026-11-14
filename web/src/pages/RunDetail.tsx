@@ -9,7 +9,7 @@ import { HighlightText, InjectedContext, ToolActions, TraceInspector, TraceLegen
 import { TraceReplay } from "@/components/TraceReplay";
 import { Badge, Callout, Card, ErrorBox, KeyValue, Loading, Mono, Tabs, Tooltip, buttonClass } from "@/components/ui";
 import { api, type PayloadSource, type RunDetail } from "@/lib/api";
-import { CHANNEL_LABEL, GOAL_LABEL, int, presetLabel, seconds, when } from "@/lib/format";
+import { CHANNEL_LABEL, GOAL_LABEL, int, presetLabel, seconds, sentence, when } from "@/lib/format";
 
 type Tab = "evidence" | "trace" | "tools" | "answer" | "payload" | "replay";
 
@@ -19,13 +19,13 @@ function sourceNote(src: PayloadSource): string {
   if (src.kind === "batch_file")
     return `Nguồn: file payload của lô ${src.file}${src.at === "commit" ? ` ở commit ${src.commit}` : " (bản trên đĩa)"}.`;
   if (src.kind === "current")
-    return `Nguồn: corpus hiện hành — ${src.commit_found ? `commit ${src.commit} của run không chứa payload này` : `không tra được commit ${src.commit ?? "của run"}`}, nội dung có thể khác bản đã chạy.`;
+    return `Nguồn: corpus hiện hành; ${src.commit_found ? `commit ${src.commit} của run không chứa payload này` : `không tra được commit ${src.commit ?? "của run"}`}, nội dung có thể khác bản đã chạy.`;
   return "";
 }
 
 function missingReason(src: PayloadSource): string {
   const at = src.commit ? (src.commit_found ? `corpus ở commit ${src.commit} của run` : `commit ${src.commit} (không còn trong repo)`) : "commit của run";
-  return `Payload không có trong ${at}, trong file payload của lô, hay trong corpus hiện hành — thường là lô dò sinh payload riêng mà không ghi manifest.`;
+  return `Payload không có trong ${at}, trong file payload của lô, hay trong corpus hiện hành, thường là lô dò sinh payload riêng mà không ghi manifest.`;
 }
 
 function CopyId({ id }: { id: string }) {
@@ -82,9 +82,9 @@ function Summary({ d }: { d: RunDetail }) {
     <header className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="flex min-w-0 gap-3">
-          <span className={clsx("w-[3px] shrink-0 rounded-full", TONE_BAR[d.verdict?.tone ?? ""] ?? "bg-slate-300")} aria-hidden="true" />
+          <span className={clsx("w-[3px] shrink-0 rounded-sm", TONE_BAR[d.verdict?.tone ?? ""] ?? "bg-slate-300")} aria-hidden="true" />
           <div className="min-w-0">
-            <h1 className="text-xl font-semibold text-slate-900">{d.verdict?.label ?? "Lượt lành tính"}</h1>
+            <h1 className="text-2xl font-medium text-slate-900">{d.verdict ? sentence(d.verdict.label) : "Lượt lành tính"}</h1>
             {d.verdict?.detail && <p className="mt-0.5 max-w-[80ch] text-sm text-slate-600">{d.verdict.detail}</p>}
           </div>
         </div>
@@ -101,7 +101,7 @@ function Summary({ d }: { d: RunDetail }) {
       </div>
 
       {d.user_query && (
-        <figure className="border-l-2 border-slate-200 pl-3">
+        <figure className="border-l border-slate-300 pl-4">
           <figcaption className="text-xs text-slate-500">
             {attack ? `Nhân viên hỏi · tác vụ chở ${d.user_query.id}` : `Câu lành tính ${d.user_query.id}`}
           </figcaption>
@@ -160,8 +160,8 @@ export function RunDetailPage() {
       )}
 
       <Card>
-        <Tabs label="Các mặt của lượt chạy" value={active} onChange={setTab} options={tabs} trailing={active === "trace" ? <TraceLegend /> : undefined} />
-        <div className="p-4">
+        <Tabs id="run-detail" label="Các mặt của lượt chạy" value={active} onChange={setTab} options={tabs} trailing={active === "trace" ? <TraceLegend /> : undefined} />
+        <div id="run-detail-panel" role="tabpanel" aria-labelledby={`run-detail-tab-${active}`} tabIndex={0} className="p-4">
           {active === "evidence" && <GoalEvidenceBody ev={d.evidence} />}
           {active === "trace" && (
             <div className="space-y-3">
@@ -177,7 +177,7 @@ export function RunDetailPage() {
                 <>
                   <pre className="code-block border-payload-200">{d.payload_text}</pre>
                   <p className="text-xs text-slate-500">
-                    Nhân viên không nhìn thấy đoạn này — nó nằm trong{" "}
+                    Nhân viên không nhìn thấy đoạn này, nó nằm trong{" "}
                     {run.channel ? CHANNEL_LABEL[String(run.channel)] ?? String(run.channel) : "dữ liệu"} mà agent đọc.
                   </p>
                 </>
@@ -186,7 +186,7 @@ export function RunDetailPage() {
                   {missingReason(d.payload_source)}
                 </Callout>
               )}
-              <p className="text-xs text-slate-400">{sourceNote(d.payload_source)}</p>
+              <p className="text-xs text-muted">{sourceNote(d.payload_source)}</p>
             </div>
           )}
           {active === "replay" && (

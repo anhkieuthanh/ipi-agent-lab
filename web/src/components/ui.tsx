@@ -7,7 +7,7 @@ import { AlertTriangle, CircleAlert, Info } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import type { Verdict } from "@/lib/api";
-import { BLOCKED_LABEL, OUTCOME_LABEL } from "@/lib/format";
+import { BLOCKED_LABEL, OUTCOME_LABEL, sentence } from "@/lib/format";
 
 /* ───────────── Bề mặt ───────────── */
 
@@ -27,8 +27,8 @@ export function CardHeader({
   icon?: ReactNode;
 }) {
   return (
-    <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2">
-      <h2 className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-semibold text-slate-900">
+    <div className="flex min-h-12 flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-2.5">
+      <h2 className="flex min-w-0 flex-1 items-center gap-1.5 text-base font-medium text-slate-900">
         {title}
         {/* Giải thích của khối nằm sau ⓘ: mặt giao diện chỉ giữ tiêu đề và số liệu. */}
         {subtitle && <InfoDot>{subtitle}</InfoDot>}
@@ -41,8 +41,8 @@ export function CardHeader({
 /** Tiêu đề một vùng nội dung không nằm trong thẻ. */
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
-    <div className="mb-2 flex items-center justify-between gap-3">
-      <h2 className="text-sm font-semibold text-slate-900">{children}</h2>
+    <div className="mb-3 flex items-center justify-between gap-3">
+      <h2 className="text-base font-medium text-slate-900">{children}</h2>
       {action}
     </div>
   );
@@ -60,17 +60,15 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-5 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-      <h1 className="flex min-w-0 items-center gap-2 text-xl font-semibold text-slate-900">
-        <span className="min-w-0 break-words">{title}</span>
-        {(description || info) && (
-          <InfoDot>
-            {description}
-            {description && info && <span className="mt-1.5 block" />}
-            {info}
-          </InfoDot>
-        )}
-      </h1>
+    <div className="mb-7 flex flex-wrap items-end justify-between gap-x-8 gap-y-4 border-b border-slate-200 pb-5">
+      <div className="min-w-0 max-w-3xl">
+        <h1 className="flex min-w-0 items-center gap-2 text-2xl font-medium text-slate-900">
+          <span className="min-w-0 break-words">{title}</span>
+          {info && <InfoDot>{info}</InfoDot>}
+        </h1>
+        {/* Câu trang này trả lời: luôn hiện, để người xem biết nhìn vào đâu trước. */}
+        {description && <p className="mt-2 max-w-[68ch] text-base text-slate-600">{description}</p>}
+      </div>
       {actions && <div className="flex max-w-full flex-wrap items-center gap-2" data-chrome>{actions}</div>}
     </div>
   );
@@ -87,7 +85,7 @@ export function Tooltip({ content, children, side = "top" }: { content: ReactNod
           side={side}
           sideOffset={6}
           collisionPadding={8}
-          className="z-50 max-w-xs rounded-md bg-slate-900 px-2.5 py-1.5 text-xs leading-[18px] text-slate-50 shadow-pop"
+          className="z-50 max-w-sm rounded-md bg-slate-900 px-3 py-2 text-xs text-ground shadow-pop"
         >
           {content}
         </RTooltip.Content>
@@ -99,8 +97,8 @@ export function Tooltip({ content, children, side = "top" }: { content: ReactNod
 export function InfoDot({ children }: { children: ReactNode }) {
   return (
     <Tooltip content={children} side="bottom">
-      <button type="button" aria-label="Thông tin chi tiết" className="inline-flex rounded text-slate-400 hover:text-slate-600">
-        <Info size={14} />
+      <button type="button" aria-label="Thông tin chi tiết" className="inline-flex rounded text-muted transition-colors hover:text-brand-600 active:text-brand-700">
+        <Info size={15} strokeWidth={1.75} />
       </button>
     </Tooltip>
   );
@@ -110,18 +108,20 @@ export function InfoDot({ children }: { children: ReactNode }) {
 
 type Tone = "neutral" | "brand" | "attack" | "defense" | "refusal" | "payload" | "canary" | "warn";
 
+/** Chip trạng thái: nền nhạt, viền 1px cùng sắc, chữ đậm sắc. Chip chỉ mang trạng thái. */
 const TONE: Record<Tone, string> = {
-  neutral: "bg-slate-100 text-slate-600",
-  brand: "bg-brand-50 text-brand-700",
-  attack: "bg-attack-50 text-attack-700",
-  defense: "bg-defense-50 text-defense-700",
-  refusal: "bg-refusal-50 text-refusal-700",
-  payload: "bg-payload-50 text-payload-600",
-  canary: "bg-canary-50 text-canary-600",
-  warn: "bg-amber-50 text-amber-700",
+  neutral: "border-slate-200 bg-slate-50 text-slate-700",
+  brand: "border-brand-100 bg-brand-50 text-brand-700",
+  attack: "border-attack-200 bg-attack-50 text-attack-700",
+  defense: "border-defense-200 bg-defense-50 text-defense-700",
+  refusal: "border-refusal-200 bg-refusal-50 text-refusal-700",
+  payload: "border-payload-200 bg-payload-50 text-payload-700",
+  canary: "border-canary-200 bg-canary-50 text-canary-700",
+  warn: "border-amber-200 bg-amber-50 text-amber-800",
 };
 
-const DOT: Record<Tone, string> = {
+/** Vạch đánh dấu cạnh chữ trạng thái trong bảng. */
+const MARK: Record<Tone, string> = {
   neutral: "bg-slate-400",
   brand: "bg-brand-500",
   attack: "bg-attack-500",
@@ -144,18 +144,18 @@ export function Badge({
   dot?: boolean;
 }) {
   return (
-    <span className={clsx("inline-flex h-5 items-center gap-1 whitespace-nowrap rounded px-1.5 text-xs font-medium", TONE[tone], className)}>
-      {dot && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
+    <span className={clsx("inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded border px-2 text-xs font-medium", TONE[tone], className)}>
+      {dot && <span className={clsx("h-3 w-[3px] rounded-sm", MARK[tone])} aria-hidden="true" />}
       {children}
     </span>
   );
 }
 
-/** Trạng thái trong bảng: chấm màu + chữ trung tính. Nghĩa nằm ở chữ, màu chỉ hỗ trợ. */
+/** Trạng thái trong bảng: vạch màu + chữ. Nghĩa nằm ở chữ, màu chỉ hỗ trợ. */
 export function Status({ tone = "neutral", children }: { tone?: Tone; children: ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm text-slate-700">
-      <span className={clsx("h-2 w-2 shrink-0 rounded-full", DOT[tone])} aria-hidden="true" />
+    <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm text-slate-800">
+      <span className={clsx("h-3.5 w-[3px] shrink-0 rounded-sm", MARK[tone])} aria-hidden="true" />
       {children}
     </span>
   );
@@ -186,18 +186,22 @@ export function Kbd({ children }: { children: ReactNode }) {
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 
+/** Cặp nút của Console: hổ phách đặc cho thao tác chính duy nhất, viền mảnh cho phần còn lại. */
 const BUTTON: Record<ButtonVariant, string> = {
-  primary: "bg-slate-900 text-surface hover:bg-slate-800 disabled:bg-slate-300",
-  secondary: "border border-slate-200 bg-surface text-slate-700 hover:border-slate-300 hover:bg-slate-50 disabled:text-slate-400",
-  ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:text-slate-300",
-  danger: "bg-attack-500 text-white hover:bg-attack-600 disabled:bg-slate-300",
+  primary:
+    "border border-brand-500 bg-brand-500 text-accent-ink hover:border-amber-400 hover:bg-amber-400 active:brightness-95 disabled:border-slate-200 disabled:bg-slate-100 disabled:text-muted",
+  secondary:
+    "border border-slate-300 bg-surface text-slate-800 hover:border-slate-400 hover:bg-slate-50 active:bg-slate-100 disabled:border-slate-200 disabled:text-muted",
+  ghost: "text-slate-700 hover:bg-slate-100 hover:text-slate-900 active:bg-slate-200 disabled:text-muted",
+  danger:
+    "border border-attack-600 bg-attack-600 text-surface hover:bg-attack-700 active:brightness-95 disabled:border-slate-200 disabled:bg-slate-100 disabled:text-muted",
 };
 
 /** Lớp kiểu của nút — dùng cho `<Link>` hoặc `<a>` cần trông như nút. */
 export function buttonClass(variant: ButtonVariant = "secondary", size: "sm" | "md" = "md") {
   return clsx(
-    "inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md font-medium transition-colors",
-    size === "sm" ? "h-7 px-2 text-xs" : "h-8 px-3 text-sm",
+    "touch-target inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md font-medium transition-colors",
+    size === "sm" ? "h-8 px-2.5 text-xs" : "h-9 px-3.5 text-sm",
     BUTTON[variant],
   );
 }
@@ -274,7 +278,7 @@ export function Segmented<T extends string>({
   label?: string;
 }) {
   return (
-    <div role="group" aria-label={label} className="inline-flex max-w-full flex-wrap gap-0.5 rounded-md bg-slate-100 p-0.5">
+    <div role="group" aria-label={label} className="inline-flex max-w-full flex-wrap gap-0.5 rounded-md border border-slate-200 bg-slate-50 p-0.5">
       {options.map((o) => (
         <button
           key={o.value}
@@ -282,12 +286,14 @@ export function Segmented<T extends string>({
           aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
           className={clsx(
-            "inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded px-2.5 text-sm font-medium transition-colors",
-            value === o.value ? "bg-surface text-slate-900 shadow-[0_0_0_1px_rgb(var(--n-200))]" : "text-slate-500 hover:text-slate-800",
+            "inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded px-3 text-sm font-medium transition-colors",
+            value === o.value
+              ? "bg-brand-50 text-slate-900 shadow-[inset_0_0_0_1px_rgb(var(--brand-500))]"
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 active:bg-slate-200",
           )}
         >
           {o.label}
-          {o.count !== undefined && <span className="num text-xs text-slate-400">{o.count}</span>}
+          {o.count !== undefined && <span className="num text-xs text-muted">{o.count}</span>}
         </button>
       ))}
     </div>
@@ -301,30 +307,45 @@ export function Tabs<T extends string>({
   options,
   label,
   trailing,
+  id,
 }: {
   value: T;
   onChange: (v: T) => void;
   options: { value: T; label: string; count?: number }[];
   label: string;
   trailing?: ReactNode;
+  id: string;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 border-b border-slate-200 px-4">
-      <div role="tablist" aria-label={label} className="-mb-px flex max-w-full gap-5 overflow-x-auto">
+    <div className="flex flex-wrap items-center justify-between gap-x-4 border-b border-slate-200 px-5">
+      <div role="tablist" aria-label={label} className="-mb-px flex max-w-full gap-6 overflow-x-auto">
         {options.map((o) => (
           <button
             key={o.value}
             type="button"
             role="tab"
+            id={`${id}-tab-${o.value}`}
+            aria-controls={`${id}-panel`}
+            tabIndex={value === o.value ? 0 : -1}
+            onKeyDown={(e) => {
+              const index = options.findIndex((option) => option.value === o.value);
+              const next = e.key === "ArrowRight" ? (index + 1) % options.length
+                : e.key === "ArrowLeft" ? (index - 1 + options.length) % options.length
+                : e.key === "Home" ? 0 : e.key === "End" ? options.length - 1 : -1;
+              if (next < 0) return;
+              e.preventDefault();
+              onChange(options[next].value);
+              document.getElementById(`${id}-tab-${options[next].value}`)?.focus();
+            }}
             aria-selected={value === o.value}
             onClick={() => onChange(o.value)}
             className={clsx(
-              "inline-flex h-10 items-center gap-1.5 whitespace-nowrap border-b-2 text-sm font-medium transition-colors",
-              value === o.value ? "border-slate-900 text-slate-900" : "border-transparent text-slate-500 hover:text-slate-800",
+              "inline-flex h-11 items-center gap-1.5 whitespace-nowrap border-b-2 text-sm font-medium transition-colors",
+              value === o.value ? "border-brand-500 text-slate-900" : "border-transparent text-slate-600 hover:text-slate-900 active:text-slate-900",
             )}
           >
             {o.label}
-            {o.count !== undefined && <span className="num text-xs font-normal text-slate-400">{o.count}</span>}
+            {o.count !== undefined && <span className="num text-xs font-normal text-muted">{o.count}</span>}
           </button>
         ))}
       </div>
@@ -341,17 +362,25 @@ export function Metric({
   value,
   unmeasured,
   children,
+  step,
 }: {
   label: ReactNode;
   value: ReactNode;
   unmeasured?: boolean;
   children?: ReactNode;
+  /** Vị trí của chỉ số trong câu chuyện tấn công → phòng thủ → hữu dụng. */
+  step?: number;
 }) {
   return (
-    <div className="min-w-0 px-4 py-3.5">
-      <div className="text-xs font-medium text-slate-500">{label}</div>
-      <div className={clsx("num mt-1.5", unmeasured ? "text-xl text-slate-400" : "text-3xl font-semibold text-slate-900")}>{value}</div>
-      {children && <div className="mt-1.5 text-xs leading-[18px] text-slate-500">{children}</div>}
+    <div className="min-w-0 px-5 py-5">
+      <div className="flex items-start gap-2 text-sm font-medium text-slate-600">
+        {step !== undefined && (
+          <span className="num mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded border border-slate-300 font-mono text-2xs text-slate-800">{step}</span>
+        )}
+        <span className="min-w-0">{label}</span>
+      </div>
+      <div className={clsx("mt-3", unmeasured ? "text-xl text-muted" : "reading text-4xl")}>{value}</div>
+      {children && <div className="mt-3 text-xs text-muted">{children}</div>}
     </div>
   );
 }
@@ -372,7 +401,7 @@ export function Stat({
   return (
     <Card>
       <Metric label={label} value={value}>{hint}</Metric>
-      {footer && <div className="border-t border-slate-100 px-4 py-2.5 text-xs">{footer}</div>}
+      {footer && <div className="border-t border-slate-200 px-5 py-3 text-xs">{footer}</div>}
     </Card>
   );
 }
@@ -389,15 +418,16 @@ export function RateBar({
   hi?: number | null;
   tone?: "attack" | "defense" | "brand";
 }) {
-  const color = { attack: "bg-attack-500", defense: "bg-defense-500", brand: "bg-brand-500" }[tone];
-  const band = { attack: "bg-attack-100", defense: "bg-defense-100", brand: "bg-brand-100" }[tone];
-  if (p === null || p === undefined) return <div className="h-1 w-full rounded-full bg-slate-100" />;
+  // "brand" ở đây là một tỉ lệ đo được (USR): vẽ bằng lam lạnh của thiết bị đo, không dùng hổ phách.
+  const color = { attack: "bg-attack-500", defense: "bg-defense-500", brand: "bg-canary-500" }[tone];
+  const band = { attack: "bg-attack-200", defense: "bg-defense-200", brand: "bg-canary-200" }[tone];
+  if (p === null || p === undefined) return <div className="h-1.5 w-full rounded-sm bg-slate-100" />;
   return (
-    <div className="relative h-1 w-full rounded-full bg-slate-100">
+    <div className="relative h-1.5 w-full rounded-sm bg-slate-100">
       {lo !== null && lo !== undefined && hi !== null && hi !== undefined && (
-        <div className={clsx("absolute inset-y-0 rounded-full", band)} style={{ left: `${lo * 100}%`, width: `${Math.max((hi - lo) * 100, 1)}%` }} />
+        <div className={clsx("absolute inset-y-0 rounded-sm", band)} style={{ left: `${lo * 100}%`, width: `${Math.max((hi - lo) * 100, 1)}%` }} />
       )}
-      <div className={clsx("absolute inset-y-0 left-0 rounded-full", color)} style={{ width: `${p * 100}%` }} />
+      <div className={clsx("absolute inset-y-0 left-0 rounded-sm", color)} style={{ width: `${p * 100}%` }} />
     </div>
   );
 }
@@ -408,8 +438,8 @@ export function KeyValue({ items, columns = 2 }: { items: [string, ReactNode][];
     <dl className={clsx("grid grid-cols-2 gap-x-4 gap-y-3", cols)}>
       {items.map(([k, v]) => (
         <div key={k} className="min-w-0">
-          <dt className="text-xs text-slate-500">{k}</dt>
-          <dd className="mt-0.5 break-words text-sm text-slate-800">{v ?? "—"}</dd>
+          <dt className="text-xs text-muted">{k}</dt>
+          <dd className="mt-1 break-words text-sm text-slate-900">{v ?? "—"}</dd>
         </div>
       ))}
     </dl>
@@ -426,7 +456,7 @@ export function Skeleton({ className }: { className?: string }) {
 export function Loading({ label = "Đang tải dữ liệu…", rows = 6 }: { label?: string; rows?: number }) {
   return (
     <div role="status" aria-live="polite" className="space-y-3 p-4">
-      <span className="sr-only">{label}</span>
+      <span className="text-sm text-muted">{label}</span>
       {Array.from({ length: rows }, (_, i) => (
         <Skeleton key={i} className={clsx("h-4", i % 3 === 0 ? "w-2/5" : i % 3 === 1 ? "w-4/5" : "w-3/5")} />
       ))}
@@ -446,25 +476,26 @@ export function Empty({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
-      {icon && <div className="mb-2 text-slate-300">{icon}</div>}
-      <div className="text-sm font-medium text-slate-800">{title}</div>
-      {children && <div className="mt-1 max-w-md text-xs leading-[18px] text-slate-500">{children}</div>}
+    <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
+      {icon && <div className="mb-3 text-slate-400">{icon}</div>}
+      <div className="text-base font-medium text-slate-900">{title}</div>
+      {children && <div className="mt-1.5 max-w-md text-sm text-slate-600">{children}</div>}
       {action && <div className="mt-3">{action}</div>}
     </div>
   );
 }
 
-export function ErrorBox({ error }: { error: unknown }) {
+export function ErrorBox({ error, title = "Không tải được dữ liệu", onRetry }: { error: unknown; title?: string; onRetry?: () => Promise<unknown> }) {
   const qc = useQueryClient();
   const [retrying, setRetrying] = useState(false);
   const msg = error instanceof Error ? error.message : String(error);
   return (
-    <div role="alert" className="flex items-start gap-2.5 rounded-md border border-attack-100 bg-attack-50 px-3 py-2.5 text-sm">
+    <div role="alert" className="flex items-start gap-3 rounded-lg border border-attack-200 bg-attack-50 px-4 py-3 text-sm">
       <CircleAlert size={15} className="mt-0.5 shrink-0 text-attack-600" />
       <div className="min-w-0 flex-1">
-        <div className="font-medium text-slate-900">Không tải được dữ liệu</div>
-        <div className="mt-0.5 break-words text-slate-600">{msg}</div>
+        <div className="font-medium text-slate-900">{title}</div>
+        <p className="mt-1 text-slate-600">Dữ liệu có thể chưa đầy đủ. Thử lại hoặc kiểm tra kết nối dịch vụ ở trang Hệ thống.</p>
+        <details className="mt-2 text-xs text-muted"><summary>Chi tiết kỹ thuật</summary><p className="mt-1 break-words">{msg}</p></details>
       </div>
       <Button
         size="sm"
@@ -472,7 +503,8 @@ export function ErrorBox({ error }: { error: unknown }) {
         onClick={async () => {
           setRetrying(true);
           try {
-            await qc.refetchQueries({ type: "active" });
+            if (onRetry) await onRetry();
+            else await qc.refetchQueries({ type: "active" });
           } finally {
             setRetrying(false);
           }
@@ -498,12 +530,12 @@ export function Callout({
   const box = {
     warn: "border-amber-200 bg-amber-50",
     brand: "border-slate-200 bg-slate-50",
-    attack: "border-attack-100 bg-attack-50",
-    defense: "border-defense-100 bg-defense-50",
+    attack: "border-attack-200 bg-attack-50",
+    defense: "border-defense-200 bg-defense-50",
   }[tone];
-  const ink = { warn: "text-amber-600", brand: "text-slate-400", attack: "text-attack-600", defense: "text-defense-600" }[tone];
+  const ink = { warn: "text-amber-700", brand: "text-muted", attack: "text-attack-600", defense: "text-defense-600" }[tone];
   return (
-    <div className={clsx("flex items-start gap-2.5 rounded-md border px-3 py-2.5 text-sm text-slate-600", box)}>
+    <div className={clsx("flex items-start gap-3 rounded-lg border px-4 py-3 text-sm text-slate-700", box)}>
       <span className={clsx("mt-0.5 shrink-0", ink)}>{icon ?? (tone === "brand" ? <Info size={15} /> : <AlertTriangle size={15} />)}</span>
       <div className="min-w-0">
         {title && <div className="font-medium text-slate-900">{title}</div>}
@@ -514,14 +546,11 @@ export function Callout({
 }
 
 export function VerdictBanner({ verdict }: { verdict: Verdict }) {
-  const bar = verdict.tone === "attack" ? "bg-attack-500" : verdict.tone === "defense" ? "bg-defense-500" : verdict.tone === "refusal" ? "bg-refusal-500" : "bg-slate-300";
+  const ink = verdict.tone === "attack" ? "text-attack-600" : verdict.tone === "defense" ? "text-defense-600" : verdict.tone === "refusal" ? "text-refusal-600" : "text-slate-700";
   return (
-    <div className="flex gap-3">
-      <span className={clsx("w-0.5 shrink-0 rounded-full", bar)} aria-hidden="true" />
-      <div className="min-w-0">
-        <div className="text-base font-semibold text-slate-900">{verdict.label}</div>
-        <div className="mt-0.5 text-sm text-slate-600">{verdict.detail}</div>
-      </div>
+    <div className="min-w-0">
+      <div className={clsx("text-xl font-medium", ink)}>{sentence(verdict.label)}</div>
+      <div className="mt-1 max-w-[68ch] text-sm text-slate-600">{verdict.detail}</div>
     </div>
   );
 }
@@ -530,8 +559,8 @@ export function VerdictBanner({ verdict }: { verdict: Verdict }) {
 export function Disclosure({ summary, children, className }: { summary: ReactNode; children: ReactNode; className?: string }) {
   return (
     <details className={clsx("group", className)}>
-      <summary className="flex list-none items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-slate-900 [&::-webkit-details-marker]:hidden">
-        <svg width="10" height="10" viewBox="0 0 10 10" className="shrink-0 text-slate-400 transition-transform group-open:rotate-90" aria-hidden="true">
+      <summary className="flex list-none items-center gap-2 text-sm font-medium text-slate-700 hover:text-slate-900 active:text-brand-700 [&::-webkit-details-marker]:hidden">
+        <svg width="10" height="10" viewBox="0 0 10 10" className="shrink-0 text-muted transition-transform group-open:rotate-90" aria-hidden="true">
           <path d="M3 1.5 6.5 5 3 8.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         {summary}

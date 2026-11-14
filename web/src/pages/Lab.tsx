@@ -12,6 +12,7 @@ import {
   SystemMap,
   hookStatusFromSteps,
 } from "@/components/SystemMap";
+import { GoalEvidenceBody } from "@/components/Evidence";
 import { AttackBrief } from "@/components/Attack";
 import { ScenarioPicker } from "@/components/ScenarioPicker";
 import { InjectedContext, StepTimeline, ToolActions } from "@/components/Trace";
@@ -25,6 +26,7 @@ import {
   CardHeader,
   Disclosure,
   ErrorBox,
+  Empty,
   Loading,
   Mono,
   OutcomeBadge,
@@ -35,14 +37,14 @@ import {
   VerdictBanner,
 } from "@/components/ui";
 import { api, type DemoCheck, type Job, type Preset, type RunDetail, type Scenario } from "@/lib/api";
-import { DEFENSE_LABEL, int, presetLabel, seconds, usd } from "@/lib/format";
+import { DEFENSE_LABEL, GOAL_LABEL, int, presetLabel, seconds, usd } from "@/lib/format";
 import { SANDBOX_ID, useSandboxModel } from "@/lib/sandbox";
 
 const CODES: DefenseCode[] = ["D1", "D2", "D3", "D4"];
 
 /** Màu chữ theo trạng thái điểm móc; nghĩa luôn nằm ở chữ đi kèm. */
 const STATUS_INK: Record<PointStatus | "off", string> = {
-  off: "text-slate-400",
+  off: "text-muted",
   idle: "text-defense-700",
   pass: "text-defense-700",
   transform: "text-payload-600",
@@ -57,22 +59,27 @@ function codesOf(presets: Preset[], name: string): string[] {
 /** Hàng lựa chọn gọn: nền xám + dấu kiểm khi đang chọn. */
 function rowClass(selected: boolean) {
   return clsx(
-    "flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
-    selected ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+    "flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors",
+    selected
+      ? "bg-slate-100 font-medium text-slate-900 shadow-[inset_0_0_0_1px_rgb(var(--n-300))]"
+      : "text-slate-700 hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100",
   );
 }
 
 function RowCheck({ on }: { on: boolean }) {
-  return <Check size={14} aria-hidden="true" className={clsx("shrink-0", on ? "text-slate-900" : "invisible")} />;
+  return <Check size={14} aria-hidden="true" className={clsx("shrink-0", on ? "text-brand-700" : "invisible")} />;
 }
 
 /** Một phần của bảng thiết lập: nhãn + nội dung, ngăn với phần trước bằng đường kẻ mảnh. */
-function FormSection({ title, hint, children }: { title: string; hint?: ReactNode; children: ReactNode }) {
+function FormSection({ step, title, hint, children }: { step: number; title: string; hint?: ReactNode; children: ReactNode }) {
   return (
-    <section className="min-w-0 border-t border-slate-100 px-4 py-4 first:border-t-0">
-      <div className="mb-2.5 flex items-baseline justify-between gap-3">
-        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
-        {hint && <span className="min-w-0 truncate text-xs text-slate-500">{hint}</span>}
+    <section className="min-w-0 border-t border-slate-200 px-5 py-5 first:border-t-0">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-base font-medium text-slate-900">
+          <span className="num flex h-5 w-5 shrink-0 items-center justify-center rounded border border-slate-300 font-mono text-2xs text-slate-800">{step}</span>
+          {title}
+        </h2>
+        {hint && <span className="min-w-0 truncate text-xs text-muted">{hint}</span>}
       </div>
       {children}
     </section>
@@ -113,10 +120,11 @@ function ResultColumn({
   const run = d.run;
   const spontaneous = d.run.goal === "G2" && d.verdict?.tone === "attack" && !d.tool_actions.some((a) => a.follows_payload);
   const codes = codesOf(presets, String(run.preset));
+  const decisive = d.steps.find((step) => step.decisive || step.blocking || step.refusal);
   return (
     <Card className={clsx("flex flex-col", showing && "border-brand-500")}>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-slate-100 px-4 py-2.5">
-        <span className="min-w-0 text-sm font-semibold text-slate-900">Phòng thủ: {presetLabel(String(run.preset))}</span>
+        <span className="min-w-0 text-lg font-medium text-slate-900">{String(run.preset) === "off" ? "Tắt phòng thủ · Đối chứng" : `Bật phòng thủ · ${presetLabel(String(run.preset))}`}</span>
         <OutcomeBadge outcome={run.outcome} blockedBy={run.blocked_by} />
       </div>
       <div className="space-y-4 p-4">
@@ -124,6 +132,13 @@ function ResultColumn({
         {spontaneous && (
           <Callout tone="warn">Scorer chấm đạt G2 nhưng chưa thấy tool khớp gợi ý payload. Cần đối chiếu trace trước khi kết luận nguyên nhân.</Callout>
         )}
+        <div className="space-y-2">
+          <h3 className="text-base font-medium text-slate-900">Bước quyết định trong trace</h3>
+          {decisive ? <p className="text-sm leading-relaxed text-slate-600">Bước {decisive.idx}{decisive.tool_name ? ` · ${decisive.tool_name}` : ""}: {decisive.blocking ? "ghi nhận hành động bị chặn" : decisive.refusal ? "model từ chối thực hiện" : "ghi nhận bằng chứng quyết định kết cục"}. Mở bằng chứng để đối chiếu.</p> : <p className="text-sm text-muted">Trace chưa đánh dấu bước quyết định. Xem bằng chứng trước khi kết luận nguyên nhân.</p>}
+          <Disclosure summary="Bằng chứng chấm kết quả">
+            {d.evidence ? <GoalEvidenceBody ev={d.evidence} /> : <p className="text-sm text-muted">Chưa có bằng chứng chấm kết quả cho lượt này.</p>}
+          </Disclosure>
+        </div>
         <dl className="grid grid-cols-3 divide-x divide-slate-100 rounded-md border border-slate-100">
           {[
             ["Bước", int(Number(run.n_steps))],
@@ -132,7 +147,7 @@ function ResultColumn({
           ].map(([k, v]) => (
             <div key={k} className="min-w-0 px-3 py-2">
               <dt className="text-xs text-slate-500">{k}</dt>
-              <dd className="num mt-0.5 text-md font-semibold text-slate-900">{v}</dd>
+              <dd className="num mt-0.5 text-lg font-medium text-slate-900">{v}</dd>
             </div>
           ))}
         </dl>
@@ -157,7 +172,7 @@ function ResultColumn({
         </Disclosure>
         <div className="border-t border-slate-100 pt-3">
           <Link to={`/runs/${run.run_id}`} className="text-sm font-medium text-brand-600 hover:text-brand-700">
-            Mở chi tiết đầy đủ →
+            Mở chi tiết đầy đủ
           </Link>
         </div>
       </div>
@@ -181,11 +196,12 @@ function Results({
   const q = useQuery({ queryKey: ["runs", "demo-batch", batchId], queryFn: () => api.runs({ batch: [batchId], limit: 10 }) });
   if (q.isLoading) return <Loading />;
   if (q.error) return <ErrorBox error={q.error} />;
-  const items = q.data?.items ?? [];
-  if (!items.length) return null;
+  const items = [...(q.data?.items ?? [])].sort((a, b) => Number(b.preset === "off") - Number(a.preset === "off"));
+  if (!items.length) return <Empty title="Chưa có kết quả trong lô này" action={<Button onClick={() => { void q.refetch(); }}>Tải lại kết quả</Button>}>Lượt chạy đã kết thúc nhưng chưa đọc được bản ghi. Thử tải lại hoặc mở trang Lô thực nghiệm để kiểm tra.</Empty>;
   return (
-    <div className="mt-6">
-      <SectionTitle>Kết quả so sánh</SectionTitle>
+    <section id="lab-results" aria-label="Kết quả thí nghiệm" className="mb-8 scroll-mt-20">
+      <SectionTitle>{items.length > 1 ? "So sánh kết quả bật / tắt phòng thủ" : "Kết quả thí nghiệm"}</SectionTitle>
+      <p className="mb-4 text-sm leading-relaxed text-muted">{scenario?.title ?? "Kịch bản của lượt chạy"}. Đọc kết cục, đối chiếu bước quyết định và mở bằng chứng ở từng lượt. Kết quả này thuộc lô vừa chạy, không thay đổi theo thiết lập bên dưới.</p>
       <div className={clsx("grid grid-cols-1 gap-4", items.length > 1 && "lg:grid-cols-2")}>
         {items.map((r) => (
           <ResultColumn
@@ -198,7 +214,7 @@ function Results({
         ))}
       </div>
       {scenario && <VerifyPanel runIds={items.map((r) => r.run_id)} channel={scenario.channel} goal={scenario.goal} />}
-    </div>
+    </section>
   );
 }
 
@@ -253,7 +269,7 @@ function LivePanel({ job, attack }: { job: Job; attack?: string }) {
     <Card>
       <CardHeader
         title="Diễn biến trực tiếp"
-        subtitle={`${attack ? `${attack} — ` : ""}từng bước agent làm, cập nhật trong lúc chạy.`}
+        subtitle={`${attack ? `${attack}, ` : ""}từng bước agent làm, cập nhật trong lúc chạy.`}
         action={
           isLive ? (
             <Badge tone="brand" dot>
@@ -406,13 +422,15 @@ export function LabPage() {
   const live = meta.data?.live_demo;
   const running = job.data && ["queued", "running"].includes(job.data.status);
 
+  const targetName = target === SANDBOX_ID ? sandbox?.model_id : config.data?.targets.find((t) => t.id === target)?.model_id;
+  const jobStatus = { queued: "Đang chờ", running: "Đang chạy", done: "Hoàn tất", error: "Có lỗi" };
   const runCount = compareOff && chosen !== "off" ? "2 lượt · so sánh bật/tắt" : "1 lượt chạy";
 
   return (
     <>
       <PageHeader
         title="Thí nghiệm"
-        info="Chọn kịch bản, chạy trên model thật, so trực tiếp khi tắt và bật phòng thủ. Mỗi lượt gọi API thật, có canh ngân sách."
+        description="Chọn kịch bản, bật phòng thủ, rồi chạy và đối chiếu bằng chứng. Mỗi lượt gọi API model thật."
       />
 
       {!live && (
@@ -423,10 +441,23 @@ export function LabPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[340px_minmax(0,1fr)]">
+      {batchId && (
+        <Results
+          batchId={batchId}
+          presets={allPresets}
+          scenario={jobScenario.data}
+          viewRun={viewRun}
+          onShow={(id) => {
+            setViewRun(id);
+            requestAnimationFrame(() => document.getElementById("lab-replay")?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" }));
+          }}
+        />
+      )}
+
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
         {/* Trái: một bảng thiết lập duy nhất */}
         <Card>
-          <FormSection title="1. Kịch bản">
+          <FormSection step={1} title="Kịch bản">
             <Segmented
               value={mode}
               onChange={setMode}
@@ -442,16 +473,16 @@ export function LabPage() {
                   {(scenarios.data ?? []).map((s) => {
                     const on = s.key === presetKey;
                     return (
-                      <button key={s.key} type="button" role="radio" aria-checked={on} onClick={() => setPresetKey(s.key)} className={rowClass(on)}>
-                        <span className="w-6 shrink-0 font-mono text-xs text-slate-500">{s.goal}</span>
+                      <label key={s.key} className={clsx(rowClass(on), "cursor-pointer focus-within:outline focus-within:outline-2 focus-within:outline-brand-500")}><input className="sr-only" type="radio" name="lab-scenario" value={s.key} checked={on} onChange={() => setPresetKey(s.key)} />
+                        <span className="sr-only">{GOAL_LABEL[s.goal] ?? s.goal} · </span>
                         <span className="line-clamp-2 min-w-0 flex-1" title={s.title}>
                           {s.title.replace(/^G\d\s*·\s*/, "").replace(/\s*\([^)]*\)\s*$/, "")}
                         </span>
-                        <span className="shrink-0 font-mono text-2xs text-slate-400">
+                        <span className="shrink-0 font-mono text-2xs text-muted">
                           {s.channel} · {s.technique}
                         </span>
                         <RowCheck on={on} />
-                      </button>
+                      </label>
                     );
                   })}
                 </div>
@@ -464,7 +495,7 @@ export function LabPage() {
             </div>
           </FormSection>
 
-          <FormSection title="2. Phòng thủ" hint={chosen ? `→ ${presetLabel(chosen)}` : undefined}>
+          <FormSection step={2} title="Phòng thủ" hint={chosen ? presetLabel(chosen) : undefined}>
             <div role="group" aria-label="Cấu hình phòng thủ" className="-mx-2 space-y-px">
               {CODES.map((c) => (
                 <button
@@ -474,8 +505,8 @@ export function LabPage() {
                   onClick={() => setEnabled({ ...enabled, [c]: !enabled[c] })}
                   className={rowClass(enabled[c])}
                 >
-                  <span className="w-6 shrink-0 font-mono text-xs font-medium">{c}</span>
-                  <span className="min-w-0 flex-1 truncate">{DEFENSE_LABEL[c] ?? c}</span>
+                  <span className="min-w-0 flex-1">{DEFENSE_LABEL[c] ?? c}</span>
+                  <span className="shrink-0 font-mono text-xs text-muted">{c}</span>
                   <span className="shrink-0 text-xs text-slate-500">{enabled[c] ? "bật" : "tắt"}</span>
                   <RowCheck on={enabled[c]} />
                 </button>
@@ -486,17 +517,17 @@ export function LabPage() {
                 <div className="label mb-1">Preset khớp tổ hợp này</div>
                 <div role="radiogroup" aria-label="Preset khớp tổ hợp này" className="-mx-2 space-y-px">
                   {matches.map((m) => (
-                    <button key={m} type="button" role="radio" aria-checked={m === chosen} onClick={() => setVariantPick(m)} className={rowClass(m === chosen)}>
+                    <label key={m} className={clsx(rowClass(m === chosen), "cursor-pointer focus-within:outline focus-within:outline-2 focus-within:outline-brand-500")}><input className="sr-only" type="radio" name="lab-preset" value={m} checked={m === chosen} onChange={() => setVariantPick(m)} />
                       <span className="min-w-0 flex-1 break-words">{presetLabel(m)}</span>
                       <RowCheck on={m === chosen} />
-                    </button>
+                    </label>
                   ))}
                 </div>
               </div>
             )}
             {!chosen && (
               <div className="mt-3">
-                <Callout tone="warn">Tổ hợp này chưa có preset trong config/defenses.yaml.</Callout>
+                <Callout tone="warn" title="Tổ hợp phòng thủ chưa được hỗ trợ">Chọn một cấu hình có sẵn hoặc bật đầy đủ D1–D4 để tiếp tục.<div className="mt-2"><Button size="sm" onClick={() => setEnabled({ D1: true, D2: true, D3: true, D4: true })}>Bật cả bốn phòng thủ</Button></div></Callout>
               </div>
             )}
             <label className="mt-3 flex items-start gap-2 text-xs text-slate-600">
@@ -511,7 +542,7 @@ export function LabPage() {
             </label>
           </FormSection>
 
-          <FormSection title="3. Thiết lập">
+          <FormSection step={3} title="Thiết lập">
             <div className="space-y-3">
               <div>
                 <Select
@@ -520,13 +551,13 @@ export function LabPage() {
                   value={target}
                   onChange={setTarget}
                   options={[
-                    ...(config.data?.targets ?? []).map((t) => ({ value: t.id, label: `${t.id} · ${t.model_id}` })),
+                    ...(config.data?.targets ?? []).map((t) => ({ value: t.id, label: `${t.model_id} · ${t.id}` })),
                     ...(sandbox ? [{ value: SANDBOX_ID, label: `Thử · ${sandbox.model_id}` }] : []),
                   ]}
                 />
                 {target === SANDBOX_ID ? (
                   <div className="mt-1.5 text-xs text-amber-700">
-                    Model ngoài bộ đo — lượt này chỉ là demo, không vào số liệu báo cáo.
+                    Model ngoài bộ đo. Lượt này chỉ là demo, không vào số liệu báo cáo.
                   </div>
                 ) : (
                   <Link to="/config" className="mt-1.5 inline-block text-xs text-slate-500 hover:text-brand-700">
@@ -544,12 +575,11 @@ export function LabPage() {
             </div>
           </FormSection>
 
-          <section className="space-y-3 border-t border-slate-100 px-4 py-4">
-            <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
-              <span>{target}</span>
-              <span>{chosen ? presetLabel(chosen) : "Chưa chọn cấu hình"}</span>
-              <span>{runCount}</span>
-            </div>
+          <section className="space-y-4 border-t border-slate-200 bg-slate-50 px-5 py-5">
+            <h2 className="text-base font-medium text-slate-900">Tóm tắt trước khi chạy</h2>
+            <dl className="space-y-3 text-sm">
+              {[["Kịch bản", scenario?.title ?? "Chưa chọn kịch bản"], ["Model", `${targetName ?? target} · ${target}`], ["Phòng thủ", chosen ? presetLabel(chosen) : "Chưa có cấu hình phù hợp"], ["Số lượt", presets.length ? runCount : "Chưa thể chạy"]].map(([label, value]) => <div key={label}><dt className="text-xs text-muted">{label}</dt><dd className="mt-1 break-words text-slate-900">{value}</dd></div>)}
+            </dl>
             <Button
               variant="primary"
               className="w-full"
@@ -557,7 +587,7 @@ export function LabPage() {
               onClick={() => start.mutate(false)}
               icon={running || start.isPending ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
             >
-              {running ? "Đang chạy…" : "Chạy thí nghiệm"}
+              {start.isPending ? "Đang kiểm tra dịch vụ…" : running ? "Đang chạy…" : "Chạy thí nghiệm"}
             </Button>
             {check && <DemoCheckNote check={check} />}
             {check && !check.ok && !running && (
@@ -565,16 +595,16 @@ export function LabPage() {
                 Vẫn chạy dù dịch vụ bắt buộc đang lỗi
               </Button>
             )}
-            {start.error && <ErrorBox error={start.error} />}
+            {start.error && <Callout tone="warn" title="Chưa thể bắt đầu thí nghiệm">{start.error instanceof Error ? start.error.message : "Không kết nối được dịch vụ."} Kiểm tra trạng thái dịch vụ rồi nhấn Chạy thí nghiệm để thử lại.</Callout>}
             {active.error && <ErrorBox error={active.error} />}
-            {job.error && <Callout tone="warn" title="Mất kết nối cập nhật tiến độ">Dữ liệu bên dưới có thể đã cũ. Hệ thống đang thử kết nối lại.</Callout>}
+            {job.error && <Callout tone="warn" title="Mất kết nối cập nhật tiến độ">Dữ liệu lần cuối: {job.dataUpdatedAt ? new Date(job.dataUpdatedAt).toLocaleTimeString("vi-VN") : "chưa nhận được"}. Hệ thống đang thử kết nối lại.<div className="mt-2"><Button disabled={job.isFetching} onClick={() => { void job.refetch(); }}>Thử cập nhật lại</Button></div></Callout>}
 
             {job.data && (
               <div className="border-t border-slate-100 pt-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <span className="label">Tiến độ</span>
                   <Badge tone={job.data.status === "done" ? "defense" : job.data.status === "error" ? "attack" : "brand"}>
-                    {job.data.status}
+                    {jobStatus[job.data.status]}
                   </Badge>
                 </div>
                 <ul className="space-y-1">
@@ -591,7 +621,7 @@ export function LabPage() {
                           <Circle size={12} className="shrink-0 text-slate-300" aria-hidden="true" />
                         )}
                         <span className="min-w-0 flex-1 break-words">{presetLabel(p)}</span>
-                        <span className="shrink-0 text-slate-400">{done ? "xong" : started ? "đang chạy" : "chờ"}</span>
+                        <span className="shrink-0 text-muted">{done ? "xong" : started ? "đang chạy" : "chờ"}</span>
                       </li>
                     );
                   })}
@@ -623,12 +653,14 @@ export function LabPage() {
             </Card>
           )}
 
+          <div id="lab-replay" className="scroll-mt-20">
           <DefenseMap
             enabled={enabled}
             onToggle={(c) => setEnabled({ ...enabled, [c]: !enabled[c] })}
             view={view}
             onBack={() => setViewRun(null)}
           />
+          </div>
 
           {job.data && (
             <LivePanel
@@ -640,18 +672,7 @@ export function LabPage() {
         </div>
       </div>
 
-      {batchId && (
-        <Results
-          batchId={batchId}
-          presets={allPresets}
-          scenario={jobScenario.data}
-          viewRun={viewRun}
-          onShow={(id) => {
-            setViewRun(id);
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-        />
-      )}
+
     </>
   );
 }

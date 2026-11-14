@@ -13,7 +13,7 @@ const TEXT = { pass: "Đạt", fail: "Chưa đạt", pending: "Chờ" };
 function GateRow({ gate, index }: { gate: Gate; index: number }) {
   return (
     <li className="flex items-start gap-3 px-4 py-3">
-      <span className="num w-5 shrink-0 pt-0.5 font-mono text-xs text-slate-400" aria-hidden="true">
+      <span className="num w-5 shrink-0 pt-0.5 font-mono text-xs text-muted" aria-hidden="true">
         {String(index + 1).padStart(2, "0")}
       </span>
       <div className="min-w-0 flex-1">
@@ -38,11 +38,11 @@ export function ProcessPage() {
     <>
       <PageHeader
         title="Quy trình"
-        info="Cổng phải qua trước khi chạy full matrix (quy tắc cứng #5). Tính trên mọi lô thực nghiệm, không theo phạm vi đang xem."
+        description="Cổng phải qua trước khi chạy full matrix (quy tắc cứng #5). Tính trên mọi lô thực nghiệm, không theo phạm vi đang xem."
       />
       <div className="max-w-[720px] space-y-4">
         {allGatesPass(gates) && (
-          <Callout tone="brand">Cả hai cổng đã đạt — mục này đã ẩn khỏi menu, trang giữ lại làm bằng chứng.</Callout>
+          <Callout tone="brand">Cả hai cổng đã đạt, mục này đã ẩn khỏi menu, trang giữ lại làm bằng chứng.</Callout>
         )}
         <Card>
           <CardHeader

@@ -20,7 +20,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { RunDetail, Step } from "@/lib/api";
 import { Button } from "@/components/ui";
-import { BLOCKED_LABEL } from "@/lib/format";
+import { BLOCKED_LABEL, sentence } from "@/lib/format";
 
 import { type DefenseCode, HookLegend, type PointStatus, SystemMap, hookStatusFromSteps } from "./SystemMap";
 
@@ -71,7 +71,7 @@ function hitNotes(step: Step): string[] {
     const code = String(h.defense ?? "").slice(0, 2).toUpperCase();
     const action = ACTION_LABEL[String(h.action ?? "")] ?? String(h.action ?? "");
     const rule = h.rule ? ` · ${h.rule}` : "";
-    seen.add(`${code} ${action}${rule} — ${String(h.detail ?? "")}`);
+    seen.add(`${code} ${action}${rule}: ${String(h.detail ?? "")}`);
   }
   return [...seen];
 }
@@ -105,7 +105,7 @@ export function buildFrames(d: RunDetail, codes: string[]): Frame[] {
         active.push("loop-user", "user");
         frames.push({
           title: `${n} · LLM trả lời nhân viên`,
-          detail: s.refusal ? "Model từ chối thực hiện." : "Kết thúc vòng lặp — câu trả lời cuối (nơi chấm G3).",
+          detail: s.refusal ? "Model từ chối thực hiện." : "Kết thúc vòng lặp, câu trả lời cuối (nơi chấm G3).",
           tone: payload ? "payload" : "neutral",
           active,
           status,
@@ -132,7 +132,7 @@ export function buildFrames(d: RunDetail, codes: string[]): Frame[] {
     else if (payload && channel === "K2b") active.push("attacker", "k2b");
     frames.push({
       title: `${n} · Chạy ${tool}`,
-      detail: payload ? "Kết quả trả về chứa payload — đi vào ngữ cảnh của LLM." : "Kết quả trả về ghép vào ngữ cảnh.",
+      detail: payload ? "Kết quả trả về chứa payload, đi vào ngữ cảnh của LLM." : "Kết quả trả về ghép vào ngữ cảnh.",
       tone: payload ? "payload" : "neutral",
       active: active.filter(Boolean),
       status,
@@ -141,7 +141,7 @@ export function buildFrames(d: RunDetail, codes: string[]): Frame[] {
   });
   frames.push({
     title: "Tổng kết · ghi trace, scorer chấm",
-    detail: d.verdict ? `${d.verdict.label} — ${d.verdict.detail}` : undefined,
+    detail: d.verdict ? `${sentence(d.verdict.label)}: ${d.verdict.detail}` : undefined,
     tone: "verdict",
     active: ["loop", "to-trace", "trace", "trace-scorer", "scorer", "scorer-console", "console"],
     status: hookStatusFromSteps(d.steps, codes),
@@ -255,9 +255,9 @@ export function TraceReplay({ detail, codes, autoplay = false }: { detail: RunDe
         </div>
 
         <div className="mt-3 flex gap-3" aria-live="polite">
-          <span className={clsx("w-0.5 shrink-0 rounded-full", TONE_BAR[f.tone])} aria-hidden="true" />
+          <span className={clsx("w-[3px] shrink-0 rounded-sm", TONE_BAR[f.tone])} aria-hidden="true" />
           <div className="min-w-0 flex-1">
-            <div className="flex items-start gap-2 text-sm font-semibold text-slate-900">
+            <div className="flex items-start gap-2 text-base font-medium text-slate-900">
               <ToneIcon size={14} className={clsx("mt-0.5 shrink-0", toneInk)} aria-hidden="true" />
               <span className="min-w-0 break-words">{f.title}</span>
             </div>

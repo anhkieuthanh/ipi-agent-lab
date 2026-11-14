@@ -1,134 +1,162 @@
 /* Nguồn duy nhất của màu, chữ, khoảng cách. Tailwind đọc các biến này qua tailwind.config.js;
- * không khai màu hay cỡ chữ ở nơi nào khác. Bộ ba RGB (không có rgb()) để dùng được độ trong suốt. */
+ * không khai màu hay cỡ chữ ở nơi nào khác. Bộ ba RGB (không có rgb()) để dùng được độ trong suốt.
+ *
+ * Thế giới thị giác "Console": thiết bị đo của một phòng thí nghiệm cẩn thận. Ba bậc nền
+ * (ground · surface · n-50 sâu nhất), đường kẻ mảnh, không bóng đổ, không phát sáng.
+ * Hai chế độ: "paper" (sáng, mặc định cho máy chiếu) và "graphite" (tối, vận hành).
+ * brand = hổ phách: thao tác chính, vị trí hiện tại, thứ con người làm. canary = lam lạnh: thứ
+ * thiết bị đo ghi được. Màu kết cục giữ nguyên nghĩa:
+ * attack = tấn công thành công · defense = phòng thủ chặn · refusal = model tự từ chối ·
+ * payload = nội dung tiêm · canary = dấu rò rỉ · amber = cảnh báo, lỗi hạ tầng. */
 
 :root {
   color-scheme: light;
 
-  /* Nền và chữ trung tính */
-  --surface: 255 255 255;
-  --n-50: 250 250 250;
-  --n-100: 244 244 245;
-  --n-200: 232 232 235;
-  --n-300: 212 212 216;
-  --n-400: 161 161 170;
-  --n-500: 113 113 122;
-  --n-600: 82 82 91;
-  --n-700: 63 63 70;
-  --n-800: 39 39 42;
-  --n-900: 24 24 27;
+  --ground: 249 247 243;
 
-  /* Nhấn: liên kết, focus, lựa chọn */
-  --brand-50: 239 244 255;
-  --brand-100: 220 231 254;
-  --brand-500: 52 100 220;
-  --brand-600: 40 84 200;
-  --brand-700: 32 68 170;
+  --surface: 254 253 251;
 
-  /* Ngữ nghĩa kết quả — dùng thống nhất trên mọi trang:
-   * attack = tấn công thành công · defense = phòng thủ chặn · refusal = model tự từ chối ·
-   * payload = nội dung tiêm · canary = dấu rò rỉ · amber = cảnh báo, lỗi hạ tầng. */
-  --attack-50: 254 242 242;
-  --attack-100: 253 226 226;
-  --attack-500: 220 53 57;
-  --attack-600: 200 40 46;
-  --attack-700: 165 30 36;
+  --n-50: 243 240 235;
+  --n-100: 235 232 227;
+  --n-200: 221 216 211;
+  --n-300: 191 186 179;
+  --n-400: 145 139 132;
+  --text-muted: 97 91 85;
+  --n-500: 110 104 98;
+  --n-600: 79 73 68;
+  --n-700: 58 52 48;
+  --n-800: 39 34 30;
+  --n-900: 23 19 15;
 
-  --defense-50: 236 250 242;
-  --defense-100: 212 242 224;
-  --defense-500: 26 148 84;
-  --defense-600: 21 122 70;
-  --defense-700: 18 100 58;
+  --brand-50: 252 238 214;
+  --brand-100: 249 222 173;
+  --brand-500: 242 176 54;
+  --brand-600: 151 88 0;
+  --brand-700: 126 70 0;
 
-  --refusal-50: 245 243 255;
-  --refusal-100: 236 232 254;
-  --refusal-500: 124 92 219;
-  --refusal-600: 109 72 204;
-  --refusal-700: 91 56 178;
+  --accent-ink: 33 18 1;
 
-  --payload-50: 255 246 236;
-  --payload-100: 255 234 212;
-  --payload-200: 252 211 170;
-  --payload-500: 224 112 20;
-  --payload-600: 196 92 10;
+  --attack-50: 255 238 236;
+  --attack-100: 255 219 215;
+  --attack-200: 255 189 183;
+  --attack-500: 203 70 68;
+  --attack-600: 168 54 52;
+  --attack-700: 134 39 38;
 
-  --canary-50: 238 246 255;
-  --canary-100: 219 234 254;
-  --canary-500: 46 124 230;
-  --canary-600: 32 100 204;
+  --defense-50: 234 248 236;
+  --defense-100: 210 239 215;
+  --defense-200: 172 224 182;
+  --defense-500: 0 148 62;
+  --defense-600: 0 121 47;
+  --defense-700: 0 95 33;
 
-  --amber-50: 255 250 235;
-  --amber-200: 250 226 160;
-  --amber-400: 232 170 40;
-  --amber-600: 180 115 10;
-  --amber-700: 150 92 8;
-  --amber-800: 120 72 8;
+  --refusal-50: 245 240 255;
+  --refusal-100: 234 224 255;
+  --refusal-200: 217 198 254;
+  --refusal-500: 139 93 206;
+  --refusal-600: 114 74 171;
+  --refusal-700: 89 56 136;
 
-  --shadow-pop: 0 0 0 1px rgb(0 0 0 / 0.06), 0 8px 24px -6px rgb(0 0 0 / 0.16);
+  --payload-50: 255 240 230;
+  --payload-100: 255 223 203;
+  --payload-200: 252 195 161;
+  --payload-500: 196 84 0;
+  --payload-600: 162 66 0;
+  --payload-700: 129 49 0;
 
-  --font-sans: "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --canary-50: 232 245 255;
+  --canary-100: 206 234 255;
+  --canary-200: 165 215 255;
+  --canary-500: 0 128 215;
+  --canary-600: 0 104 178;
+  --canary-700: 0 80 142;
 
-  --sidebar-w: 232px;
-  --topbar-h: 48px;
-  --dur: 120ms;
+  --amber-50: 254 240 212;
+  --amber-200: 243 211 146;
+  --amber-400: 231 172 42;
+  --amber-600: 159 98 0;
+  --amber-700: 129 77 0;
+  --amber-800: 103 61 0;
+
+  --shadow-pop: 0 0 0 1px rgb(var(--n-300)), 0 12px 28px -12px rgb(23 19 15 / 0.22);
+
+  --font-sans: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --sidebar-w: 248px;
+  --topbar-h: 52px;
+  --dur: 140ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --surface: 17 17 19;
-  --n-50: 22 22 25;
-  --n-100: 29 29 33;
-  --n-200: 40 40 45;
-  --n-300: 58 58 65;
-  --n-400: 112 112 122;
-  --n-500: 150 150 160;
-  --n-600: 180 180 188;
-  --n-700: 205 205 212;
-  --n-800: 228 228 232;
-  --n-900: 244 244 246;
+  --ground: 13 16 19;
 
-  --brand-50: 20 28 52;
-  --brand-100: 28 40 76;
-  --brand-500: 96 140 245;
-  --brand-600: 125 165 250;
-  --brand-700: 160 190 252;
+  --surface: 21 25 28;
 
-  --attack-50: 48 20 22;
-  --attack-100: 70 26 29;
-  --attack-500: 235 87 87;
-  --attack-600: 244 112 112;
-  --attack-700: 250 150 150;
+  --n-50: 7 9 11;
+  --n-100: 30 34 38;
+  --n-200: 45 49 53;
+  --n-300: 72 78 84;
+  --n-400: 111 117 123;
+  --text-muted: 157 162 168;
+  --n-500: 141 147 153;
+  --n-600: 179 184 189;
+  --n-700: 199 203 208;
+  --n-800: 219 222 226;
+  --n-900: 236 239 242;
 
-  --defense-50: 16 40 28;
-  --defense-100: 22 56 38;
-  --defense-500: 52 180 110;
-  --defense-600: 80 200 132;
-  --defense-700: 130 220 165;
+  --brand-50: 47 33 7;
+  --brand-100: 64 44 5;
+  --brand-500: 247 184 61;
+  --brand-600: 250 192 83;
+  --brand-700: 252 209 128;
 
-  --refusal-50: 32 26 56;
-  --refusal-100: 44 36 78;
-  --refusal-500: 150 122 240;
-  --refusal-600: 170 148 245;
-  --refusal-700: 195 180 250;
+  --accent-ink: 28 14 0;
 
-  --payload-50: 50 30 14;
-  --payload-100: 70 42 18;
-  --payload-200: 100 60 24;
-  --payload-500: 240 140 60;
-  --payload-600: 248 165 95;
+  --attack-50: 47 26 24;
+  --attack-100: 70 34 32;
+  --attack-200: 100 49 46;
+  --attack-500: 242 113 106;
+  --attack-600: 252 146 138;
+  --attack-700: 255 183 176;
 
-  --canary-50: 16 30 54;
-  --canary-100: 22 42 76;
-  --canary-500: 86 156 245;
-  --canary-600: 125 180 250;
+  --defense-50: 20 37 23;
+  --defense-100: 23 53 31;
+  --defense-200: 33 77 44;
+  --defense-500: 67 185 102;
+  --defense-600: 115 203 135;
+  --defense-700: 164 223 175;
 
-  --amber-50: 46 36 12;
-  --amber-200: 90 68 20;
-  --amber-400: 232 170 40;
-  --amber-600: 240 190 80;
-  --amber-700: 245 205 110;
-  --amber-800: 250 220 150;
+  --refusal-50: 35 29 47;
+  --refusal-100: 50 39 69;
+  --refusal-200: 73 56 100;
+  --refusal-500: 174 132 242;
+  --refusal-600: 193 160 251;
+  --refusal-700: 214 193 255;
 
-  --shadow-pop: 0 0 0 1px rgb(255 255 255 / 0.08), 0 12px 32px -8px rgb(0 0 0 / 0.6);
+  --payload-50: 46 28 16;
+  --payload-100: 67 37 18;
+  --payload-200: 97 54 25;
+  --payload-500: 234 125 46;
+  --payload-600: 245 155 98;
+  --payload-700: 254 190 151;
+
+  --canary-50: 17 34 48;
+  --canary-100: 19 48 71;
+  --canary-200: 26 70 103;
+  --canary-500: 45 166 250;
+  --canary-600: 102 188 255;
+  --canary-700: 156 213 255;
+
+  --amber-50: 40 30 10;
+  --amber-200: 71 52 13;
+  --amber-400: 231 172 42;
+  --amber-600: 241 186 75;
+  --amber-700: 243 203 122;
+  --amber-800: 247 219 161;
+
+  --shadow-pop: 0 0 0 1px rgb(var(--n-300)), 0 16px 32px -12px rgb(0 0 0 / 0.7);
 }

@@ -82,7 +82,7 @@ function StepBody({ step }: { step: Step }) {
         <ul className="space-y-1 text-sm text-slate-600">
           {step.events.map((e, i) => (
             <li key={i} className="flex gap-2">
-              <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-slate-400" aria-hidden="true" />
+              <span className="mt-2.5 h-px w-2 shrink-0 bg-slate-400" aria-hidden="true" />
               {e}
             </li>
           ))}
@@ -114,15 +114,15 @@ function StepRow({ step, initialOpen = false }: { step: Step; initialOpen?: bool
         onClick={() => hasBody && setOpen(!open)}
         className="flex min-h-9 w-full flex-wrap items-center gap-x-2.5 gap-y-1 px-3 py-1.5 text-left hover:bg-slate-50 disabled:hover:bg-transparent"
       >
-        <ChevronRight size={13} className={clsx("shrink-0 text-slate-400 transition-transform", open && "rotate-90", !hasBody && "invisible")} />
-        <span className="num w-5 shrink-0 text-right font-mono text-xs text-slate-400">{step.idx}</span>
+        <ChevronRight size={13} className={clsx("shrink-0 text-muted transition-transform", open && "rotate-90", !hasBody && "invisible")} />
+        <span className="num w-5 shrink-0 text-right font-mono text-xs text-muted">{step.idx}</span>
         <span className="w-16 shrink-0 text-xs text-slate-500">{stepRole(step)}</span>
         <span className="text-sm font-medium text-slate-700">{stepName(step)}</span>
         <span className="flex flex-wrap items-center gap-1">
           <StepFlags step={step} />
           {step.fields.llm_reasoning && <Badge>Có suy luận</Badge>}
         </span>
-        <span className="num ml-auto flex items-center gap-3 text-xs text-slate-400">
+        <span className="num ml-auto flex items-center gap-3 text-xs text-muted">
           {step.finish_reason && <span className="font-mono">{step.finish_reason}</span>}
           {step.latency_ms ? <span>{seconds(step.latency_ms)}</span> : null}
         </span>
@@ -145,7 +145,7 @@ export function InjectedContext({ ctx }: { ctx: InjectedCtx | null | undefined }
     <div className="relative overflow-hidden rounded-lg border border-slate-200">
       <span className="absolute inset-y-0 left-0 w-0.5 bg-payload-500" aria-hidden="true" />
       <button aria-expanded={open} onClick={() => setOpen(!open)} className="flex min-h-9 w-full flex-wrap items-center gap-2.5 px-3 py-1.5 text-left hover:bg-slate-50">
-        <ChevronRight size={13} className={clsx("shrink-0 text-slate-400 transition-transform", open && "rotate-90")} />
+        <ChevronRight size={13} className={clsx("shrink-0 text-muted transition-transform", open && "rotate-90")} />
         <span className="text-sm font-medium text-slate-700">
           Ngữ cảnh gửi model · mô tả tool <span className="font-mono text-xs text-slate-900">{ctx.tool}</span>
         </span>
@@ -156,7 +156,7 @@ export function InjectedContext({ ctx }: { ctx: InjectedCtx | null | undefined }
         <div className="space-y-2 px-3 pb-3 pl-[34px]">
           <p className="max-w-[88ch] text-xs leading-[18px] text-slate-500">
             K2a: payload nối vào mô tả tool, gửi kèm danh sách tool ở{" "}
-            {ctx.rug_pull ? "các lượt gọi model sau lần liệt kê đầu (rug-pull)" : "mọi lượt gọi model"} — nên
+            {ctx.rug_pull ? "các lượt gọi model sau lần liệt kê đầu (rug-pull)" : "mọi lượt gọi model"}, nên
             không hiện ở bước nào bên dưới.
             {ctx.reconstructed && " Trace không lưu danh sách tool; bản này dựng lại từ corpus và config hiện hành."}
           </p>
@@ -186,7 +186,7 @@ export function ToolActions({ actions }: { actions: ToolAction[] }) {
         <tbody>
           {actions.map((a, i) => (
             <tr key={i}>
-              <td className="num text-right font-mono text-xs text-slate-400">{i + 1}</td>
+              <td className="num text-right font-mono text-xs text-muted">{i + 1}</td>
               <td className="whitespace-nowrap">
                 <span className="font-mono text-xs font-medium text-slate-900">{a.tool}</span>
               </td>
@@ -217,7 +217,7 @@ export function StepTimeline({ steps, live = false }: { steps: Step[]; live?: bo
       ))}
       {live && (
         <div className="flex items-center gap-2 px-3 py-2 text-xs text-slate-500">
-          <Loader2 size={13} className="animate-spin text-slate-400" />
+          <Loader2 size={13} className="animate-spin text-muted" />
           {steps.length ? "Đang chờ bước tiếp theo…" : "Đang chuẩn bị dữ liệu và gọi model…"}
         </div>
       )}
@@ -254,7 +254,7 @@ export function TraceInspector({ steps }: { steps: Step[] }) {
           {decisive ? (
             <Button size="sm" variant="ghost" onClick={() => setSelected(decisive.idx)}>Tới bước quyết định</Button>
           ) : (
-            <span className="hidden items-center gap-1 text-2xs text-slate-400 md:flex"><Kbd>↑</Kbd><Kbd>↓</Kbd></span>
+            <span className="hidden items-center gap-1 text-2xs text-muted md:flex"><Kbd>↑</Kbd><Kbd>↓</Kbd></span>
           )}
         </div>
         <div ref={listRef} role="listbox" aria-label="Các bước thực thi" onKeyDown={onKey} className="max-h-60 overflow-y-auto p-1 md:max-h-[640px]">
@@ -273,16 +273,16 @@ export function TraceInspector({ steps }: { steps: Step[] }) {
                   on ? "bg-surface shadow-[0_0_0_1px_rgb(var(--n-200))]" : "hover:bg-slate-100",
                 )}
               >
-                <span className={clsx("absolute inset-y-1.5 left-0.5 w-0.5 rounded-full", stepKind(s).bar)} aria-hidden="true" />
-                <span className="num w-5 shrink-0 text-right font-mono text-xs text-slate-400">{s.idx}</span>
+                <span className={clsx("absolute inset-y-1.5 left-0.5 w-[3px] rounded-sm", stepKind(s).bar)} aria-hidden="true" />
+                <span className="num w-5 shrink-0 text-right font-mono text-xs text-muted">{s.idx}</span>
                 <span className="min-w-0 flex-1 truncate text-sm text-slate-700">
                   {s.tool_name ? <span className="font-mono text-xs text-slate-900">{s.tool_name}</span> : stepRole(s)}
                 </span>
-                <span className="flex shrink-0 items-center gap-1" aria-hidden="true">
-                  {s.payload_fields.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-payload-500" title="Có payload" />}
-                  {s.canary_fields.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-canary-500" title="Có canary" />}
+                <span className="flex shrink-0 items-center gap-1">
+                  {s.payload_fields.length > 0 && <span className="rounded-sm border border-payload-200 bg-payload-50 px-1 font-mono text-2xs text-payload-700" title="Bước có payload">payload</span>}
+                  {s.canary_fields.length > 0 && <span className="rounded-sm border border-canary-200 bg-canary-50 px-1 font-mono text-2xs text-canary-700" title="Bước có canary">canary</span>}
                 </span>
-                <span className="shrink-0 text-2xs text-slate-400">
+                <span className="shrink-0 text-2xs text-muted">
                   {s.decisive ? "Quyết định" : s.blocking ? "Chặn" : s.refusal ? "Từ chối" : s.latency_ms ? seconds(s.latency_ms) : ""}
                 </span>
               </button>
@@ -293,9 +293,9 @@ export function TraceInspector({ steps }: { steps: Step[] }) {
 
       <div className="min-w-0 overflow-y-auto p-4 md:max-h-[676px]" aria-live="polite">
         <div className="mb-4 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-          <span className="text-sm font-semibold text-slate-900">Bước {step.idx} · {stepName(step)}</span>
+          <span className="text-base font-medium text-slate-900">Bước {step.idx} · {stepName(step)}</span>
           <StepFlags step={step} />
-          <span className="num ml-auto flex items-center gap-3 text-xs text-slate-400">
+          <span className="num ml-auto flex items-center gap-3 text-xs text-muted">
             {step.finish_reason && <span className="font-mono">{step.finish_reason}</span>}
             {step.latency_ms ? <span>{seconds(step.latency_ms)}</span> : null}
           </span>

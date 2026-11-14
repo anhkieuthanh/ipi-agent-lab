@@ -23,19 +23,22 @@ export type NavItem = {
   scoped?: boolean;
 };
 
-export type NavGroup = { label: string | null; items: NavItem[] };
+/** `step`: số bước trong luồng thí nghiệm (chạy rồi phân tích); nhóm tham chiếu không có số. */
+export type NavGroup = { label: string | null; step?: number; items: NavItem[] };
 
 export const NAV: NavGroup[] = [
   { label: null, items: [{ to: "/", label: "Tổng quan", icon: LayoutDashboard, key: "o", scoped: true }] },
   {
-    label: "Thực nghiệm",
+    label: "Thí nghiệm",
+    step: 1,
     items: [
+      { to: "/lab", label: "Chạy thí nghiệm", icon: FlaskConical, key: "l" },
       { to: "/batches", label: "Lô thực nghiệm", icon: Layers, key: "b" },
-      { to: "/lab", label: "Phòng thí nghiệm", icon: FlaskConical, key: "l" },
     ],
   },
   {
     label: "Phân tích",
+    step: 2,
     items: [
       { to: "/attack", label: "Tấn công", icon: Crosshair, key: "a", scoped: true },
       { to: "/defense", label: "Phòng thủ", icon: Shield, key: "d", scoped: true },

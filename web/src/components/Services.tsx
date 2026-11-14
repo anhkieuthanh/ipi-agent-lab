@@ -58,7 +58,7 @@ function StateTag({ s, compact }: { s: ServiceStatus; compact?: boolean }) {
   if (compact)
     return (
       <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-slate-500">
-        <span className={clsx("h-1.5 w-1.5 rounded-full", STATE_DOT[s.status])} aria-hidden="true" />
+        <span className={clsx("h-3 w-[3px] rounded-sm", STATE_DOT[s.status])} aria-hidden="true" />
         {s.short}
         <span className="sr-only">: {st.label}</span>
       </span>
@@ -83,10 +83,10 @@ function tip(s: ServiceStatus) {
 /** Dãy trạng thái trên thanh ngữ cảnh: tên ngắn + biểu tượng, không chỉ dựa vào màu. */
 export function ServiceStrip() {
   const q = useServices();
-  if (q.isLoading) return <span className="text-xs text-slate-400">Đang kiểm tra dịch vụ…</span>;
+  if (q.isLoading) return <span className="text-xs text-muted">Đang kiểm tra dịch vụ…</span>;
   if (q.error || !q.data) return <span className="text-xs text-attack-600">Không đọc được trạng thái dịch vụ</span>;
   return (
-    <Link to="/system#services" className="flex items-center gap-3 rounded-md px-1.5 py-1 hover:bg-slate-100" aria-label="Trạng thái dịch vụ hạ tầng — xem chi tiết">
+    <Link to="/system#services" className="flex items-center gap-3 rounded-md px-1.5 py-1 hover:bg-slate-100" aria-label="Trạng thái dịch vụ hạ tầng, xem chi tiết">
       {q.data.services.map((s) => (
         <Tooltip key={s.id} content={tip(s)} side="bottom">
           <span><StateTag s={s} compact /></span>
@@ -172,7 +172,7 @@ export function ServicesCard() {
                       ) : s.id === "canary" ? (
                         <Link to="/lab" className="text-xs text-slate-500 hover:text-brand-600">Xem ở Thí nghiệm</Link>
                       ) : (
-                        <span className="text-slate-300">—</span>
+                        <span className="text-xs text-muted">Không có</span>
                       )}
                     </td>
                   </tr>
@@ -182,7 +182,7 @@ export function ServicesCard() {
           </div>
           <div className="space-y-1 border-t border-slate-100 px-4 py-2.5 text-xs leading-[18px] text-slate-500">
             <p>
-              Trạng thái xanh chỉ cho biết dịch vụ trả lời được, không chứng minh payload đã tới đúng nơi — xem email và sự kiện canary ở trang Thí nghiệm sau mỗi lượt.
+              Trạng thái xanh chỉ cho biết dịch vụ trả lời được, không chứng minh payload đã tới đúng nơi. Xem email và sự kiện canary ở trang Thí nghiệm sau mỗi lượt.
             </p>
             <p className="num">
               Kiểm tra lúc {when(q.data!.checked_at)} · tự hỏi lại mỗi {SERVICES_REFRESH_MS / 1000}s khi tab đang mở
@@ -201,7 +201,7 @@ export function DemoCheckNote({ check }: { check: DemoCheck }) {
   if (!bad.length) return null;
   const required = bad.filter((d) => d.need === "required");
   const optional = bad.filter((d) => d.need === "optional");
-  const line = (d: DemoCheck["deps"][number]) => `${d.label} (${STATE[d.status].label.toLowerCase()}${d.error ? ` — ${d.error}` : ""})`;
+  const line = (d: DemoCheck["deps"][number]) => `${d.label} (${STATE[d.status].label.toLowerCase()}${d.error ? `: ${d.error}` : ""})`;
   return (
     <div className="space-y-2">
       {required.length > 0 && (
@@ -210,7 +210,7 @@ export function DemoCheckNote({ check }: { check: DemoCheck }) {
         </Callout>
       )}
       {optional.length > 0 && (
-        <Callout tone="warn" title="Dịch vụ tùy chọn đang lỗi — vẫn chạy được">
+        <Callout tone="warn" title="Dịch vụ tùy chọn đang lỗi, vẫn chạy được">
           {optional.map(line).join(", ")}. Scorer vẫn chấm trên trace; chỉ thiếu bước đối chiếu phía hạ tầng.
         </Callout>
       )}
@@ -251,9 +251,9 @@ export function VerifyPanel({ runIds, channel, goal }: { runIds: string[]; chann
             MailHog không gắn run_id nên email được quy về run theo thời điểm nhận; runner xóa hộp thư ở đầu mỗi run, nên chỉ còn email của run cuối.
           </p>
           {mail.isLoading ? <Loading /> : mail.error ? <div className="p-4"><ErrorBox error={mail.error} /></div> : mail.data!.status !== "up" ? (
-            <div className="p-4"><Callout tone="warn">MailHog: {mail.data!.status}{mail.data!.error ? ` — ${mail.data!.error}` : ""}</Callout></div>
+            <div className="p-4"><Callout tone="warn">MailHog: {mail.data!.status}{mail.data!.error ? `: ${mail.data!.error}` : ""}</Callout></div>
           ) : !mail.data!.items.length ? (
-            <p className="px-4 py-3 text-sm text-slate-500">Hộp thư trống — không email nào rời agent ở run cuối.</p>
+            <p className="px-4 py-3 text-sm text-slate-500">Hộp thư trống, không email nào rời agent ở run cuối.</p>
           ) : (
             <ul className="divide-y divide-slate-100">
               {mail.data!.items.map((m) => (
@@ -275,7 +275,7 @@ export function VerifyPanel({ runIds, channel, goal }: { runIds: string[]; chann
       {open === "canary" && (
         <div className="border-t border-slate-100">
           {hits.isLoading ? <Loading /> : hits.error ? <div className="p-4"><ErrorBox error={hits.error} /></div> : hits.data!.status !== "up" ? (
-            <div className="p-4"><Callout tone="warn">Canary listener: {hits.data!.status}{hits.data!.error ? ` — ${hits.data!.error}` : ""}</Callout></div>
+            <div className="p-4"><Callout tone="warn">Canary listener: {hits.data!.status}{hits.data!.error ? `: ${hits.data!.error}` : ""}</Callout></div>
           ) : !hits.data!.items.length ? (
             <p className="px-4 py-3 text-sm text-slate-500">Listener không nhận request nào gắn với các run của lượt này.</p>
           ) : (

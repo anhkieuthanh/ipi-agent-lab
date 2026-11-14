@@ -81,15 +81,15 @@ export function Rate({ r, strong = false, good = false }: { r: CiRate; strong?: 
       <span
         className={clsx(
           "num",
-          strong ? "text-md font-semibold" : "font-medium",
-          r.p === null ? "text-slate-400" : good ? "text-slate-800" : r.p > 0 ? "text-attack-600" : "text-slate-700",
+          strong ? "text-lg font-medium" : "font-medium",
+          r.p === null ? "text-muted" : good ? "text-slate-800" : r.p > 0 ? "text-attack-600" : "text-slate-700",
         )}
       >
         {pct(r.p)}
       </span>
       <span className="num ml-1.5 text-xs text-slate-500">
         {r.x}/{r.n}
-        {r.n > 0 && <span className="text-slate-400"> · CI {ci(r.lo, r.hi)}</span>}
+        {r.n > 0 && <span className="text-muted"> · CI {ci(r.lo, r.hi)}</span>}
       </span>
     </span>
   );
@@ -122,7 +122,7 @@ export function ScopeNote({ s }: { s: ScopeProfile }) {
       tone="warn"
       title={
         <span className="inline-flex flex-wrap items-center gap-1.5">
-          Số liệu gộp nhiều điều kiện — đọc như xu hướng, chưa phải kết quả chính thức
+          Số liệu gộp nhiều điều kiện: đọc như xu hướng, chưa phải kết quả chính thức
           <InfoDot>
             {facts}
             <span className="mt-1.5 block">

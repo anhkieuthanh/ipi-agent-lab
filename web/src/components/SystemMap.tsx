@@ -348,7 +348,7 @@ export function SystemMap({
               >
                 {!renderTip && (
                   <title>
-                    {`${h.code} · ${!enabled ? "tắt" : status ? STATUS_LABEL[status] : "bật"}${onToggle ? " — bấm để " + (enabled ? "tắt" : "bật") : ""}`}
+                    {`${h.code} · ${!enabled ? "tắt" : status ? STATUS_LABEL[status] : "bật"}${onToggle ? ", bấm để " + (enabled ? "tắt" : "bật") : ""}`}
                   </title>
                 )}
                 {status === "block" && (
@@ -426,7 +426,7 @@ export function hookStatusFromSteps(steps: { hits: Hit[] }[], codes: string[]): 
 type PillTone = "off" | "on" | "transform" | "block";
 
 const PILL: Record<PillTone, string> = {
-  off: "border-dashed border-slate-300 bg-surface text-slate-400",
+  off: "border-dashed border-slate-300 bg-surface text-muted",
   on: "border-defense-500 bg-defense-50 text-defense-700",
   transform: "border-payload-500 bg-payload-50 text-payload-600",
   block: "border-attack-500 bg-attack-50 text-attack-700",

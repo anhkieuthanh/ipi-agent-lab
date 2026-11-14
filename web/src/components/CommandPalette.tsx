@@ -16,14 +16,14 @@ const ITEM =
   "data-[selected=true]:bg-slate-100 data-[selected=true]:text-slate-900";
 const GROUP =
   "[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 " +
-  "[&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-slate-400";
+  "[&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted";
 
 function Row({ icon, children, hint }: { icon: ReactNode; children: ReactNode; hint?: ReactNode }) {
   return (
     <>
-      <span className="shrink-0 text-slate-400">{icon}</span>
+      <span className="shrink-0 text-muted">{icon}</span>
       <span className="min-w-0 flex-1 truncate">{children}</span>
-      {hint && <span className="flex shrink-0 items-center gap-1 text-xs text-slate-400">{hint}</span>}
+      {hint && <span className="flex shrink-0 items-center gap-1 text-xs text-muted">{hint}</span>}
     </>
   );
 }
@@ -63,16 +63,16 @@ export function CommandPalette({
       open={open}
       onOpenChange={onOpenChange}
       label="Bảng lệnh"
-      overlayClassName="fixed inset-0 z-50 bg-slate-900/20 backdrop-blur-[1px] dark:bg-black/50"
+      overlayClassName="fixed inset-0 z-50 bg-slate-900/25 dark:bg-black/55"
       contentClassName="fixed left-1/2 top-[14vh] z-50 w-[min(92vw,560px)] -translate-x-1/2 overflow-hidden rounded-xl bg-surface shadow-pop"
     >
       <div className="flex items-center gap-2.5 border-b border-slate-200 px-3.5">
-        <Search size={15} className="shrink-0 text-slate-400" />
+        <Search size={15} className="shrink-0 text-muted" />
         <Command.Input
           value={query}
           onValueChange={setQuery}
           placeholder="Tìm trang, lô, mã run, mã payload…"
-          className="h-11 w-full bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400"
+          className="h-11 w-full bg-transparent text-base text-slate-900 outline-none placeholder:text-muted"
         />
         <Kbd>Esc</Kbd>
       </div>
