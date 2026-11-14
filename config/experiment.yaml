@@ -260,6 +260,9 @@ blocks:
     attacker_mode: blind
     targets: [A1, A2, A3]         # A1 vào B1 từ `v-models-1.2` (TA quyết 2026-11-06)
     presets: ["off"]
+    # Trục biến thể system prompt theo độ cả tin tăng dần (TA quyết 2026-11-14, thay hiệu chỉnh độ
+    # khó): mỗi biến thể một lô, cùng kế hoạch run. Khối khác chạy biến thể `active` (`baseline`).
+    prompt_variants: [guarded, baseline, trusting]
     goals: [G1, G2, G3]
     techniques_by_channel:
       K1: [T1, T2, T3, T4, T5, T6, T7, T8]

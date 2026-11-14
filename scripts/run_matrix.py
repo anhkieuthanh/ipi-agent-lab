@@ -20,7 +20,7 @@ vòng; vòng chỉ khác biến thể `active` của `config/prompts.yaml`. Lô 
 `results/calibration/round_<N>/` kèm `system_prompt_template.txt` (prompt còn placeholder) để lấy diff.
 
     # Xem số run của một khối, không gọi API
-    uv run python scripts/run_matrix.py --block B1 --plan-only
+    uv run python scripts/run_matrix.py --block B1 --prompt-variant baseline --plan-only
     # Chạy thử phần corpus đã phủ: K1, T1–T5, 2 run/ô, 1 model
     uv run python scripts/run_matrix.py --block B1 --dry-run --channels K1 \
         --techniques T1 T2 T3 T4 T5 --per-cell 2 --targets A3 --estimate-usd 2
@@ -52,6 +52,7 @@ import signal
 import sys
 import time
 from datetime import datetime, timezone
+from functools import partial
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -61,7 +62,12 @@ from dotenv import load_dotenv  # noqa: E402
 
 from agent.core import load_core_params  # noqa: E402
 from agent.llm_client import LLMClient  # noqa: E402
-from agent.prompts import load_prompt_config, template_hash, template_text  # noqa: E402
+from agent.prompts import (  # noqa: E402
+    build_system_prompt,
+    load_prompt_config,
+    template_hash,
+    template_text,
+)
 from attack.runner import (  # noqa: E402
     HARNESS_PREFIX,
     AttackRunnerError,
@@ -121,6 +127,10 @@ def main() -> int:
     parser.add_argument(
         "--calibration-round", type=int, metavar="N", help="vòng hiệu chỉnh STT-61 (0 = baseline)"
     )
+    parser.add_argument(
+        "--prompt-variant",
+        help="biến thể system prompt của lô; bắt buộc với khối khai prompt_variants (B1)",
+    )
     dry = parser.add_argument_group("chạy thử (chỉ cùng --dry-run)")
     dry.add_argument("--dry-run", action="store_true", help="lô thử, tiền tố dryrun-")
     dry.add_argument("--targets", nargs="+", help="tập con target của khối")
@@ -173,6 +183,13 @@ def main() -> int:
     if problems:
         print(f"experiment.yaml chưa sẵn sàng cho {args.block}:\n  " + "\n  ".join(problems))
         return 2
+    variants = exp.unit(args.block).prompt_variants
+    if variants and not (calib or args.pilot):
+        if args.prompt_variant not in variants:
+            parser.error(f"khối {args.block} chạy theo biến thể: --prompt-variant ∈ {list(variants)}")
+    elif args.prompt_variant is not None:
+        parser.error(f"khối {args.block} không khai prompt_variants — bỏ --prompt-variant")
+    variant = args.prompt_variant or load_prompt_config().active
 
     corpus = load_corpus()
     carriers = load_carriers()
@@ -220,6 +237,10 @@ def main() -> int:
         prefix = f"pilot-{args.block}"
     else:
         prefix = f"dryrun-attack-{args.block}" if args.dry_run else f"attack-{args.block}"
+        if args.prompt_variant:
+            prefix = f"{prefix}-{args.prompt_variant}"
+    if args.batch_id and args.prompt_variant and not args.batch_id.startswith(f"{prefix}-"):
+        parser.error(f"batch_id của biến thể {args.prompt_variant} phải có tiền tố {prefix}-")
     batch_id = args.batch_id or f"{prefix}-{_stamp()}"
     if calib:
         root = CALIBRATION_ROOT / f"round_{args.calibration_round}"
@@ -248,7 +269,8 @@ def main() -> int:
 
     signal.signal(signal.SIGTERM, signal.default_int_handler)  # SIGTERM → KeyboardInterrupt
     run = dict(args=args, exp=exp, corpus=corpus, carriers=carriers, specs=specs, targets=targets,
-               calib=calib, batch_id=batch_id, batch_dir=batch_dir, store=store, runs_csv=runs_csv)
+               calib=calib, batch_id=batch_id, batch_dir=batch_dir, store=store, runs_csv=runs_csv,
+               variant=variant)
     if args.shard:  # con chạy dưới khóa của mẹ
         return _run_shard(**run)
     try:
@@ -268,11 +290,13 @@ def _check_commit(args) -> str | None:
     return commit
 
 
-def _context(args, exp, corpus, carriers, targets, calib, batch_id, engine, commit) -> RunContext:
+def _context(args, exp, corpus, carriers, targets, calib, batch_id, engine, commit,
+             variant) -> RunContext:
     return RunContext(
         engine=engine,
         batch_id=batch_id,
-        env_hash=compute_env_hash(template_hash(), TOOLS, commit),
+        env_hash=compute_env_hash(template_hash(variant), TOOLS, commit),
+        system_prompt=partial(build_system_prompt, variant=variant),
         harness_version=f"{HARNESS_PREFIX}{commit}",
         models={t: LLMClient(t, config_path=MODELS, log_path=LOG, run_id=batch_id) for t in targets},
         tools=build_harness_tools(),
@@ -287,7 +311,7 @@ def _context(args, exp, corpus, carriers, targets, calib, batch_id, engine, comm
 
 
 def _run_shard(*, args, exp, corpus, carriers, specs, targets, calib, batch_id, batch_dir, store,
-               runs_csv) -> int:
+               runs_csv, variant) -> int:
     """Tiến trình con: phần `todo[i::N]`, ghi shard riêng; mẹ gộp, ghi manifest, xuất CSV."""
     i, n = (int(x) for x in args.shard.split("/"))
     done = done_specs(open_store(store), batch_id)
@@ -298,7 +322,7 @@ def _run_shard(*, args, exp, corpus, carriers, specs, targets, calib, batch_id, 
     prices = load_prices(MODELS, targets)
     guard = budget_from_env(args.estimate_usd)
     ctx = _context(args, exp, corpus, carriers, targets, calib, batch_id,
-                   open_store(shard_path(batch_dir, i)), commit)
+                   open_store(shard_path(batch_dir, i)), commit, variant)
     stop = stop_file(batch_dir)
     t0 = time.monotonic()
     for k, spec in enumerate(todo, start=1):
@@ -321,7 +345,7 @@ def _run_shard(*, args, exp, corpus, carriers, specs, targets, calib, batch_id, 
 
 
 def _run_batch(*, args, exp, corpus, carriers, specs, targets, calib, batch_id, batch_dir, store,
-               runs_csv) -> int:
+               runs_csv, variant) -> int:
     since = _log_ts()
     merged = merge_leftover_shards(store) if store.is_file() else []
     if merged:
@@ -342,7 +366,7 @@ def _run_batch(*, args, exp, corpus, carriers, specs, targets, calib, batch_id, 
 
     prices = load_prices(MODELS, targets)
     guard = budget_from_env(args.estimate_usd)
-    ctx = _context(args, exp, corpus, carriers, targets, calib, batch_id, engine, commit)
+    ctx = _context(args, exp, corpus, carriers, targets, calib, batch_id, engine, commit, variant)
     models, env_hash = ctx.models, ctx.env_hash
     prompt_cfg = load_prompt_config()
     parallel = args.workers > 1 and len(todo) > 1
@@ -355,9 +379,9 @@ def _run_batch(*, args, exp, corpus, carriers, specs, targets, calib, batch_id, 
         "block": args.block,
         "pilot": args.pilot,
         "calibration_round": args.calibration_round,
-        "prompt_variant": prompt_cfg.active,
-        "prompt_knobs": prompt_cfg.knobs(),
-        "prompt_template_sha256": template_hash(),
+        "prompt_variant": variant,
+        "prompt_knobs": prompt_cfg.knobs(variant),
+        "prompt_template_sha256": template_hash(variant),
         "batch_id": batch_id,
         "dry_run": args.dry_run,
         "lab_git_commit": commit,
@@ -374,7 +398,7 @@ def _run_batch(*, args, exp, corpus, carriers, specs, targets, calib, batch_id, 
     }
     batch_dir.mkdir(parents=True, exist_ok=True)
     if calib:
-        (batch_dir / "system_prompt_template.txt").write_text(template_text() + "\n", "utf-8")
+        (batch_dir / "system_prompt_template.txt").write_text(template_text(variant) + "\n", "utf-8")
 
     if parallel:
         return _run_parallel(args, batch_id, batch_dir, store, runs_csv, manifest, prices, guard,

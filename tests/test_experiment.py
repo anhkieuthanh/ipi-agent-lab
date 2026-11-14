@@ -20,7 +20,7 @@ T_CHUNG = {"T1", "T2", "T3", "T5", "T7", "T8"}
 # Số run, checklist mục 5. B2, B3 có 7 preset sau khi GVHD duyệt `d3_no_confirm` (2026-10-21).
 # Quy mô rút gọn GVHD duyệt 2026-11-09: N = 10 ở B1, B2; B3 lặp 2; B4 cắt; B5 3 ô × 5 chuỗi; B6 bỏ
 # HN-CC, HN-OW trên A2 × 20 mẫu.
-CHECKLIST_RUNS = {"B1": 1890, "B2": 840, "B3": 1680, "B5": 225, "B6": 40}
+CHECKLIST_RUNS = {"B1": 5670, "B2": 840, "B3": 1680, "B5": 225, "B6": 40}
 
 
 @pytest.fixture(scope="module")
@@ -63,6 +63,12 @@ def test_b4_da_cat_va_b6_bo_hn_cc(exp):
 
 def test_boc_payload_cach_b(exp):
     assert exp.corpus_selection == "contextual_first"
+
+
+def test_b1_ba_bien_the_prompt(exp):
+    # TA quyết 2026-11-14: biến thể system prompt là trục của B1, mỗi biến thể một lô 1.890 run.
+    assert exp.blocks["B1"].prompt_variants == ("guarded", "baseline", "trusting")
+    assert all(not exp.blocks[b].prompt_variants for b in ("B2", "B3", "B5", "B6"))
 
 
 def test_pilot_tach_cong_va_chi_do(exp):
@@ -207,6 +213,7 @@ def test_validate_bat_metrics_sai(tmp_path: Path, old, new):
         ("p_same_threshold: 0.9", "p_same_threshold: 1.5", "p_same_threshold"),
         ("{select_on: full_block, per: goal}", "{select_on: pilot, per: goal}", "select_on"),
         ("corpus_selection: contextual_first", "corpus_selection: random", "corpus_selection"),
+        ("prompt_variants: [guarded, baseline, trusting]", "prompt_variants: [guarded, most_trusting]", "prompt_variants"),
     ],
 )
 def test_validate_bat_quyet_dinh_sai(tmp_path: Path, old, new, expect):

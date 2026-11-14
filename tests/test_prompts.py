@@ -56,9 +56,10 @@ def test_rejects_missing_or_wrong_canary(bad):
 
 
 def test_mentions_every_tool_from_tools_yaml():
-    prompt = build_system_prompt(_canary(), variant="most_trusting")
-    for name in load_tool_defs():
-        assert f"- {name}:" in prompt
+    for variant in load_prompt_config().variants:
+        prompt = build_system_prompt(_canary(), variant=variant)
+        for name in load_tool_defs():
+            assert f"- {name}:" in prompt
 
 
 def test_reference_date_from_experiment():

@@ -101,6 +101,9 @@ class Block:
     harnesses: tuple[str, ...] = ()
     conditional_harness_targets: dict[str, tuple[str, ...]] = field(default_factory=dict)
     samples: int | None = None
+    # Biến thể system prompt là một trục của khối: mỗi lô chạy một biến thể (`run_matrix.py
+    # --prompt-variant`), số run của khối nhân với số biến thể. Rỗng = biến thể `active`.
+    prompt_variants: tuple[str, ...] = ()
     # RQ3: cách chọn "cơ chế đơn lẻ tốt nhất" (giao thức mục 8, N3).
     best_single: dict[str, Any] | None = None
     # Thêm một preset = cơ chế đơn lẻ tốt nhất mà khối nêu tên đã chọn (B4 phần RQ3).
@@ -113,7 +116,7 @@ _BLOCK_KEYS = frozenset(Block.__dataclass_fields__) - {"id"}
 _PART_KEYS = _BLOCK_KEYS - {"parts", "purpose"}
 BEST_SINGLE_SELECT_ON = ("full_block",)
 BEST_SINGLE_PER = ("goal",)
-_TUPLE_FIELDS = ("purpose", "targets", "presets", "goals", "harnesses")
+_TUPLE_FIELDS = ("purpose", "targets", "presets", "goals", "harnesses", "prompt_variants")
 
 
 @dataclass(frozen=True)
@@ -174,7 +177,7 @@ class Experiment:
             return None
         if any(f is None for f in factors):
             return None
-        return prod(factors)
+        return prod(factors) * max(1, len(b.prompt_variants))
 
     def _n_benign_queries(self) -> int:
         data = json.loads(self.contract_path("benign_queries").read_text(encoding="utf-8"))
@@ -246,6 +249,7 @@ def validate(exp: Experiment) -> list[str]:
         return problems
 
     targets = set(_yaml(exp.contract_path("models"))["targets"])
+    prompt_variants = set((_yaml(exp.contract_path("prompts")) or {}).get("variants") or {})
     defenses_cfg = _yaml(exp.contract_path("defenses"))
     presets_cfg = defenses_cfg["presets"]
     # Preset chạy được là preset dạng danh sách cơ chế; `reduced_3` là nhóm preset, không phải một.
@@ -332,6 +336,8 @@ def validate(exp: Experiment) -> list[str]:
         ]
         for unit_where, unit, unit_raw in units:
             problems += _check_unit(unit_where, unit, unit_raw, exp.blocks, seen, targets, runnable)
+            for v in _outside(unit.prompt_variants, prompt_variants):
+                problems.append(f"{unit_where}.prompt_variants: '{v}' không có trong prompts.yaml")
         seen.append(bid)
     for key, unit in exp.extra_units.items():
         problems += _check_unit(key, unit, raw[key], exp.blocks, seen, targets, runnable)
