@@ -34,11 +34,10 @@ if str(ROOT / "src") not in sys.path:
 
 from eval.metrics import utility_summary, wilson  # noqa: E402
 from eval.scorer import ScorerConfig, _block_events  # noqa: E402
-from obs.trace import BLOCKED_BY, HARNESS_HIT_PREFIX, Step  # noqa: E402
+from obs.trace import BLOCKED_BY, Step  # noqa: E402
 
 DEFENSES_PATH = ROOT / "config" / "defenses.yaml"
 RESULTS_DIR = ROOT / "results"
-FIGURES_DIR = RESULTS_DIR / "figures"
 #: Nguồn payload để trace viewer định vị payload trong bước — gộp theo `id`.
 PAYLOAD_SOURCES = (
     ROOT / "src" / "attack" / "payloads",
@@ -46,7 +45,6 @@ PAYLOAD_SOURCES = (
     ROOT / "data" / "payloads_sample.json",
 )
 STORE_SUFFIXES = (".sqlite", ".db")
-FIGURE_SUFFIXES = (".png", ".svg", ".jpg", ".jpeg")
 
 #: Mã ngắn D1–D4 ↔ khóa khối trong `defenses.yaml`.
 DEFENSE_KEYS = {
@@ -472,11 +470,6 @@ def classify_steps(
     return views
 
 
-def hit_source(hit: dict[str, Any]) -> str:
-    name = str(hit.get("defense", ""))
-    return "harness" if name.startswith(HARNESS_HIT_PREFIX) else "defense"
-
-
 # ---------------------------------------------------------------------------
 # Công tắc D1–D4 (trang 4)
 # ---------------------------------------------------------------------------
@@ -541,10 +534,3 @@ def compare_with_off(runs: pd.DataFrame, enabled: str, *, by: str = "target_id")
         })
     return pd.DataFrame(rows)
 
-
-def list_figures(figures_dir: Path = FIGURES_DIR, prefix: str = "pareto") -> list[Path]:
-    if not figures_dir.is_dir():
-        return []
-    return sorted(
-        p for p in figures_dir.rglob(f"{prefix}*") if p.suffix.lower() in FIGURE_SUFFIXES
-    )

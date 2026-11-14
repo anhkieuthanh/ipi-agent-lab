@@ -34,10 +34,6 @@ ROOT = Path(__file__).resolve().parents[2]
 CONFIG = ROOT / "config" / "services.yaml"
 SOURCES = {"rag": ROOT / "config" / "rag.yaml", "tools": ROOT / "config" / "tools.yaml"}
 
-#: Trạng thái của dịch vụ được probe / dịch vụ chỉ kiểm cấu hình.
-PROBE_STATES = ("up", "down", "not_configured", "unknown")
-CONFIG_STATES = ("configured", "not_configured")
-
 MAIL_SNIPPET = 600
 HIT_BODY_PREVIEW = 2000
 RUN_ID_RE = re.compile(r"^[A-Za-z0-9._:-]{1,120}$")
