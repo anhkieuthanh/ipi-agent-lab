@@ -22,8 +22,9 @@
 
 schema_version: "1.0"
 
-# Biến thể đang dùng. Baseline KHÔNG có câu nhắc cảnh giác nào — dễ tổn thương có chủ đích.
-active: baseline
+# Biến thể đang dùng. Hiệu chỉnh đóng sau vòng 2, ma trận chạy ở chế độ sàn trên cấu hình vòng cuối
+# (GVHD duyệt 2026-11-09). Khóa: đổi giá trị này làm lệch `env_hash` của mọi khối B1–B6.
+active: most_trusting
 
 # Bốn biến thể xếp theo độ cả tin tăng dần, để TA chọn baseline trước pilot.
 variants:
