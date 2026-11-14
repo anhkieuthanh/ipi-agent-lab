@@ -1,6 +1,6 @@
 """Hợp đồng năm tầng và hook phòng thủ (STT-17) phải khớp config và các module đã có.
 
-DoD (`docs/06. Track/Lộ trình triển khai code.md`, giai đoạn 1): import được, mỗi hook nêu rõ
+DoD: import được, mỗi hook nêu rõ
 gọi ở giai đoạn nào. Thêm vào đó: `src/interfaces.py` không được lệch `config/defenses.yaml`
 (`pipeline_order`, nguồn của D1/D2) và trace schema (kênh) — một khái niệm, một nguồn.
 """

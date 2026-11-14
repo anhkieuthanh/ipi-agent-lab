@@ -21,7 +21,7 @@ Hai provider, chọn bằng khóa `provider` của khối target (mặc định 
 
 - `openai` — API tương thích OpenAI qua gateway chung (A2, A3).
 - `anthropic` — Messages API qua SDK chính thức `anthropic` (A1, gọi thẳng để tránh lớp system
-  prompt gateway chèn vào; `docs/06. Track/Việc treo.md` VT-2). Request dạng OpenAI được dịch sang
+  prompt gateway chèn vào). Request dạng OpenAI được dịch sang
   Messages API, response dịch ngược về `LLMResult`; `stop_reason` đổi sang từ vựng `finish_reason`
   (`refusal` giữ nguyên — tín hiệu từ chối cấp API). Lõi agent nối lượt assistant bằng
   `assistant_message(result)`: với provider này, message mang theo block gốc (cả thinking) để

@@ -1,6 +1,6 @@
 """Khung giao thức thực nghiệm `config/experiment.yaml` (STT-24).
 
-DoD (`docs/06. Track/Lộ trình triển khai code.md`, giai đoạn 1): runner đọc được, chưa cần đủ
+DoD: runner đọc được, chưa cần đủ
 giá trị. Thêm hai lớp canh: mọi tên trong file trỏ đúng nguồn của nó, và số run của từng khối
 khớp thiết kế phân khối GVHD đã ký (checklist mục 5).
 """

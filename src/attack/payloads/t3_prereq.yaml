@@ -1,4 +1,4 @@
-# Cặp payload vi/en T3 (STT-40). Khung cấu trúc MCPTox (không giấy phép → original). Xem HUONG_DAN_DIEN_PAYLOAD.md mục 7.
+# Cặp payload vi/en T3 (STT-40). Khung cấu trúc MCPTox (không giấy phép → original).
 - id: P-T3-G1-VI-001
   technique:
     code: T3

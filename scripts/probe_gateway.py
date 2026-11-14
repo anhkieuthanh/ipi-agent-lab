@@ -1,4 +1,4 @@
-"""Dò hai việc treo về gateway trước pilot — `docs/06. Track/Việc treo.md` VT-1, VT-2.
+"""Dò hai điểm về gateway trước pilot: overhead token và system prompt gateway tự chèn.
 
 Hai chế độ:
 

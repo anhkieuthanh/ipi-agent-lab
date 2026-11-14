@@ -1,4 +1,4 @@
-# Cặp payload vi/en T1 (STT-40). Nguồn khung: AgentDojo MIT. Xem HUONG_DAN_DIEN_PAYLOAD.md mục 7.
+# Cặp payload vi/en T1 (STT-40). Nguồn khung: AgentDojo MIT.
 - id: P-T1-G2-VI-001
   technique:
     code: T1
