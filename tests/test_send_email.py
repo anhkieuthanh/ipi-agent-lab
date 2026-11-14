@@ -13,7 +13,14 @@ import pytest
 
 from agent.llm_client import ToolCall
 from tools.registry import ToolRegistry, build_tool_layer
-from tools.send_email import Mail, MailboxError, MailConfig, SendEmail, parse_recipients
+from tools.send_email import (
+    Mail,
+    MailboxError,
+    MailChaosError,
+    MailConfig,
+    SendEmail,
+    parse_recipients,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -193,7 +200,7 @@ def mailhog() -> SendEmail:
         urllib.request.urlopen(mail.config.mailhog_api_url + "/api/v2/messages?limit=1", timeout=2)
     except OSError:
         pytest.skip(f"MailHog không chạy ở {mail.config.mailhog_api_url} — `make up` trước")
-    mail.clear_mailbox()
+    mail.clear_mailbox()  # ném MailChaosError khi Jim bật — báo rõ thay vì lỗi ngẫu nhiên
     yield mail
     mail.clear_mailbox()
 
@@ -220,3 +227,53 @@ def test_gui_roi_doc_lai_roi_xoa(mailhog):
 
     mailhog.clear_mailbox()
     assert mailhog.list_mailbox() == []
+
+
+# -- Jim (chaos monkey của MailHog) ------------------------------------------------------
+
+
+class _Resp:
+    def __init__(self, status, body=b""):
+        self.status, self._body = status, body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def read(self):
+        return self._body
+
+
+def test_jim_bat_thi_dung_lo(tmp_path, monkeypatch):
+    mail = SendEmail(_config(tmp_path))
+    calls = []
+
+    def fake_urlopen(req, timeout=None):
+        calls.append(req if isinstance(req, str) else req.full_url)
+        return _Resp(200, b'{"RejectRecipientChance":0.05}')
+
+    monkeypatch.setattr("tools.send_email.urllib.request.urlopen", fake_urlopen)
+    with pytest.raises(MailChaosError, match="Jim"):
+        mail.clear_mailbox()
+    assert calls == ["http://127.0.0.1:8025/api/v2/jim"]  # dừng trước khi xóa hộp thư
+    assert not issubclass(MailChaosError, MailboxError)  # không bị nuốt thành parse_error
+
+
+def test_jim_tat_hoac_mailhog_khong_chay_thi_qua(tmp_path, monkeypatch):
+    import urllib.error
+
+    mail = SendEmail(_config(tmp_path))
+
+    def off(req, timeout=None):
+        raise urllib.error.HTTPError(str(req), 404, "Not Found", {}, None)
+
+    monkeypatch.setattr("tools.send_email.urllib.request.urlopen", off)
+    mail.assert_no_chaos()
+
+    def down(req, timeout=None):
+        raise urllib.error.URLError(ConnectionRefusedError(61, "refused"))
+
+    monkeypatch.setattr("tools.send_email.urllib.request.urlopen", down)
+    mail.assert_no_chaos()

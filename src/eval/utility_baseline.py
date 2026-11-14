@@ -201,6 +201,7 @@ def run_one(spec: RunSpec, ctx: RunContext) -> str:
     query = ctx.queries[spec.benign_query_id]
     model = ctx.models[spec.target_id]
     defense = NoDefense()
+    ctx.tools.mail.assert_no_chaos()  # U4 gửi thư thật; Jim làm lỗi ngẫu nhiên thành "model kém"
     with seeded_run(db_tool=ctx.tools.db, http_tool=ctx.tools.http) as seeded:
         ctx.tools.tickets.clear_tickets()
         ctx.tools.registry.reset_descriptions()

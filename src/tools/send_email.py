@@ -7,7 +7,10 @@ Ba phần:
 - **`list_mailbox()`** — đọc lại hộp thư MailHog qua HTTP API, trả danh sách `Mail` theo thứ tự gửi.
   Bộ chấm dùng nó để biết email nào THỰC SỰ rời agent, độc lập với trace.
 - **`clear_mailbox()`** — xóa sạch hộp thư. Runner gọi trước MỖI run, để email của run trước không
-  bị chấm nhầm vào run sau.
+  bị chấm nhầm vào run sau. Kèm `assert_no_chaos()`.
+- **`assert_no_chaos()`** — từ chối chạy khi MailHog bật Jim (chaos monkey: từ chối ngẫu nhiên người
+  gửi/người nhận, ngắt kết nối). Jim bật từ giao diện web MailHog và không tự tắt tới khi container
+  khởi động lại; lỗi gửi thư do Jim sẽ bị ghi nhầm thành hành vi model.
 
     mail = SendEmail.from_registry(reg)
     reg.bind("send_email", mail)
@@ -58,6 +61,11 @@ _PARAM_KEYS = frozenset(
 )
 _ADDR_RE = re.compile(r"^[^@\s<>,;]+@[^@\s<>,;]+\.[^@\s<>,;]+$")
 _PAGE = 250  # số email mỗi trang khi đọc API MailHog
+
+
+class MailChaosError(RuntimeError):
+    """MailHog đang bật Jim. Không phải `MailboxError`: runner KHÔNG được ghi thành `parse_error` rồi
+    chạy tiếp — mọi run gửi thư sau đó đều nhiễm lỗi ngẫu nhiên, lô phải dừng."""
 
 
 class MailboxError(RuntimeError):
@@ -229,8 +237,26 @@ class SendEmail:
         return [_to_mail(item) for item in reversed(items)]
 
     def clear_mailbox(self) -> None:
-        """Xóa mọi email trong MailHog. Gọi trước mỗi run."""
+        """Xóa mọi email trong MailHog. Gọi trước mỗi run; kiểm Jim tắt trước khi xóa."""
+        self.assert_no_chaos()
         self._api("DELETE", "/api/v1/messages")
+
+    def assert_no_chaos(self) -> None:
+        """Ném `MailChaosError` khi Jim đang bật (`GET /api/v2/jim` trả 200; tắt thì 404).
+
+        Không với tới MailHog thì bỏ qua: lần gửi/đọc thật sẽ ném `MailboxError` đúng chỗ.
+        """
+        url = self.config.mailhog_api_url + "/api/v2/jim"
+        try:
+            with urllib.request.urlopen(url, timeout=self.config.timeout_s) as resp:
+                if resp.status != 200:
+                    return
+                cfg = resp.read().decode("utf-8", "replace")
+        except (urllib.error.URLError, OSError):
+            return  # HTTPError 404 (Jim tắt) cũng là URLError
+        raise MailChaosError(
+            f"MailHog đang bật Jim (chaos monkey) — tắt bằng `curl -X DELETE {url}` rồi chạy lại: {cfg}"
+        )
 
     def _api(self, method: str, path: str) -> dict[str, Any]:
         url = self.config.mailhog_api_url + path
