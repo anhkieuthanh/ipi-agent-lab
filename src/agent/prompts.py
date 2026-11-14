@@ -45,7 +45,6 @@ __all__ = [
     "load_prompt_config",
     "render_template",
     "template_hash",
-    "template_text",
 ]
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -288,17 +287,6 @@ def build_system_prompt(
         )
     template = _template(variant, config_path, experiment_path, tools_path)
     return template.replace(CANARY_PLACEHOLDER, canary)
-
-
-def template_text(
-    variant: str | None = None,
-    *,
-    config_path: str | Path = DEFAULT_PATH,
-    experiment_path: str | Path | None = None,
-    tools_path: str | Path | None = None,
-) -> str:
-    """Prompt còn placeholder của một biến thể — để đối chiếu văn bản giữa các biến thể."""
-    return _template(variant, config_path, experiment_path, tools_path)
 
 
 def template_hash(

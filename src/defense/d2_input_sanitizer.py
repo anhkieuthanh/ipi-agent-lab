@@ -51,9 +51,8 @@ _SOURCE_STAGE: dict[str, str] = {
 #: Ký tự khoảng trắng GIỮ LẠI ở bước 2 dù thuộc Cc (điều khiển): xuống dòng, tab, về đầu dòng.
 _KEEP_CONTROL = {"\n", "\t", "\r"}
 
-#: Bảng chữ của khối "mã hóa" bước 5: base64 (gồm url-safe) + hex đã nằm trong đây.
-_ENCODED_ALPHABET = re.compile(r"[A-Za-z0-9+/=_-]")
-#: Một khối ứng viên liền mạch (không khoảng trắng) để xét entropy ở bước 5.
+#: Một khối ứng viên liền mạch (không khoảng trắng) để xét entropy ở bước 5: bảng chữ base64 (gồm
+#: url-safe), hex đã nằm trong đây.
 _CANDIDATE_BLOCK = re.compile(r"[A-Za-z0-9+/=_-]+")
 
 #: Comment HTML (bước 3). DOTALL để bắt comment nhiều dòng.

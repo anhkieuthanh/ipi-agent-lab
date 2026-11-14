@@ -21,7 +21,7 @@ from collections.abc import Iterable
 
 from attack.mutator import _HOMOGLYPH  # đồng hình ASCII→Cyrillic/Hy Lạp, dùng chung một bảng
 
-__all__ = ["VI_TRANSFORMS", "apply", "available"]
+__all__ = ["VI_TRANSFORMS", "apply"]
 
 #: Trùng `payloads.schema.VI_TRANSFORMS`. Lệch nhau thì validator bắt — một khái niệm, một nguồn.
 VI_TRANSFORMS = ("strip_diacritics", "telex", "vni", "homoglyph_vi", "code_mix")
@@ -36,10 +36,6 @@ _MOD_MARKS = (_CIRCUMFLEX, _BREVE, _HORN)
 
 # —— Token bảo toàn mặc định ————————————————————————————————————————————————
 _DEFAULT_PROTECT_RE = (r"\{[A-Za-z_]+\}", r"<[A-Za-z_]+>")
-
-
-def available() -> tuple[str, ...]:
-    return VI_TRANSFORMS
 
 
 def _protector(protect: Iterable[str]) -> re.Pattern[str]:

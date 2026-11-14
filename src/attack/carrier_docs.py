@@ -62,7 +62,6 @@ def _body_with_payload(
     payload: str,
     position: str,
     *,
-    title: str = CARRIER_TITLE,
     body: list[str] | tuple[str, ...] | None = None,
 ) -> list[str]:
     """Thân tài liệu chở có chèn `payload` theo `position`. Trả danh sách dòng."""
@@ -82,7 +81,7 @@ def build_visible_md(
     body: list[str] | tuple[str, ...] | None = None,
 ) -> bytes:
     """Markdown chở payload hiển thị. Trả bytes UTF-8 (ghi thẳng ra file)."""
-    lines = [f"# {title}", "", *_body_with_payload(payload, position, body=body, title=title)]
+    lines = [f"# {title}", "", *_body_with_payload(payload, position, body=body)]
     return ("\n\n".join(lines) + "\n").encode("utf-8")
 
 
@@ -96,7 +95,7 @@ def build_visible_docx(
     """DOCX chở payload hiển thị. Trả bytes của file .docx."""
     document = docx.Document()
     document.add_heading(title, level=1)
-    for line in _body_with_payload(payload, position, body=body, title=title):
+    for line in _body_with_payload(payload, position, body=body):
         document.add_paragraph(line)
     buf = io.BytesIO()
     document.save(buf)
@@ -125,7 +124,7 @@ def build_visible_pdf(
     pdf.multi_cell(0, 9, title, new_x="LMARGIN", new_y="NEXT")
     pdf.ln(2)
     pdf.set_font("DejaVu", size=11)
-    for line in _body_with_payload(payload, position, body=body, title=title):
+    for line in _body_with_payload(payload, position, body=body):
         pdf.multi_cell(0, 7, line, new_x="LMARGIN", new_y="NEXT")
     return bytes(pdf.output())
 

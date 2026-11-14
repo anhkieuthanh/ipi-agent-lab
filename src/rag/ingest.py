@@ -50,7 +50,6 @@ from rag.embedder import Embedder, get_embedder  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 CONFIG_PATH = REPO_ROOT / "config" / "rag.yaml"
 CORPUS_DIR = REPO_ROOT / "src" / "rag" / "corpus"
-MANIFEST_PATH = REPO_ROOT / "src" / "rag" / "corpus_manifest.csv"
 
 #: Namespace cố định để sinh point-id ổn định giữa các lần chạy. Cùng một
 #: (doc_id, chunk_index) luôn cho ra cùng một UUID, nên ingest lại tài liệu đã
