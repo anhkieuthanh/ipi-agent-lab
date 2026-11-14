@@ -57,7 +57,6 @@ _TOP_KEYS = frozenset(
         "variables",
         "fixed",
         "pilot",
-        "calibration",
         "corpus_selection",
         "run_order",
         "stopping",
@@ -99,21 +98,17 @@ class Block:
     max_rounds: int | None = None
     attacker_model: str | None = None
     harnesses: tuple[str, ...] = ()
-    conditional_harness_targets: dict[str, tuple[str, ...]] = field(default_factory=dict)
     samples: int | None = None
     # Biến thể system prompt là một trục của khối: mỗi lô chạy một biến thể (`run_matrix.py
     # --prompt-variant`), số run của khối nhân với số biến thể. Rỗng = biến thể `active`.
     prompt_variants: tuple[str, ...] = ()
     # RQ3: cách chọn "cơ chế đơn lẻ tốt nhất" (giao thức mục 8, N3).
     best_single: dict[str, Any] | None = None
-    # Thêm một preset = cơ chế đơn lẻ tốt nhất mà khối nêu tên đã chọn (B4 phần RQ3).
-    add_best_single_from: str | None = None
-    # Khối gồm nhiều phần khác kiểu run (B4). Mỗi phần là một Block; số run là tổng các phần.
-    parts: dict[str, Block] = field(default_factory=dict)
 
 
 _BLOCK_KEYS = frozenset(Block.__dataclass_fields__) - {"id"}
-_PART_KEYS = _BLOCK_KEYS - {"parts", "purpose"}
+#: Lượt ngoài khối (`utility_baseline`) cùng trường như một khối nhưng không trả lời RQ nào.
+_UNIT_KEYS = _BLOCK_KEYS - {"purpose"}
 BEST_SINGLE_SELECT_ON = ("full_block",)
 BEST_SINGLE_PER = ("goal",)
 _TUPLE_FIELDS = ("purpose", "targets", "presets", "goals", "harnesses", "prompt_variants")
@@ -149,17 +144,14 @@ class Experiment:
     def planned_runs(self, block_id: str) -> int | None:
         """Số run theo công thức của khối; `None` khi còn thừa số chưa chốt.
 
-        Khối chọn ô theo quy tắc (B2, B5) cho cận trên — `cells.max_cells` ô. B6 tính cả nhánh có
-        điều kiện, cũng là cận trên. Nhận cả lượt ngoài khối (`utility_baseline`).
+        Khối chọn ô theo quy tắc (B2, B5) cho cận trên — `cells.max_cells` ô. B1 nhân với số biến thể
+        system prompt. Nhận cả lượt ngoài khối (`utility_baseline`).
         """
         return self._planned(self.unit(block_id))
 
     def _planned(self, b: Block) -> int | None:
-        if b.parts:
-            counts = [self._planned(part) for part in b.parts.values()]
-            return None if any(c is None for c in counts) else sum(counts)
         n_targets = len(b.targets)
-        n_presets = len(b.presets) + (1 if b.add_best_single_from else 0)
+        n_presets = len(b.presets)
         max_cells = (b.cells or {}).get("max_cells")
 
         if b.harnesses:
@@ -185,29 +177,20 @@ class Experiment:
 
 
 def _as_block(block_id: str, raw: dict[str, Any], *, part: bool = False) -> Block:
-    unknown = sorted(set(raw) - (_PART_KEYS if part else _BLOCK_KEYS))
+    unknown = sorted(set(raw) - (_UNIT_KEYS if part else _BLOCK_KEYS))
     if unknown:
         raise ExperimentConfigError(f"blocks.{block_id}: khóa lạ {unknown}")
-    if ("run_kind" not in raw and "parts" not in raw) or (not part and "purpose" not in raw):
+    if "run_kind" not in raw or (not part and "purpose" not in raw):
         raise ExperimentConfigError(f"blocks.{block_id}: thiếu purpose hoặc run_kind")
     data = dict(raw)
     if part:
-        data["purpose"] = ()  # phần kế thừa purpose của khối cha
-    if "parts" in data:
-        data["parts"] = {
-            name: _as_block(f"{block_id}.parts.{name}", p or {}, part=True)
-            for name, p in (data["parts"] or {}).items()
-        }
+        data["purpose"] = ()  # lượt ngoài khối không trả lời RQ nào
     for name in _TUPLE_FIELDS:
         if name in data:
             data[name] = tuple(data[name] or ())
     if "techniques_by_channel" in data:
         data["techniques_by_channel"] = {
             ch: tuple(ts) for ch, ts in (data["techniques_by_channel"] or {}).items()
-        }
-    if "conditional_harness_targets" in data:
-        data["conditional_harness_targets"] = {
-            h: tuple(ts) for h, ts in (data["conditional_harness_targets"] or {}).items()
         }
     return Block(id=block_id, **data)
 
@@ -276,18 +259,8 @@ def validate(exp: Experiment) -> list[str]:
         problems.append(f"corpus_selection: '{exp.corpus_selection}' ngoài {CORPUS_SELECTIONS}")
 
     pilot = raw.get("pilot") or {}
-    gate = pilot.get("asr_gate")
-    if gate is not None and not (len(gate) == 2 and 0 <= gate[0] < gate[1] <= 1):
-        problems.append(f"pilot.asr_gate phải là [thấp, cao] trong [0, 1], nhận {gate}")
-    for key in ("targets", "observe_targets"):
-        for t in _outside(pilot.get(key) or [], targets):
-            problems.append(f"pilot.{key}: '{t}' không có trong models.yaml")
-    overlap = set(pilot.get("targets") or []) & set(pilot.get("observe_targets") or [])
-    if overlap:
-        problems.append(f"pilot: {sorted(overlap)} vừa tính cổng vừa chỉ đo")
-    p_same = (pilot.get("variance_probe") or {}).get("p_same_threshold")
-    if p_same is not None and not (isinstance(p_same, (int, float)) and 0 < p_same <= 1):
-        problems.append("pilot.variance_probe.p_same_threshold phải trong (0, 1]")
+    for t in _outside(pilot.get("targets") or [], targets):
+        problems.append(f"pilot.targets: '{t}' không có trong models.yaml")
 
     for section, keys in (("refusal", ("finish_reasons", "phrases")), ("g3_warning", ("phrases",))):
         cfg = raw.get(section) or {}
@@ -327,20 +300,12 @@ def validate(exp: Experiment) -> list[str]:
     for bid, b in exp.blocks.items():
         where = f"blocks.{bid}"
         problems += [f"{where}.purpose: '{x}' không phải RQ1–RQ6" for x in _outside(b.purpose, RQS)]
-        if b.parts and (b.run_kind is not None or b.targets):
-            problems.append(f"{where}: khối có parts thì run_kind và targets khai ở từng phần")
-        raw_block = raw["blocks"][bid]
-        units = [(where, b, raw_block)] + [
-            (f"{where}.parts.{name}", part, raw_block["parts"][name])
-            for name, part in b.parts.items()
-        ]
-        for unit_where, unit, unit_raw in units:
-            problems += _check_unit(unit_where, unit, unit_raw, exp.blocks, seen, targets, runnable)
-            for v in _outside(unit.prompt_variants, prompt_variants):
-                problems.append(f"{unit_where}.prompt_variants: '{v}' không có trong prompts.yaml")
+        problems += _check_unit(where, b, raw["blocks"][bid], seen, targets, runnable)
+        for v in _outside(b.prompt_variants, prompt_variants):
+            problems.append(f"{where}.prompt_variants: '{v}' không có trong prompts.yaml")
         seen.append(bid)
     for key, unit in exp.extra_units.items():
-        problems += _check_unit(key, unit, raw[key], exp.blocks, seen, targets, runnable)
+        problems += _check_unit(key, unit, raw[key], seen, targets, runnable)
         if unit.run_kind != "benign" or unit.queries != "all" or not unit.repeats:
             problems.append(f"{key}: phải là lượt lành tính trên mọi câu, có repeats")
     return problems
@@ -350,12 +315,11 @@ def _check_unit(
     where: str,
     b: Block,
     raw_block: dict[str, Any],
-    blocks: dict[str, Block],
     seen: list[str],
     targets: set[str],
     runnable: set[str],
 ) -> list[str]:
-    """Kiểm một khối hoặc một phần của khối."""
+    """Kiểm một khối hoặc một lượt ngoài khối."""
     problems: list[str] = []
     if b.run_kind is not None and b.run_kind not in RUN_KINDS:
         problems.append(f"{where}.run_kind: '{b.run_kind}' ngoài {RUN_KINDS}")
@@ -376,11 +340,6 @@ def _check_unit(
             problems.append(f"{where}.techniques_by_channel.{ch}: '{t}' ngoài T1–T8")
     for h in _outside(b.harnesses, HARNESSES):
         problems.append(f"{where}.harnesses: '{h}' ngoài {HARNESSES}")
-    for h, ts in b.conditional_harness_targets.items():
-        if h not in b.harnesses:
-            problems.append(f"{where}.conditional_harness_targets: '{h}' không có trong harnesses")
-        for t in _outside(ts, b.targets):
-            problems.append(f"{where}.conditional_harness_targets.{h}: '{t}' ngoài targets")
     if b.cells is not None and b.cells.get("from_block") not in seen:
         problems.append(f"{where}.cells.from_block phải là một khối khai trước")
     if b.best_single is not None:
@@ -392,11 +351,6 @@ def _check_unit(
         singles = [p for p in b.presets if p.endswith("_only")]
         if "all" not in b.presets or not singles:
             problems.append(f"{where}.best_single cần preset 'all' và ít nhất một '*_only'")
-    src = b.add_best_single_from
-    if src is not None and (src not in seen or blocks[src].best_single is None):
-        problems.append(
-            f"{where}.add_best_single_from: '{src}' phải là khối khai trước có best_single"
-        )
     return problems
 
 

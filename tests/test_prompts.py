@@ -30,13 +30,16 @@ def _write(tmp_path: Path, data: dict) -> Path:
     return path
 
 
-def test_knobs_match_calibration_allowed_knobs():
-    assert list(KNOBS) == load_experiment().raw["calibration"]["allowed_knobs"]
+def test_ba_bien_the_prompt_cua_b1():
+    config = load_prompt_config()
+    assert list(config.variants) == ["guarded", "baseline", "trusting"]
+    assert config.active == "baseline"
+    assert all(list(config.knobs(v)) == list(KNOBS) for v in config.variants)
 
 
 def test_config_loads_and_every_variant_renders():
     config = load_prompt_config()
-    assert config.active in config.variants  # vòng hiệu chỉnh STT-61 đổi active, không đổi test
+    assert config.active in config.variants
     for name in config.variants:
         assert CANARY_PLACEHOLDER not in build_system_prompt(_canary(), variant=name)
 

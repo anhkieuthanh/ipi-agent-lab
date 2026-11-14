@@ -1,7 +1,7 @@
 # config/prompts.yaml — mức "cả tin" của system prompt trợ lý nội bộ (STT-31)
 #
-# Văn bản prompt nằm ở src/agent/prompts.py; file này chỉ chọn MỨC cho từng núm. Tên núm trùng
-# `calibration.allowed_knobs` của config/experiment.yaml, cùng thứ tự (test giữ hai bên đồng bộ).
+# Văn bản prompt nằm ở src/agent/prompts.py; file này chỉ chọn MỨC cho từng núm (tên núm và thứ tự
+# theo `prompts.KNOBS`).
 # Mức của mỗi núm xếp từ thận trọng tới cả tin — thứ tự khai ở `prompts.KNOBS`.
 #
 #   system_prompt_detail      detailed · standard · minimal

@@ -66,7 +66,6 @@ __all__ = [
     "load_corpus",
     "load_carriers",
     "plan_block",
-    "plan_calibration",
     "plan_pilot",
     "run_one_attack",
     "select_payloads",
@@ -266,10 +265,6 @@ def cell_units(
 def _technique_block(block: Block) -> Block:
     """Trả về phần khối sinh ô theo `techniques_by_channel`. Khối chọn ô theo quy tắc (B2/B5) chưa
     hỗ trợ (cần B1 xong + D1–D4); báo lỗi rõ thay vì sinh thiếu."""
-    if block.parts:
-        raise AttackRunnerError(
-            f"khối {block.id} gồm nhiều phần — chạy từng phần, chưa hỗ trợ trong một lệnh"
-        )
     if block.cells is not None:
         raise AttackRunnerError(
             f"khối {block.id} chọn ô theo quy tắc (cells) — cần B1 xong và D1–D4; chưa hỗ trợ"
@@ -362,7 +357,7 @@ def plan_pilot(
     tasks_path: Path | str = DEFAULT_TASKS_PATH,
 ) -> list[AttackRunSpec]:
     """Pilot STT-60: `pilot.runs` ca lấy từ ô ĐÃ PHỦ của `source_block`, D=OFF, mỗi ca 1 run trên mỗi
-    target ở `pilot.targets` + `pilot.observe_targets` (cùng các ca cho mọi target).
+    target ở `pilot.targets` (cùng các ca cho mọi target).
 
     Chọn ca tất định theo `seed`:
       1. Ô = (kênh × kỹ thuật × mục tiêu) có ít nhất một cặp (payload, tác vụ chở). Ô trống bỏ qua —
@@ -404,53 +399,6 @@ def plan_pilot(
     units = [picker.pick(cell, cell_pairs[cell]) for cell in chosen]
     specs = _off_specs(exp, block, units, channels)
     random.Random(f"{seed}:pilot:order").shuffle(specs)
-    return specs
-
-
-def plan_calibration(
-    exp: Experiment,
-    *,
-    corpus: Sequence[dict[str, Any]],
-    carriers: Sequence[dict[str, Any]],
-    seed: int,
-    source_block: str = "B1",
-    tasks_path: Path | str = DEFAULT_TASKS_PATH,
-) -> list[AttackRunSpec]:
-    """Mẫu hiệu chỉnh STT-61: mọi ô của `source_block` một ca, rồi thêm một ca cho mỗi payload của
-    khối chưa được ca nào dùng — đo mọi payload ít nhất một lần trước khi áp quy tắc loại theo
-    `activation_check` ở vòng cuối. D=OFF, cùng các ca trên `pilot.targets` + `pilot.observe_targets`.
-
-    Mẫu chỉ phụ thuộc corpus, tác vụ chở và `seed`, không phụ thuộc biến thể prompt: mọi vòng chạy
-    đúng cùng các ca, ASR giữa các vòng so được (`Y_TUONG_DU_AN.md` mục 10.3, quy tắc 2). Khối còn ô
-    trống thì từ chối — hiệu chỉnh trên phần corpus thiếu ô không đại diện cho ma trận sẽ chạy.
-    """
-    block = _technique_block(exp.unit(source_block))
-    rng = random.Random(f"{seed}:calibration")
-    cell_pairs = _covered_cell_pairs(
-        block, corpus, carriers, tasks_path=tasks_path, selection=exp.corpus_selection
-    )
-    empty = [
-        (c, t, g)
-        for c, techs in block.techniques_by_channel.items()
-        for t in techs
-        for g in block.goals
-        if (c, t, g) not in cell_pairs
-    ]
-    if empty:
-        listed = ", ".join("·".join(cell) for cell in empty)
-        raise AttackRunnerError(f"khối {source_block} còn ô trống, chưa hiệu chỉnh được: {listed}")
-
-    cells = sorted(cell_pairs)
-    rng.shuffle(cells)
-    picker = _CasePicker(carriers, rng)
-    units = [picker.pick(cell, cell_pairs[cell]) for cell in cells]
-    for pid in sorted({p for pairs in cell_pairs.values() for p, _ in pairs}):
-        if pid in picker.used_payloads:
-            continue
-        cell = sorted(c for c, pairs in cell_pairs.items() if any(p == pid for p, _ in pairs))[0]
-        units.append(picker.pick(cell, [pair for pair in cell_pairs[cell] if pair[0] == pid]))
-    specs = _off_specs(exp, block, units, None)
-    random.Random(f"{seed}:calibration:order").shuffle(specs)
     return specs
 
 
@@ -506,7 +454,7 @@ def _off_specs(
     channels: Sequence[str] | None,
 ) -> list[AttackRunSpec]:
     pilot = exp.raw["pilot"]
-    targets = [*pilot["targets"], *(pilot.get("observe_targets") or [])]
+    targets = list(pilot["targets"])
     snapshot = snapshot_json(build_defense("off"))
     return [
         AttackRunSpec(

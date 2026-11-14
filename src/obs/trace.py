@@ -159,8 +159,8 @@ class Run(SQLModel, table=True):
     response_model: str | None = None  # bí danh gateway → snapshot thực sự phục vụ
     harness: str = "none"
     harness_version: str
-    # Băm system prompt + quyền tool mặc định + git commit của lab — tách được run trước/sau mỗi
-    # vòng hiệu chỉnh độ khó ngay từ trace (giao thức thực nghiệm mục 8, N6).
+    # Băm system prompt + quyền tool mặc định + git commit của lab — tách được run theo biến thể
+    # system prompt ngay từ trace (giao thức thực nghiệm mục 8, N6).
     env_hash: str
     defense_config: str = "{}"  # JSON cấu hình D1–D4 đang bật
 

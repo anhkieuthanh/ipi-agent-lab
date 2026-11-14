@@ -58,7 +58,6 @@ def test_b4_da_cat_va_b6_bo_hn_cc(exp):
     # GVHD duyệt 2026-11-09: A1 đã vào B1 nên bỏ tập xác nhận A1; RQ6 chỉ còn HN-OW.
     assert "B4" not in exp.blocks
     assert exp.blocks["B6"].harnesses == ("none", "HN-OW")
-    assert exp.blocks["B6"].conditional_harness_targets == {}
 
 
 def test_boc_payload_cach_b(exp):
@@ -71,11 +70,11 @@ def test_b1_ba_bien_the_prompt(exp):
     assert all(not exp.blocks[b].prompt_variants for b in ("B2", "B3", "B5", "B6"))
 
 
-def test_pilot_tach_cong_va_chi_do(exp):
+def test_pilot_cung_target_voi_b1(exp):
     pilot = exp.raw["pilot"]
-    assert tuple(pilot["targets"]) == exp.blocks["B1"].targets  # cổng tính trên target của B1
-    assert pilot["observe_targets"] == []  # A1 tính cổng từ v-models-1.2
-    assert pilot["variance_probe"]["p_same_threshold"] == 0.9
+    assert tuple(pilot["targets"]) == exp.blocks["B1"].targets
+    assert set(pilot) == {"runs", "targets"}  # không còn cổng hiệu chỉnh / đo phương sai
+    assert "calibration" not in exp.raw
 
 
 def test_ky_thuat_theo_kenh_khop_t_chung(exp):
@@ -209,8 +208,6 @@ def test_validate_bat_metrics_sai(tmp_path: Path, old, new):
 @pytest.mark.parametrize(
     ("old", "new", "expect"),
     [
-        ("observe_targets: []", "observe_targets: [A2]", "vừa tính cổng vừa chỉ đo"),
-        ("p_same_threshold: 0.9", "p_same_threshold: 1.5", "p_same_threshold"),
         ("{select_on: full_block, per: goal}", "{select_on: pilot, per: goal}", "select_on"),
         ("corpus_selection: contextual_first", "corpus_selection: random", "corpus_selection"),
         ("prompt_variants: [guarded, baseline, trusting]", "prompt_variants: [guarded, most_trusting]", "prompt_variants"),

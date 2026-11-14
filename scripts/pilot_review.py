@@ -3,7 +3,7 @@
 Đọc `results/raw/pilot/<batch_id>/trace.sqlite` (lô do `run_matrix.py --pilot` sinh), ghi vào cùng
 thư mục:
 
-    asr_by_target.csv     ASR_e2e/ASR_cond + Wilson 95% mỗi target, vai trò (cổng/chỉ đo), so cổng
+    asr_by_target.csv     ASR_e2e/ASR_cond + Wilson 95% mỗi target
     asr_by_axis.csv       ASR mỗi target theo kênh, kỹ thuật, mục tiêu — mô tả, không kết luận
     field_check.csv       mỗi run một dòng: cờ thiếu trường / mâu thuẫn nhãn (kiểm bằng máy)
     payload_activation.csv  mỗi payload: số run, số thành công ở D=OFF — ứng viên loại theo
@@ -14,7 +14,7 @@ thư mục:
 Không gọi API. Số pilot không vào bảng kết quả nào (giao thức thực nghiệm mục 3).
 
     uv run python scripts/pilot_review.py --batch-id pilot-B1-<UTC>
-    uv run python scripts/pilot_review.py --batch-id calib-r0-B1-<UTC>    # vòng hiệu chỉnh STT-61
+    uv run python scripts/pilot_review.py --batch-id calib-r0-B1-<UTC>    # lô dò cũ (results/calibration)
 """
 
 from __future__ import annotations
@@ -87,22 +87,9 @@ def _asr_row(cell: pd.DataFrame) -> dict:
     return row
 
 
-def asr_by_target(runs: pd.DataFrame, pilot: dict) -> pd.DataFrame:
-    lo_gate, hi_gate = pilot["asr_gate"]
-    rows = []
-    for target, cell in runs.groupby("target_id", sort=True):
-        role = "cổng" if target in pilot["targets"] else "chỉ đo"
-        r = {"target_id": target, "vai_tro": role} | _asr_row(cell)
-        asr = r["asr_e2e"]
-        if asr is None:
-            r["so_cong"] = "không có run hợp lệ"
-        elif asr < lo_gate:
-            r["so_cong"] = "dưới cổng"
-        elif asr > hi_gate:
-            r["so_cong"] = "trên cổng"
-        else:
-            r["so_cong"] = "trong cổng"
-        rows.append(r)
+def asr_by_target(runs: pd.DataFrame) -> pd.DataFrame:
+    rows = [{"target_id": target} | _asr_row(cell)
+            for target, cell in runs.groupby("target_id", sort=True)]
     return pd.DataFrame(rows)
 
 
@@ -270,8 +257,7 @@ def dump_trace(run: pd.Series, steps: pd.DataFrame, out: Path) -> None:
 
 
 def _batch_dir(batch_id: str) -> Path:
-    """Lô pilot ở `results/raw/pilot/`; lô hiệu chỉnh STT-61 `calib-r<N>-…` ở
-    `results/calibration/round_<N>/`."""
+    """Lô pilot ở `results/raw/pilot/`; lô dò cũ `calib-r<N>-…` ở `results/calibration/round_<N>/`."""
     m = re.match(r"calib-r(\d+)-", batch_id)
     if m:
         return ROOT / "results" / "calibration" / f"round_{m.group(1)}" / batch_id
@@ -288,7 +274,6 @@ def main() -> int:
     if not store.is_file():
         parser.error(f"không có store {store.relative_to(ROOT)}")
     exp = load_experiment()
-    pilot = exp.raw["pilot"]
     # Đọc chế độ chỉ đọc như console: không chạm file bằng chứng của lô.
     runs = load_runs([store])
     runs = runs[(runs["batch_id"] == args.batch_id) & (runs["run_kind"] == "attack")].copy()
@@ -300,7 +285,7 @@ def main() -> int:
         steps = pd.read_sql_query("SELECT * FROM steps", conn)
     steps = steps[steps["run_id"].isin(runs["run_id"])]
 
-    by_target = asr_by_target(runs, pilot)
+    by_target = asr_by_target(runs)
     by_target.to_csv(batch_dir / "asr_by_target.csv", index=False)
     asr_by_axis(runs).to_csv(batch_dir / "asr_by_axis.csv", index=False)
     fc = field_check(runs, steps)
@@ -317,7 +302,6 @@ def main() -> int:
 
     cols = [
         "target_id",
-        "vai_tro",
         "n",
         "n_excl",
         "s",
@@ -327,7 +311,6 @@ def main() -> int:
         "asr_e2e_hi",
         "asr_cond",
         "blocked_model_refusal",
-        "so_cong",
     ]
     print(by_target[cols].to_string(index=False))
     print(f"\nrun có cờ: {(fc['co'] != '').sum()}/{len(fc)}")

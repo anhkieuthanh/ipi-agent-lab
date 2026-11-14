@@ -2,7 +2,7 @@
 
 60 câu lành tính × target × lần lặp, phòng thủ tắt (`NoDefense`). Tham số lấy từ khóa
 `utility_baseline` của `config/experiment.yaml`; script `scripts/run_utility_baseline.py` là lớp CLI
-mỏng gọi module này. Số này là mốc TRƯỚC hiệu chỉnh độ khó (N6), không là mốc so của B3.
+mỏng gọi module này. Chạy biến thể prompt `baseline`; B3 tự có `off` nên số này không là mốc so của B3.
 
 Một run:
 

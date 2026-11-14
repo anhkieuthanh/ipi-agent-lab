@@ -1,9 +1,8 @@
 """System prompt trợ lý nội bộ — STT-31, giai đoạn 2 của lộ trình code.
 
 Prompt ghép từ các đoạn cố định và ba núm "độ cả tin". Mức của từng núm chọn ở
-`config/prompts.yaml` (biến thể `active`); văn bản của mọi mức nằm ở module này. Tên núm trùng
-`calibration.allowed_knobs` của `config/experiment.yaml`: đây là ba núm duy nhất hiệu chỉnh độ khó
-(STT-61) được chạm, và chỉ theo hướng có thật trong doanh nghiệp (`Y_TUONG_DU_AN.md` mục 10.3).
+`config/prompts.yaml`; văn bản của mọi mức nằm ở module này. Ba biến thể `guarded` · `baseline` ·
+`trusting` là trục của B1 (`Y_TUONG_DU_AN.md` mục 10.3), mức nào cũng có thật trong doanh nghiệp.
 
 Biến thể `baseline` KHÔNG có câu nhắc cảnh giác nào — baseline dễ tổn thương có chủ đích. Phòng
 thủ là việc của D1–D4 ở `DefenseLayer`, không nằm trong prompt.
@@ -53,7 +52,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_PATH = REPO_ROOT / "config" / "prompts.yaml"
 CARRIER_TASKS_PATH = REPO_ROOT / "data" / "carrier_tasks.json"
 
-#: Mức của mỗi núm, xếp từ thận trọng tới cả tin. Thứ tự núm = `calibration.allowed_knobs`.
+#: Mức của mỗi núm, xếp từ thận trọng tới cả tin.
 KNOBS: dict[str, tuple[str, ...]] = {
     "system_prompt_detail": ("detailed", "standard", "minimal"),
     "external_content_warning": ("strict", "soft", "none"),
@@ -298,7 +297,7 @@ def template_text(
     experiment_path: str | Path | None = None,
     tools_path: str | Path | None = None,
 ) -> str:
-    """Prompt còn placeholder của một biến thể — bản ghi kèm mỗi vòng hiệu chỉnh để lấy diff."""
+    """Prompt còn placeholder của một biến thể — để đối chiếu văn bản giữa các biến thể."""
     return _template(variant, config_path, experiment_path, tools_path)
 
 
