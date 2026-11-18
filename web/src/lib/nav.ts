@@ -57,6 +57,12 @@ export const NAV: NavGroup[] = [
 
 export const NAV_ITEMS: NavItem[] = NAV.flatMap((g) => g.items);
 
+/** Nhóm điều hướng chứa một đường dẫn (thanh trên tô bước hiện tại, tầng dưới liệt kê trang của bước). */
+export function groupOf(pathname: string): NavGroup {
+  const root = "/" + (pathname.split("/")[1] ?? "");
+  return NAV.find((g) => g.items.some((it) => it.to === root)) ?? NAV[0];
+}
+
 /** Mục điều hướng và nhóm của một đường dẫn (vd `/runs/abc` → Lượt chạy, Phân tích). */
 export function locate(pathname: string): { item: NavItem; group: string | null } {
   const root = "/" + (pathname.split("/")[1] ?? "");

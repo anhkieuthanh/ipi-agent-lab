@@ -109,8 +109,8 @@ function Summary({ d }: { d: RunDetail }) {
         </figure>
       )}
 
-      <div className="rounded-lg border border-slate-200 px-4 py-3">
-        <KeyValue items={items} columns={6} />
+      <div className="rounded-lg border border-slate-200 bg-surface px-4 py-4">
+        <KeyValue items={items} columns={2} />
       </div>
     </header>
   );
@@ -150,8 +150,13 @@ export function RunDetailPage() {
         <CopyId id={run.run_id} />
       </div>
 
-      <Summary d={d} />
+      <div className="grid grid-cols-1 gap-x-10 gap-y-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
+      {/* Trái: hồ sơ của run, dính khi cuộn. Phải: các mặt bằng chứng. */}
+      <aside className="min-w-0 lg:sticky lg:top-[calc(var(--topbar-h)+24px)] lg:self-start">
+        <Summary d={d} />
+      </aside>
 
+      <div className="min-w-0 space-y-5">
       {spontaneous && (
         <Callout tone="warn" title="Cần đối chiếu hành động với payload">
           Scorer chấm đạt G2 nhưng chưa tìm thấy lời gọi tool khớp gợi ý từ payload.
@@ -194,6 +199,8 @@ export function RunDetailPage() {
           )}
         </div>
       </Card>
+      </div>
+      </div>
     </div>
   );
 }

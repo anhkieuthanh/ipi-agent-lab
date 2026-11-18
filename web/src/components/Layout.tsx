@@ -1,4 +1,6 @@
-// Khung ứng dụng: thanh bên điều hướng, một thanh trên (vị trí · phạm vi · trạng thái), nội dung.
+// Khung ứng dụng: thanh trên hai tầng. Tầng trên là luồng làm việc (Tổng quan, 1 Thí nghiệm, 2 Phân tích,
+// Hệ thống) và thao tác chung; tầng dưới là các trang của bước hiện tại và phạm vi dữ liệu. Không thanh bên:
+// nội dung dùng hết bề ngang, hợp máy chiếu. Dưới 768px các bước gập vào ngăn kéo.
 // Phím tắt: ⌘K / Ctrl+K mở bảng lệnh; `g` rồi một chữ để đổi trang; Esc thoát chế độ trình bày.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -11,7 +13,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { ServiceStrip } from "@/components/Services";
 import { Button, Kbd, Loading, Tooltip } from "@/components/ui";
 import { api } from "@/lib/api";
-import { NAV, NAV_ITEMS, locate } from "@/lib/nav";
+import { NAV, NAV_ITEMS, groupOf, locate } from "@/lib/nav";
 import { SCOPE_LABEL, type ScopeKind, useScope } from "@/lib/scope";
 import { useTheme } from "@/lib/theme";
 
@@ -76,7 +78,8 @@ export function Layout() {
   const qc = useQueryClient();
   const { kind, batch } = useScope();
   const theme = useTheme();
-  const { item, group } = locate(loc.pathname);
+  const { item } = locate(loc.pathname);
+  const current = groupOf(loc.pathname);
   const onRunDetail = loc.pathname.startsWith("/runs/");
   const scoped = !!item.scoped && !onRunDetail;
   const meta = useQuery({ queryKey: ["meta"], queryFn: api.meta, staleTime: 60_000 });
@@ -99,7 +102,7 @@ export function Layout() {
     const drawer = drawerRef.current;
     const content = contentRef.current;
     if (!drawer || !content) return;
-    drawer.inert = mobile && !menuOpen;
+    drawer.inert = !menuOpen;
     content.inert = mobile && menuOpen;
     if (!mobile || !menuOpen) return;
     const previousOverflow = document.body.style.overflow;
@@ -186,6 +189,7 @@ export function Layout() {
   }, [navigate, href]);
 
   const conn = meta.error ? "Mất kết nối API" : meta.isLoading ? "Đang kết nối" : meta.data?.live_demo ? "Demo sẵn sàng" : "Chỉ xem";
+  const subItems = current.items.length > 1 ? current.items : [];
 
   return (
     <div className="min-h-screen" data-presenting={presenting || undefined}>
@@ -193,96 +197,61 @@ export function Layout() {
         Đến nội dung chính
       </a>
 
-      {!presenting && menuOpen && <div className="fixed inset-0 z-30 bg-slate-900/20 md:hidden" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
-
-      {!presenting && (
-        <aside
-          ref={drawerRef}
-          role={mobile && menuOpen ? "dialog" : undefined}
-          aria-modal={mobile && menuOpen ? true : undefined}
-          aria-label="Điều hướng không gian làm việc"
-          id="workspace-navigation"
-          data-chrome
-          className={clsx(
-            "fixed inset-y-0 left-0 z-40 flex w-[var(--sidebar-w)] flex-col border-r border-slate-200 bg-slate-50 transition-transform md:translate-x-0",
-            menuOpen ? "translate-x-0" : "-translate-x-full",
-          )}
-        >
-          <div className="flex h-[var(--topbar-h)] shrink-0 items-center px-3">
-            <button type="button" aria-label="Đóng điều hướng" onClick={() => setMenuOpen(false)} className="touch-target mr-2 flex h-8 w-8 items-center justify-center rounded-md md:hidden"><X size={18} /></button>
-            <Link to={href("/", true)} className="flex items-center gap-2.5 rounded-md px-1.5 py-1 text-lg font-medium text-slate-900">
-              <Logo />
-              IPI Guard
-            </Link>
-          </div>
-
-          <div className="px-3 pb-2">
-            <button
-              onClick={() => { setMenuOpen(false); setPaletteOpen(true); }}
-              className="flex h-9 w-full items-center gap-2 rounded-md border border-slate-300 bg-surface px-3 text-sm text-muted transition-colors hover:border-slate-400 hover:text-slate-700 active:bg-slate-50"
-            >
-              <Search size={14} />
-              <span className="flex-1 text-left">Tìm kiếm</span>
-              <span className="flex gap-0.5"><Kbd>{isMac ? "⌘" : "Ctrl"}</Kbd><Kbd>K</Kbd></span>
-            </button>
-          </div>
-
-          {/* Nhóm điều hướng là luồng thí nghiệm: bước 1 chạy, bước 2 phân tích; "Hệ thống" là tham chiếu.
-              Số bước đứng trên một đường kẻ dọc nối các bước. */}
-          <nav aria-label="Điều hướng chính" className="flex-1 space-y-5 overflow-y-auto px-3 py-3">
-            {NAV.map((g, i) => (
-              <div key={i}>
-                {g.label && (
-                  <div className="flex items-center gap-2 px-2 pb-1.5 text-xs font-medium text-slate-600">
-                    {g.step ? (
-                      <span className="num flex h-5 w-5 items-center justify-center rounded border border-slate-300 bg-surface font-mono text-2xs text-slate-800">{g.step}</span>
-                    ) : null}
-                    {g.label}
-                  </div>
-                )}
-                <div className={clsx("space-y-px", g.step && "ml-[18px] border-l border-slate-300 pl-2")}>
-                  {g.items.map((it) => (
-                    <NavLink
-                      key={it.to}
-                      end={it.to === "/"}
-                      to={href(it.to, it.scoped)}
-                      className={({ isActive }) =>
-                        clsx(
-                          "group/nav flex h-9 items-center gap-2.5 rounded-md px-2 text-sm transition-colors",
-                          isActive
-                            ? "bg-surface font-medium text-slate-900 shadow-[inset_0_0_0_1px_rgb(var(--n-200))] [&>svg]:text-brand-600"
-                            : "text-slate-700 hover:bg-slate-100 hover:text-slate-900 active:bg-slate-200 [&>svg]:text-slate-500",
-                        )
-                      }
-                    >
-                      <it.icon size={16} strokeWidth={1.75} className="shrink-0" />
-                      {it.label}
-                    </NavLink>
-                  ))}
+      {/* Ngăn kéo điều hướng: chỉ dùng dưới 768px, liệt kê mọi bước và trang. */}
+      {menuOpen && <div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
+      <aside
+        ref={drawerRef}
+        role={menuOpen ? "dialog" : undefined}
+        aria-modal={menuOpen ? true : undefined}
+        aria-label="Điều hướng không gian làm việc"
+        id="workspace-navigation"
+        data-chrome
+        className={clsx(
+          "fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85vw] flex-col border-r border-slate-200 bg-ground transition-transform md:hidden",
+          menuOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
+        <div className="flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 px-3">
+          <button type="button" aria-label="Đóng điều hướng" onClick={() => setMenuOpen(false)} className="touch-target flex h-9 w-9 items-center justify-center rounded-md hover:bg-slate-100"><X size={18} /></button>
+          <span className="flex items-center gap-2.5 text-md font-semibold text-slate-900"><Logo /> IPI Guard</span>
+        </div>
+        <nav aria-label="Điều hướng chính" className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+          {NAV.map((g, i) => (
+            <div key={i}>
+              {g.label && (
+                <div className="flex items-center gap-2 px-2 pb-1.5 text-xs font-medium text-slate-600">
+                  {g.step ? <StepNo n={g.step} /> : null}
+                  {g.label}
                 </div>
-              </div>
-            ))}
-          </nav>
-
-          <div className="shrink-0 space-y-2 border-t border-slate-200 px-5 py-3.5 text-xs text-slate-600">
-            <div className="flex items-center gap-2">
-              <span className={clsx("h-3.5 w-[3px] rounded-sm", meta.error ? "bg-attack-500" : meta.isLoading ? "bg-amber-400" : "bg-defense-500")} aria-hidden="true" />
-              {conn}
+              )}
+              {g.items.map((it) => (
+                <NavLink
+                  key={it.to}
+                  end={it.to === "/"}
+                  to={href(it.to, it.scoped)}
+                  className={({ isActive }) =>
+                    clsx(
+                      "flex h-11 items-center gap-2.5 rounded-md px-2 text-sm",
+                      isActive ? "bg-surface font-medium text-slate-900 shadow-[inset_0_0_0_1px_rgb(var(--n-200))] [&>svg]:text-brand-600" : "text-slate-700 hover:bg-slate-100 [&>svg]:text-slate-500",
+                    )
+                  }
+                >
+                  <it.icon size={16} strokeWidth={1.75} className="shrink-0" />
+                  {it.label}
+                </NavLink>
+              ))}
             </div>
-            <Link to="/config" className="flex flex-col gap-0.5 font-mono text-2xs text-muted hover:text-slate-800" title="Phiên bản bộ model và bộ payload đang ghim">
-              <span className="truncate">{meta.data?.model_tag ?? "—"}</span>
-              <span className="truncate">{meta.data?.attack_tag ?? "—"}</span>
-            </Link>
-          </div>
-        </aside>
-      )}
+          ))}
+        </nav>
+      </aside>
 
-      <div ref={contentRef} className={clsx(!presenting && "md:pl-[var(--sidebar-w)]")}>
-        <header data-chrome className="sticky top-0 z-20 flex h-[var(--topbar-h)] items-center gap-3 border-b border-slate-200 bg-ground px-4 md:px-8">
-          {!presenting && (
+      <div ref={contentRef}>
+        <header data-chrome={presenting ? undefined : true} className="sticky top-0 z-20 border-b border-slate-200 bg-ground">
+          {/* Tầng trên: thương hiệu, các bước của luồng, thao tác chung. */}
+          <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-2 px-4 md:px-8">
             <button
               ref={menuButtonRef}
-              className="touch-target flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 md:hidden"
+              className="touch-target flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-slate-700 hover:bg-slate-100 md:hidden"
               aria-label={menuOpen ? "Đóng điều hướng" : "Mở điều hướng"}
               aria-expanded={menuOpen}
               aria-controls="workspace-navigation"
@@ -290,56 +259,117 @@ export function Layout() {
             >
               {menuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
-          )}
+            <Link to={href("/", true)} className="mr-4 flex shrink-0 items-center gap-2.5 rounded-md px-1 py-1 text-md font-semibold text-slate-900">
+              <Logo />
+              <span className="hidden sm:inline">IPI Guard</span>
+            </Link>
 
-          <nav aria-label="Vị trí hiện tại" className="flex min-w-0 items-center gap-1.5 text-sm">
-            {presenting && <span className="flex items-center gap-2 font-semibold text-slate-900"><Logo /> IPI Guard</span>}
-            {!presenting && group && <span className="hidden text-muted sm:inline">{group}</span>}
-            {(presenting || group) && <ChevronRight size={14} className={clsx("shrink-0 text-slate-400", !presenting && "hidden sm:block")} />}
-            {onRunDetail ? (
-              <>
-                <Link to={`/runs${loc.search}`} className="text-slate-500 hover:text-slate-900">{item.label}</Link>
-                <ChevronRight size={14} className="shrink-0 text-slate-400" />
-                <span className="truncate font-mono text-xs text-slate-900">{loc.pathname.split("/")[2]?.slice(0, 12)}</span>
-              </>
-            ) : (
-              <span className="truncate font-medium text-slate-900">{item.label}</span>
-            )}
-          </nav>
+            <nav aria-label="Các bước làm việc" className="hidden h-full items-stretch md:flex">
+              {NAV.map((g, i) => {
+                const first = g.items[0];
+                const active = g === current;
+                return (
+                  <Link
+                    key={i}
+                    to={href(first.to, first.scoped)}
+                    aria-current={active ? "page" : undefined}
+                    className={clsx(
+                      "-mb-px flex items-center gap-2 border-b-2 px-3 text-sm transition-colors",
+                      active ? "border-brand-500 font-medium text-slate-900" : "border-transparent text-slate-600 hover:text-slate-900 active:text-slate-900",
+                    )}
+                  >
+                    {g.step ? <StepNo n={g.step} active={active} /> : null}
+                    {g.label ?? first.label}
+                  </Link>
+                );
+              })}
+            </nav>
 
-          <div className="ml-auto flex min-w-0 items-center gap-2">
-            {scoped && !presenting && <div className="hidden lg:block"><ScopePicker /></div>}
-            {scoped && presenting && <span className="truncate text-sm text-slate-500">{batch || SCOPE_LABEL[kind]}</span>}
-            {!presenting && <div className="hidden xl:block"><ServiceStrip /></div>}
-            {!presenting && (
-              <>
-                <span className="mx-1 hidden h-5 w-px bg-slate-200 sm:block" />
-                <IconButton label={refreshNote || "Làm mới dữ liệu · tự cập nhật mỗi 15 giây"} onClick={refresh} disabled={refreshing}>
-                  <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-                </IconButton>
-                <IconButton label={theme.resolved === "dark" ? "Nền sáng" : "Nền tối"} onClick={theme.toggle}>
-                  {theme.resolved === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-                </IconButton>
-              </>
-            )}
-            <Button size="sm" onClick={() => setPresenting(!presenting)} aria-pressed={presenting} icon={<Monitor size={13} />}>
-              {presenting ? "Thoát trình bày" : "Trình bày"}
-            </Button>
+            <div className="ml-auto flex min-w-0 items-center gap-1.5">
+              {!presenting && (
+                <>
+                  <button
+                    onClick={() => setPaletteOpen(true)}
+                    className="hidden h-9 items-center gap-2 rounded-md border border-slate-300 bg-surface px-3 text-sm text-muted transition-colors hover:border-slate-400 hover:text-slate-700 active:bg-slate-50 lg:flex"
+                  >
+                    <Search size={14} />
+                    <span className="pr-6">Tìm run, lô, trang</span>
+                    <span className="flex gap-0.5"><Kbd>{isMac ? "⌘" : "Ctrl"}</Kbd><Kbd>K</Kbd></span>
+                  </button>
+                  <span className="lg:hidden">
+                    <IconButton label="Tìm kiếm" onClick={() => setPaletteOpen(true)}>
+                      <Search size={15} />
+                    </IconButton>
+                  </span>
+                  <IconButton label={refreshNote || "Làm mới dữ liệu, tự cập nhật mỗi 15 giây"} onClick={refresh} disabled={refreshing}>
+                    <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
+                  </IconButton>
+                  <IconButton label={theme.resolved === "dark" ? "Nền sáng" : "Nền tối"} onClick={theme.toggle}>
+                    {theme.resolved === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+                  </IconButton>
+                </>
+              )}
+              <Button size="sm" onClick={() => setPresenting(!presenting)} aria-pressed={presenting} icon={<Monitor size={13} />}>
+                {presenting ? "Thoát trình bày" : "Trình bày"}
+              </Button>
+            </div>
+            <span className="sr-only" role="status">{refreshing ? "Đang cập nhật" : refreshNote}</span>
           </div>
-          <span className="sr-only" role="status">{refreshing ? "Đang cập nhật" : refreshNote}</span>
+
+          {/* Tầng dưới: trang trong bước hiện tại (hoặc đường dẫn về danh sách run), phạm vi dữ liệu, dịch vụ. */}
+          <div className="border-t border-slate-200 bg-surface">
+            <div className="mx-auto flex min-h-11 max-w-[1440px] flex-wrap items-center gap-x-6 px-4 md:px-8">
+              {onRunDetail ? (
+                <nav aria-label="Vị trí hiện tại" className="flex min-w-0 items-center gap-1.5 text-sm">
+                  <Link to={`/runs${loc.search}`} className="text-slate-600 hover:text-slate-900">{item.label}</Link>
+                  <ChevronRight size={14} className="shrink-0 text-slate-400" />
+                  <span className="truncate font-mono text-xs text-slate-900">{loc.pathname.split("/")[2]?.slice(0, 12)}</span>
+                </nav>
+              ) : subItems.length ? (
+                <nav aria-label={`Trang trong bước ${current.label ?? ""}`} className="flex max-w-full items-stretch gap-1 overflow-x-auto overflow-y-hidden">
+                  {subItems.map((it) => (
+                    <NavLink
+                      key={it.to}
+                      to={href(it.to, it.scoped)}
+                      className={({ isActive }) =>
+                        clsx(
+                          "-mb-px flex h-11 shrink-0 items-center gap-2 border-b-2 px-2.5 text-sm transition-colors",
+                          isActive ? "border-slate-900 font-medium text-slate-900 [&>svg]:text-brand-600" : "border-transparent text-slate-600 hover:text-slate-900 [&>svg]:text-slate-400",
+                        )
+                      }
+                    >
+                      <it.icon size={15} strokeWidth={1.75} className="shrink-0" />
+                      {it.label}
+                    </NavLink>
+                  ))}
+                </nav>
+              ) : (
+                <span className="text-sm font-medium text-slate-900">{item.label}</span>
+              )}
+
+              <div className="ml-auto flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 py-1.5">
+                {scoped && !presenting && <ScopePicker />}
+                {scoped && presenting && <span className="truncate text-sm text-slate-600">{batch || SCOPE_LABEL[kind]}</span>}
+                {!presenting && <div className="hidden xl:block"><ServiceStrip /></div>}
+              </div>
+            </div>
+          </div>
         </header>
 
-        {scoped && !presenting && (
-          <div data-chrome className="border-b border-slate-200 px-4 py-2 lg:hidden">
-            <ScopePicker />
-          </div>
-        )}
-
-        <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1360px] px-4 pb-16 pt-8 outline-none md:px-8">
+        <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1440px] px-4 pb-12 pt-8 outline-none md:px-8">
           <Suspense fallback={<Loading />}>
             <Outlet />
           </Suspense>
         </main>
+
+        <footer data-chrome className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-6 gap-y-1 border-t border-slate-200 px-4 py-4 text-xs text-slate-600 md:px-8">
+          <span className="flex items-center gap-2">
+            <span className={clsx("h-3.5 w-[3px] rounded-sm", meta.error ? "bg-attack-500" : meta.isLoading ? "bg-amber-400" : "bg-defense-500")} aria-hidden="true" />
+            {conn}
+          </span>
+          <Link to="/config" className="font-mono text-2xs text-muted hover:text-slate-800" title="Phiên bản bộ model đang ghim">{meta.data?.model_tag ?? "—"}</Link>
+          <Link to="/config" className="font-mono text-2xs text-muted hover:text-slate-800" title="Phiên bản bộ payload đang ghim">{meta.data?.attack_tag ?? "—"}</Link>
+        </footer>
       </div>
 
       <CommandPalette
@@ -352,5 +382,19 @@ export function Layout() {
         onRefresh={refresh}
       />
     </div>
+  );
+}
+
+/** Ô số bước của luồng (1 Thí nghiệm, 2 Phân tích). */
+function StepNo({ n, active }: { n: number; active?: boolean }) {
+  return (
+    <span
+      className={clsx(
+        "num flex h-5 w-5 shrink-0 items-center justify-center rounded border font-mono text-2xs",
+        active ? "border-brand-500 bg-brand-500 text-accent-ink" : "border-slate-300 bg-surface text-slate-700",
+      )}
+    >
+      {n}
+    </span>
   );
 }

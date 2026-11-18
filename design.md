@@ -36,16 +36,33 @@ Màu không bao giờ là kênh duy nhất: kết cục luôn có chữ (`Status
 Đánh dấu trạng thái là vạch dọc 3px cạnh chữ, không dùng chấm tròn.
 
 ## Khung ứng dụng
-Thanh bên 248px (ẩn thành ngăn kéo dưới 768px). Nhóm điều hướng là luồng thí nghiệm: ô số 1 "Thí nghiệm",
-ô số 2 "Phân tích", nối bằng đường kẻ dọc; "Hệ thống" là tham chiếu, không đánh số. Mục hiện tại: nền bảng,
-viền trong 1px, biểu tượng hổ phách. Một thanh trên 52px nền đặc: vị trí · phạm vi dữ liệu · trạng thái dịch vụ ·
-làm mới · sáng/tối · trình bày. Nội dung tối đa 1360px.
+Không thanh bên: nội dung dùng hết bề ngang (tối đa 1440px), hợp máy chiếu. Thanh trên dính, hai tầng:
+- Tầng trên (56px): biểu tượng, các bước của luồng: Tổng quan, ô số 1 "Thí nghiệm", ô số 2 "Phân tích",
+  "Hệ thống" (tham chiếu, không đánh số). Bước hiện tại gạch chân hổ phách, ô số tô hổ phách. Bên phải: tìm
+  kiếm ⌘K, làm mới, sáng/tối, trình bày.
+- Tầng dưới (44px, nền bảng): các trang của bước hiện tại dạng tab gạch chân (ở chi tiết run: đường dẫn về
+  danh sách), phạm vi dữ liệu, trạng thái dịch vụ.
+Chân trang: trạng thái kết nối và hai phiên bản đang ghim. Dưới 768px các bước gập vào ngăn kéo bên trái.
 Bảng lệnh ⌘K / Ctrl+K: trang, lô, mã run, tìm run. Phím tắt `g` + chữ đổi trang; ↑/↓ hoặc J/K trong trace.
-Chế độ trình bày: ẩn thanh bên và thao tác phụ (`data-chrome`), phóng nội dung 1.2 lần; Esc để thoát.
+Chế độ trình bày: ẩn thao tác phụ (`data-chrome`), phóng nội dung 1.2 lần; Esc để thoát.
+
+## Bố cục màn hình
+- **Hàng câu hỏi (`Question`)** là đơn vị của trang phân tích, kiểu báo cáo khoa học: cột trái 320px dính khi
+  cuộn gồm câu hỏi (kèm mã RQ nếu có), câu trả lời ngắn bằng số đo lớn (`Reading`), cách đọc bằng chứng và điều
+  khiển; cột phải là bằng chứng (bảng, biểu đồ). Các hàng ngăn bằng đường kẻ 1px. Dùng ở Tổng quan (ba câu:
+  tấn công lọt bao nhiêu, agent còn hữu dụng không, số liệu lấy từ đâu), Tấn công (RQ1, RQ2), Phòng thủ (RQ3,
+  RQ4, đánh đổi, chặn nhầm), Hệ thống, Cấu hình, Quy trình.
+- **Thí nghiệm:** ba bước thiết lập là ba cột ngang (kịch bản, phòng thủ, thiết lập), thanh tóm tắt và nút chạy
+  trải ngang bên dưới; sơ đồ phòng thủ và diễn biến trực tiếp trải hết chiều ngang.
+- **Chi tiết run:** cột trái 360px dính là hồ sơ run (kết luận, mục tiêu đạt, câu hỏi của nhân viên, thông số);
+  cột phải là các tab bằng chứng.
+- **Lượt chạy:** cột lọc dọc 248px dính bên trái, danh sách bên phải.
+- **Hệ thống:** sơ đồ kiến trúc là hình chính, trải ngang, tiêu đề đứng ngoài khung như chú thích hình.
 
 ## Thành phần
 `PageHeader`: tiêu đề 28px và một câu lede luôn hiện, nói trang này trả lời câu hỏi gì; giải thích dài vào `InfoDot`.
-Khối nội dung: `Card` viền 1px, bo 10px. Chỉ số đứng cạnh nhau cắt từ một mặt phẳng, ngăn bằng khe 1px.
+Khối nội dung: `Card` viền 1px, bo 10px; trong hàng câu hỏi, thẻ không mang tiêu đề riêng. Chỉ số đứng cạnh nhau
+cắt từ một mặt phẳng, ngăn bằng khe 1px.
 `Metric`: nhãn, số đo `.reading` 48px, mẫu số và CI xuống dòng riêng; `step` đánh số khi các chỉ số kể một
 câu chuyện (tấn công → phòng thủ → hữu dụng). Bảng `table-base`: tiêu đề dính trên bậc sâu, hàng ~44px.
 Nút: primary nền hổ phách chữ `accent-ink`, secondary viền mảnh, ghost; cao 36px (nhỏ 32px), vùng chạm 44px trên

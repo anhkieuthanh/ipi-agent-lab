@@ -5,7 +5,7 @@ import { useState } from "react";
 import { AssetPanel, type AssetCode } from "@/components/AssetPanel";
 import { ServicesCard } from "@/components/Services";
 import { MapLegend, SystemMap } from "@/components/SystemMap";
-import { Badge, Card, CardHeader, ErrorBox, InfoDot, Loading, Mono, PageHeader, Tabs } from "@/components/ui";
+import { Badge, Card, ErrorBox, InfoDot, Loading, Mono, PageHeader, Question, Tabs } from "@/components/ui";
 import { api } from "@/lib/api";
 import { GLOSSARY } from "@/lib/glossary";
 
@@ -74,21 +74,31 @@ export function SystemPage() {
 
   return (
     <>
-      <PageHeader title="Hệ thống" info="Rê chuột lên một thành phần hoặc điểm phòng thủ để xem giải thích." />
+      <PageHeader
+        title="Hệ thống"
+        description="Lab gồm những gì, kẻ tấn công cài payload vào đâu, và bốn phòng thủ móc vào bước nào của agent."
+        info="Rê chuột lên một thành phần hoặc điểm phòng thủ để xem giải thích."
+      />
 
-      <div className="space-y-4">
-        <Card>
-          <CardHeader title="Sơ đồ kiến trúc lab" subtitle="Luồng tác vụ, ba đường tiêm K1 · K2a · K2b, điểm móc phòng thủ D1–D4 và hệ đo." />
-          <div className="border-t border-slate-100 px-3 py-3">
+      <div>
+        {/* Sơ đồ là hình chính của trang: trải hết chiều ngang, tiêu đề đứng ngoài khung như chú thích hình. */}
+        <figure className="mb-4">
+          <figcaption className="mb-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+            <span className="text-xl font-medium text-slate-900">Sơ đồ kiến trúc lab</span>
+            <span className="text-sm text-slate-600">Luồng tác vụ, ba đường tiêm K1, K2a, K2b, điểm móc phòng thủ D1–D4 và hệ đo.</span>
+          </figcaption>
+        <Card className="overflow-hidden">
+          <div className="px-3 py-3">
             <SystemMap renderTip={(id) => <ComponentTip id={id} />} />
           </div>
           <div className="border-t border-slate-100 px-4 py-2.5">
             <MapLegend />
           </div>
         </Card>
+        </figure>
 
-        <Card>
-          <CardHeader title="Chú giải mã" subtitle="Một khái niệm, một ký hiệu, dùng thống nhất trên mọi trang." />
+        <Question title="Chú giải mã" note="Một khái niệm, một ký hiệu, dùng thống nhất trên mọi trang và trong báo cáo.">
+        <Card className="overflow-hidden">
           <Tabs
             id="system-glossary"
             label="Nhóm mã"
@@ -138,8 +148,11 @@ export function SystemPage() {
           )}
           </div>
         </Card>
+        </Question>
 
-        <ServicesCard />
+        <Question title="Dịch vụ hạ tầng" note="Trạng thái các dịch vụ lab cần khi chạy thí nghiệm. Xanh chỉ nghĩa là dịch vụ trả lời được.">
+          <ServicesCard />
+        </Question>
       </div>
       <AssetPanel code={asset} onClose={() => setAsset(null)} />
     </>

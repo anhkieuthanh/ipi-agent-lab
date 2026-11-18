@@ -6,7 +6,7 @@ import { Fragment, useState } from "react";
 
 import { OutcomeBar, OutcomeLegend, Rate, ScopeNote, useRunsLink } from "@/components/Analysis";
 import { ScatterPlot, type ScatterPoint } from "@/components/charts";
-import { Button, Card, CardHeader, Disclosure, Empty, ErrorBox, InfoDot, Loading, PageHeader, RateBar } from "@/components/ui";
+import { Button, Card, Disclosure, Empty, ErrorBox, InfoDot, Loading, PageHeader, Question, RateBar } from "@/components/ui";
 import { api, type DefensePoint, type DefenseSummary, type Preset } from "@/lib/api";
 import { DEFENSE_LABEL, ci, pct, presetLabel } from "@/lib/format";
 import { useScope } from "@/lib/scope";
@@ -93,9 +93,9 @@ function NotMeasuredDetail({ d }: { d: DefenseSummary }) {
 function Baseline({ d }: { d: DefenseSummary }) {
   const link = useRunsLink();
   return (
-    <Card>
-      <CardHeader title="Mốc so sánh · tắt phòng thủ" subtitle="Mọi cấu hình phòng thủ được so với mốc này của cùng model." />
-      <div className="max-w-full overflow-x-auto border-t border-slate-200">
+    <Question title="Mốc so sánh, tắt phòng thủ" note="Mọi cấu hình phòng thủ được so với mốc này của cùng model.">
+    <Card className="overflow-hidden">
+      <div className="max-w-full overflow-x-auto">
         <table className="table-base">
           <thead>
             <tr>
@@ -144,18 +144,16 @@ function Baseline({ d }: { d: DefenseSummary }) {
         </div>
       </div>
     </Card>
+    </Question>
   );
 }
 
 function Effects({ d }: { d: DefenseSummary }) {
   const targets = [...new Set(d.effects.map((e) => e.target_id))];
   return (
-    <Card>
-      <CardHeader
-        title="RQ4 · Mỗi cấu hình giảm bao nhiêu tấn công, mất bao nhiêu hữu dụng?"
-        subtitle="Δ so với lúc tắt phòng thủ của cùng model: ASR giảm là tốt, USR giảm là cái giá phải trả."
-      />
-      <div className="max-w-full overflow-x-auto border-t border-slate-200">
+    <Question code="RQ4" title="Mỗi cấu hình giảm bao nhiêu tấn công, mất bao nhiêu hữu dụng?" note="Δ so với lúc tắt phòng thủ của cùng model: ASR giảm là tốt, USR giảm là cái giá phải trả.">
+    <Card className="overflow-hidden">
+      <div className="max-w-full overflow-x-auto">
         <table className="table-base">
           <thead>
             <tr>
@@ -210,15 +208,16 @@ function Effects({ d }: { d: DefenseSummary }) {
         </Disclosure>
       </div>
     </Card>
+    </Question>
   );
 }
 
 function Rq3({ d }: { d: DefenseSummary }) {
   if (!d.rq3.length) return null;
   return (
-    <Card>
-      <CardHeader title="RQ3 · Bật cả D1–D4 có hơn cơ chế đơn lẻ tốt nhất không?" />
-      <div className="max-w-full overflow-x-auto border-t border-slate-200">
+    <Question code="RQ3" title="Bật cả D1–D4 có hơn cơ chế đơn lẻ tốt nhất không?">
+    <Card className="overflow-hidden">
+      <div className="max-w-full overflow-x-auto">
         <table className="table-base">
           <thead>
             <tr>
@@ -262,6 +261,7 @@ function Rq3({ d }: { d: DefenseSummary }) {
         </table>
       </div>
     </Card>
+    </Question>
   );
 }
 
@@ -348,12 +348,9 @@ function FrrByTask({ d }: { d: DefenseSummary }) {
   const presetsOn = [...new Set(d.frr_by_task.map((r) => r.preset))];
   const tasks = [...new Set(d.frr_by_task.map((r) => r.carrier_task_id ?? "?"))].sort();
   return (
-    <Card>
-      <CardHeader
-        title="Chặn nhầm theo tác vụ"
-        subtitle="Tỉ lệ câu lành tính bị phòng thủ chặn, theo tác vụ chở (giả thuyết H4: D3 chặn nhầm ở CT-05, CT-06)."
-      />
-      <div className="max-w-full overflow-x-auto border-t border-slate-200">
+    <Question title="Chặn nhầm theo tác vụ" note="Tỉ lệ câu lành tính bị phòng thủ chặn, theo tác vụ chở (giả thuyết H4: D3 chặn nhầm ở CT-05, CT-06).">
+    <Card className="overflow-hidden">
+      <div className="max-w-full overflow-x-auto">
         <table className="table-base">
           <thead>
             <tr>
@@ -383,6 +380,7 @@ function FrrByTask({ d }: { d: DefenseSummary }) {
         </table>
       </div>
     </Card>
+    </Question>
   );
 }
 
@@ -391,9 +389,9 @@ const CODES = ["D1", "D2", "D3", "D4"] as const;
 function Mechanisms({ presets }: { presets: Preset[] }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
-    <Card>
-      <CardHeader title="Cơ chế D1–D4 và tham số của từng cấu hình" />
-      <dl className="divide-y divide-slate-100 border-t border-slate-200">
+    <Question title="Cơ chế D1–D4 và tham số của từng cấu hình">
+    <Card className="overflow-hidden">
+      <dl className="divide-y divide-slate-100">
         {CODES.map((code) => (
           <div key={code} className="grid grid-cols-[2.5rem_1fr] gap-x-3 gap-y-0.5 px-4 py-2 sm:grid-cols-[2.5rem_10rem_1fr]">
             <dt className="contents">
@@ -484,6 +482,7 @@ function Mechanisms({ presets }: { presets: Preset[] }) {
         </table>
       </div>
     </Card>
+    </Question>
   );
 }
 
@@ -505,20 +504,22 @@ export function DefensePage() {
       {q.isLoading && <Loading />}
       {q.error && <ErrorBox error={q.error} />}
       {d && (
-        <div className="space-y-4">
-          <ScopeNote s={d.scope} />
-          {!d.has_defense_runs && <NotMeasuredNote />}
+        <div>
+          <div className="mb-8 space-y-4">
+            <ScopeNote s={d.scope} />
+            {!d.has_defense_runs && <NotMeasuredNote />}
+          </div>
           {d.baseline.length > 0 && <Baseline d={d} />}
           {!d.has_defense_runs && <NotMeasuredDetail d={d} />}
           {d.has_defense_runs && (
             <>
               <Effects d={d} />
               <Rq3 d={d} />
-              <Card>
-                <CardHeader
-                  title="Bản đồ đánh đổi an toàn và hữu dụng"
-                  subtitle="Mỗi điểm là một cấu hình trên một model. Điểm tốt nằm góc trên bên trái: ít tấn công thành công, nhiều câu lành tính đạt."
-                />
+              <Question
+                title="Đánh đổi an toàn và hữu dụng"
+                note="Mỗi điểm là một cấu hình trên một model. Điểm tốt nằm góc trên bên trái: ít tấn công thành công, nhiều câu lành tính đạt."
+              >
+              <Card className="overflow-hidden">
                 {points.isLoading && <Loading rows={4} />}
                 {points.error && (
                   <div className="px-4 pb-3">
@@ -527,6 +528,7 @@ export function DefensePage() {
                 )}
                 {points.data && <Tradeoff points={points.data.points} />}
               </Card>
+              </Question>
               <FrrByTask d={d} />
             </>
           )}

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { Callout, Card, CardHeader, ErrorBox, Loading, PageHeader, Status } from "@/components/ui";
+import { Card, ErrorBox, Loading, PageHeader, Question, Status } from "@/components/ui";
 import { api, type Gate } from "@/lib/api";
 
 export function allGatesPass(gates: Gate[] | undefined) {
@@ -40,26 +40,24 @@ export function ProcessPage() {
         title="Quy trình"
         description="Cổng phải qua trước khi chạy full matrix (quy tắc cứng #5). Tính trên mọi lô thực nghiệm, không theo phạm vi đang xem."
       />
-      <div className="max-w-[720px] space-y-4">
-        {allGatesPass(gates) && (
-          <Callout tone="brand">Cả hai cổng đã đạt, mục này đã ẩn khỏi menu, trang giữ lại làm bằng chứng.</Callout>
-        )}
-        <Card>
-          <CardHeader
-            title="Cổng nghiệm thu"
-            action={
-              <span className="num text-xs text-slate-500">
-                {passed}/{gates.length} đạt
-              </span>
-            }
-          />
-          <ol className="divide-y divide-slate-100 border-t border-slate-100">
+      <Question
+        title="Đã qua cổng nghiệm thu chưa?"
+        answer={
+          <div>
+            <div className="text-sm text-slate-600">Cổng đạt</div>
+            <div className="reading mt-1.5 text-4xl">{passed}/{gates.length}</div>
+          </div>
+        }
+        note={allGatesPass(gates) ? "Cả hai cổng đã đạt, mục này đã ẩn khỏi menu, trang giữ lại làm bằng chứng." : undefined}
+      >
+        <Card className="overflow-hidden">
+          <ol className="divide-y divide-slate-200">
             {gates.map((g, i) => (
               <GateRow key={g.id} gate={g} index={i} />
             ))}
           </ol>
         </Card>
-      </div>
+      </Question>
     </>
   );
 }

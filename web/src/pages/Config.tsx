@@ -4,7 +4,7 @@ import { ArrowRight, CircleAlert, CircleCheck, Lock, Save, Trash2 } from "lucide
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { Badge, Button, Callout, Card, CardHeader, ErrorBox, InfoDot, Loading, Mono, PageHeader } from "@/components/ui";
+import { Badge, Button, Callout, Card, CardHeader, ErrorBox, InfoDot, Loading, Mono, PageHeader, Question } from "@/components/ui";
 import { type ConfigSummary, type SandboxLimits, type SandboxModel, api } from "@/lib/api";
 import { DEFENSE_LABEL, TECHNIQUE_LABEL, usd } from "@/lib/format";
 import { useSandboxModel } from "@/lib/sandbox";
@@ -288,15 +288,17 @@ export function ConfigPage() {
         description="Hợp đồng thực nghiệm đã chốt, chỉ đọc. Thay đổi đi qua config/ và tài liệu. Riêng model thử ngoài bộ đo đặt được ở đây, chỉ cho demo."
       />
 
-      <div className="space-y-4">
-        <ModelsCard d={d} tag={meta.data?.model_tag} />
+      <div>
+        <Question title="Model đích" note="Ba model A1–A3 đã ghim phiên bản; mọi số liệu báo cáo đo trên ba model này.">
+          <ModelsCard d={d} tag={meta.data?.model_tag} />
+        </Question>
 
-        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-5">
-          <div className="min-w-0 xl:col-span-2">
-            <SandboxCard limits={d.sandbox} />
-          </div>
+        <Question title="Model thử cho demo" note="Thay model đích cho lượt demo ở trang Thí nghiệm. Lượt dùng model thử không vào số liệu báo cáo.">
+          <SandboxCard limits={d.sandbox} />
+        </Question>
 
-          <div className="flex min-w-0 flex-col gap-4 xl:col-span-3">
+        <Question title="Phòng thủ và payload" note="Tham số phòng thủ nằm ở config/defenses.yaml; kho payload khóa theo phiên bản bộ tấn công.">
+          <div className="grid min-w-0 grid-cols-1 items-start gap-4 xl:grid-cols-2">
             <Card>
               <CardHeader
                 title="Cơ chế phòng thủ"
@@ -361,7 +363,7 @@ export function ConfigPage() {
               </div>
             </Card>
           </div>
-        </div>
+        </Question>
       </div>
     </>
   );

@@ -83,8 +83,8 @@
   --font-sans: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
-  --sidebar-w: 248px;
-  --topbar-h: 52px;
+  /* Chiều cao thanh trên hai tầng (56 + 44 + viền): mốc cho phần tử dính khi cuộn. */
+  --topbar-h: 101px;
   --dur: 140ms;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }

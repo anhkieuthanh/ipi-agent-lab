@@ -31,7 +31,7 @@ function FilterSelect({
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={clsx("input text-xs", value && "border-slate-400 font-medium text-slate-900", className)}
+      className={clsx("input text-xs lg:w-full", value && "border-slate-500 bg-brand-50 font-medium text-slate-900", className)}
     >
       {options.map((o) => (
         <option key={o.value} value={o.value}>
@@ -142,8 +142,11 @@ export function RunsPage() {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-2" role="search" aria-label="Lọc lượt chạy">
-        <div className="relative min-w-0 flex-1 basis-[240px] sm:max-w-[320px]">
+      {/* Cột lọc dọc bên trái (dính khi cuộn), danh sách bên phải. */}
+      <div className="grid grid-cols-1 items-start gap-x-8 gap-y-4 lg:grid-cols-[248px_minmax(0,1fr)]">
+      <div className="flex flex-wrap items-center gap-2 lg:sticky lg:top-[calc(var(--topbar-h)+24px)] lg:flex-col lg:items-stretch lg:gap-2.5" role="search" aria-label="Lọc lượt chạy">
+        <h2 className="hidden text-sm font-medium text-slate-900 lg:block">Lọc lượt chạy</h2>
+        <div className="relative min-w-0 flex-1 basis-[240px] sm:max-w-[320px] lg:max-w-none lg:flex-none lg:basis-auto">
           <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
           <input
             aria-label={view === "payload" ? "Tìm mã payload" : "Tìm run, payload hoặc tác vụ"}
@@ -223,6 +226,8 @@ export function RunsPage() {
         )}
       </div>
 
+
+      <div className="min-w-0 space-y-4">
       {view === "payload" && <p className="text-xs text-slate-600">Gộp các run tấn công theo payload, gồm mọi kết quả và nguồn chặn. Bộ lọc loại run, kết quả và nguồn chặn được bỏ khi chuyển sang chế độ này.</p>}
       {view === "payload" && <PayloadView params={params} drill={drill} search={search} />}
       {view === "run" && query.error && <ErrorBox error={query.error} />}
@@ -331,6 +336,8 @@ export function RunsPage() {
           ) : null}
         </Card>
       )}
+      </div>
+      </div>
     </div>
   );
 }

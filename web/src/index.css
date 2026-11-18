@@ -1,7 +1,8 @@
 /* Hallmark · shape: app screen · genre: modern-minimal · theme: Console (deal 1/3, seed research-console-measuring-prompt-injection-3e91·27b7ac30·2026-11-14·r0) · redesign: full
- * nav: kept sidebar, groups as the experiment flow · signature: the reading (ASR off and on, measured face, set large) · states: loading, empty, error, full · console: paper (light), graphite (dark)
+ * nav: top bar in two tiers, the experiment flow (1 Thí nghiệm, 2 Phân tích) over the pages of the current step; sidebar removed · signature: the question row, a research question and its reading on the left, the evidence on the right · states: loading, empty, error, full · console: paper (light), graphite (dark)
  * faces: Be Vietnam Pro and IBM Plex Mono replace Host Grotesk and Atkinson Hyperlegible Mono, which lack Vietnamese glyphs
  * axes: dark/grotesk-sans/chromatic-amber · posture: restrained · contrast: pass · v2.0.0 */
+/* Hallmark · dropped nothing; moved the channel picker of RQ2 and the gate count into the question column, the "Tất cả lô" link into the batches question, and the palette opener from the sidebar to the top bar · the shell and the analysis pages were recomposed */
 /* Hallmark · pre-emit critique: P3 H3 E3 S3 R3 V3 · weakest: R, each page now states the question it answers in a visible lede */
 
 @import "@fontsource/be-vietnam-pro/400.css";
@@ -177,5 +178,4 @@
 /* Touch targets grow without changing compact desktop density. */
 @media (pointer: coarse) {
   .touch-target, .input { min-height: 44px; min-width: 44px; }
-  header[data-chrome] { height: auto; min-height: var(--topbar-h); flex-wrap: wrap; padding-top: 4px; padding-bottom: 4px; }
 }

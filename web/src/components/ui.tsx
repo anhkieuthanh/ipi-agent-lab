@@ -7,7 +7,7 @@ import { AlertTriangle, CircleAlert, Info } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import type { Verdict } from "@/lib/api";
-import { BLOCKED_LABEL, OUTCOME_LABEL, sentence } from "@/lib/format";
+import { BLOCKED_LABEL, OUTCOME_LABEL, int, pct, sentence } from "@/lib/format";
 
 /* ───────────── Bề mặt ───────────── */
 
@@ -350,6 +350,89 @@ export function Tabs<T extends string>({
         ))}
       </div>
       {trailing && <div className="py-2">{trailing}</div>}
+    </div>
+  );
+}
+
+/* ───────────── Bố cục theo câu hỏi ───────────── */
+
+/**
+ * Một hàng phân tích kiểu báo cáo khoa học: cột trái (dính khi cuộn) là câu hỏi và câu trả lời ngắn bằng
+ * số đo lớn; cột phải là bằng chứng (bảng, biểu đồ). Các hàng ngăn nhau bằng đường kẻ 1px.
+ */
+export function Question({
+  code,
+  title,
+  answer,
+  note,
+  aside,
+  children,
+  id,
+}: {
+  /** Mã câu hỏi nghiên cứu, vd "RQ1". */
+  code?: string;
+  title: ReactNode;
+  /** Câu trả lời ngắn: thường là một hoặc vài `Reading`. */
+  answer?: ReactNode;
+  /** Cách đọc bằng chứng, một hai câu. */
+  note?: ReactNode;
+  /** Điều khiển đặt dưới câu trả lời (vd chọn kênh). */
+  aside?: ReactNode;
+  children: ReactNode;
+  id?: string;
+}) {
+  return (
+    <section id={id} className="grid scroll-mt-32 grid-cols-1 gap-x-12 gap-y-5 border-t border-slate-300 py-9 first:border-t-0 first:pt-2 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
+      <div className="min-w-0 lg:sticky lg:top-[calc(var(--topbar-h)+24px)] lg:self-start">
+        <h2 className="text-xl font-medium text-slate-900">
+          {code && <span className="mr-2 font-mono text-lg font-normal text-brand-700">{code}</span>}
+          {title}
+        </h2>
+        {answer && <div className="mt-6 space-y-5">{answer}</div>}
+        {note && <p className="mt-6 max-w-[42ch] text-sm text-slate-600">{note}</p>}
+        {aside && <div className="mt-5" data-chrome>{aside}</div>}
+      </div>
+      <div className="min-w-0 space-y-4">{children}</div>
+    </section>
+  );
+}
+
+type RateLike = { x: number; n: number; p: number | null; lo?: number | null; hi?: number | null } | null | undefined;
+
+/** Một số đo đặt lớn trong câu trả lời: nhãn, tỉ lệ, mẫu số. Chưa đo thì nói chưa đo, không in 0%. */
+export function Reading({
+  label,
+  code,
+  rate,
+  tone = "neutral",
+  size = "lg",
+}: {
+  label: ReactNode;
+  code?: string;
+  rate: RateLike;
+  /** attack: tô đỏ khi tỉ lệ lớn hơn 0 (tấn công lọt). */
+  tone?: "neutral" | "attack";
+  size?: "lg" | "md";
+}) {
+  const measured = rate && rate.p !== null && rate.p !== undefined;
+  return (
+    <div className="min-w-0">
+      <div className="text-sm text-slate-600">
+        {label}
+        {code && <span className="ml-1.5 font-mono text-xs text-muted">{code}</span>}
+      </div>
+      {measured ? (
+        <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3">
+          <span className={clsx("reading", size === "lg" ? "text-4xl" : "text-3xl", tone === "attack" && rate.p! > 0 && "text-attack-600")}>
+            {pct(rate.p)}
+          </span>
+          <span className="num font-mono text-xs text-muted">
+            {int(rate.x)}/{int(rate.n)}
+          </span>
+        </div>
+      ) : (
+        <div className="mt-1.5 text-xl text-muted">Chưa đo</div>
+      )}
     </div>
   );
 }

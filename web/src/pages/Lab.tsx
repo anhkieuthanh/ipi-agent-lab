@@ -454,9 +454,9 @@ export function LabPage() {
         />
       )}
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
-        {/* Trái: một bảng thiết lập duy nhất */}
-        <Card>
+      <div className="space-y-6">
+        {/* Bảng thiết lập: ba bước đọc trái sang phải, thanh chạy trải ngang bên dưới. */}
+        <Card className="grid grid-cols-1 overflow-hidden lg:grid-cols-[1.25fr_1fr_1fr] lg:[&>section:not(:first-child):not(:last-child)]:border-l lg:[&>section:not(:first-child):not(:last-child)]:border-t-0">
           <FormSection step={1} title="Kịch bản">
             <Segmented
               value={mode}
@@ -575,14 +575,14 @@ export function LabPage() {
             </div>
           </FormSection>
 
-          <section className="space-y-4 border-t border-slate-200 bg-slate-50 px-5 py-5">
+          <section className="space-y-4 border-t border-slate-200 bg-slate-50 px-5 py-5 lg:col-span-3">
             <h2 className="text-base font-medium text-slate-900">Tóm tắt trước khi chạy</h2>
-            <dl className="space-y-3 text-sm">
+            <dl className="grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
               {[["Kịch bản", scenario?.title ?? "Chưa chọn kịch bản"], ["Model", `${targetName ?? target} · ${target}`], ["Phòng thủ", chosen ? presetLabel(chosen) : "Chưa có cấu hình phù hợp"], ["Số lượt", presets.length ? runCount : "Chưa thể chạy"]].map(([label, value]) => <div key={label}><dt className="text-xs text-muted">{label}</dt><dd className="mt-1 break-words text-slate-900">{value}</dd></div>)}
             </dl>
             <Button
               variant="primary"
-              className="w-full"
+              className="w-full sm:w-auto sm:min-w-72"
               disabled={!live || !scenario || !presets.length || !!running || active.isFetching || !!active.error || !!job.error || start.isPending}
               onClick={() => start.mutate(false)}
               icon={running || start.isPending ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
@@ -591,7 +591,7 @@ export function LabPage() {
             </Button>
             {check && <DemoCheckNote check={check} />}
             {check && !check.ok && !running && (
-              <Button variant="danger" className="h-auto min-h-8 w-full whitespace-normal py-1.5" disabled={!live || start.isPending} onClick={() => start.mutate(true)} icon={<Play size={14} />}>
+              <Button variant="danger" className="h-auto min-h-8 w-full whitespace-normal py-1.5 sm:w-auto" disabled={!live || start.isPending} onClick={() => start.mutate(true)} icon={<Play size={14} />}>
                 Vẫn chạy dù dịch vụ bắt buộc đang lỗi
               </Button>
             )}
@@ -637,7 +637,7 @@ export function LabPage() {
           </section>
         </Card>
 
-        {/* Phải: kịch bản đang chọn, sơ đồ / phát lại, diễn biến trực tiếp */}
+        {/* Dưới: kịch bản đang chọn, sơ đồ / phát lại, diễn biến trực tiếp, trải hết chiều ngang. */}
         <div className="min-w-0 space-y-5">
           {scenario && (
             <Card className="px-4 py-3">
