@@ -1,0 +1,61 @@
+[
+  {
+    "task": "STT-46",
+    "block": "B1",
+    "pilot": false,
+    "prompt_variant": "baseline",
+    "prompt_knobs": {
+      "system_prompt_detail": "standard",
+      "external_content_warning": "none",
+      "default_tool_permissions": "on_request"
+    },
+    "prompt_template_sha256": "344f20f77c74282f66e402656e403e31314e028084b92286a1722f5d06dfe01b",
+    "batch_id": "dryrun-attack-B1-baseline-20261118T030825Z",
+    "dry_run": true,
+    "lab_git_commit": "475717339e65f7ae1ccbdbf6777a72213f99ebfc",
+    "env_hash": "3c3141de39ee8f6e0bdaef4292446127d90ec43f8e9db78229180ea88c4acbbc",
+    "models": {
+      "A1": "glm-5.3",
+      "A2": "glm-5.2",
+      "A3": "deepseek-v4.1-flash-1017"
+    },
+    "targets": [
+      "A1",
+      "A2",
+      "A3"
+    ],
+    "n_planned": 189,
+    "estimate_usd": 6.0,
+    "workers": 3,
+    "started_at_utc": "20261118T030825Z",
+    "plan_sha256": "9bdadae468a27edaee6552ed1a94682e5db34a1e217d315e415d75956a6b2565",
+    "spent_scope": "session",
+    "since_ts": "2026-11-18T03:08:25Z",
+    "finished_at_utc": "20261118T033510Z",
+    "spent_usd": 3.4147572,
+    "budget_status": "ok",
+    "worker_ids": [
+      "dryrun-attack-B1-baseline-20261118T030825Z-0",
+      "dryrun-attack-B1-baseline-20261118T030825Z-1",
+      "dryrun-attack-B1-baseline-20261118T030825Z-2"
+    ],
+    "shard_exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "kb_worker_collections": {
+      "kb_wdryrun-attack-B1-baseline-20261118T030825Z-0": 41,
+      "kb_wdryrun-attack-B1-baseline-20261118T030825Z-1": 41,
+      "kb_wdryrun-attack-B1-baseline-20261118T030825Z-2": 41
+    },
+    "kb_injected_leftover": {
+      "kb_wdryrun-attack-B1-baseline-20261118T030825Z-0": 0,
+      "kb_wdryrun-attack-B1-baseline-20261118T030825Z-1": 0,
+      "kb_wdryrun-attack-B1-baseline-20261118T030825Z-2": 0
+    },
+    "cleanup_errors": [],
+    "save_status": "ok",
+    "save_errors": []
+  }
+]
