@@ -131,6 +131,13 @@ def main() -> int:
     dry.add_argument("--goals", nargs="+", help="tập con mục tiêu")
     dry.add_argument("--per-cell", type=int, help="số run mỗi ô thay cho n_per_cell")
     dry.add_argument("--allow-dirty", action="store_true", help="cho chạy trên cây chưa commit")
+    parser.add_argument(
+        "--skip-targets",
+        nargs="+",
+        default=[],
+        help="tạm bỏ qua run của các target này (vd. API sập); kế hoạch lô giữ nguyên, "
+        "chạy lại cùng --batch-id không có cờ để bù",
+    )
     parser.add_argument("--workers", type=int, default=1, help="số tiến trình chạy song song")
     parser.add_argument("--shard", help=argparse.SUPPRESS)  # "i/N", do tiến trình mẹ truyền
     parser.add_argument("--since-ts", help=argparse.SUPPRESS)  # mốc chi phí phiên, do mẹ truyền
@@ -203,6 +210,8 @@ def main() -> int:
         print(str(e))
         return 2
     targets = sorted({s.target_id for s in specs})
+    if unknown := sorted(set(args.skip_targets) - set(targets)):
+        parser.error(f"--skip-targets {unknown} không thuộc target của lô {targets}")
     if args.workers > 1 and any(s.attacker_mode != "blind" for s in specs):
         parser.error("--workers > 1 chỉ cho lô blind: MailHog dùng chung giữa các tiến trình")
     if args.workers > 1 and not args.shard and worker_id() is not None:
@@ -287,7 +296,7 @@ def _run_shard(*, args, exp, corpus, carriers, specs, targets, batch_id, batch_d
     """Tiến trình con: phần `todo[i::N]`, ghi shard riêng; mẹ gộp, ghi manifest, xuất CSV."""
     i, n = (int(x) for x in args.shard.split("/"))
     done = done_specs(open_store(store), batch_id)
-    todo = [s for s in specs if s not in done][i::n]
+    todo = [s for s in specs if s not in done and s.target_id not in args.skip_targets][i::n]
     commit = _check_commit(args)
     if commit is None:
         return 2
@@ -324,8 +333,10 @@ def _run_batch(*, args, exp, corpus, carriers, specs, targets, batch_id, batch_d
         print(f"Đã gộp {len(merged)} shard còn sót của lần chạy trước vào {store.relative_to(ROOT)}.")
     engine = open_store(store)
     done = done_specs(engine, batch_id)
-    todo = [s for s in specs if s not in done]
-    print(f"{batch_id}: {len(specs)} run theo kế hoạch, {len(done)} đã có, còn {len(todo)}")
+    todo = [s for s in specs if s not in done and s.target_id not in args.skip_targets]
+    skipped = len(specs) - len(done) - len(todo)
+    print(f"{batch_id}: {len(specs)} run theo kế hoạch, {len(done)} đã có, còn {len(todo)}"
+          + (f" (tạm bỏ {skipped} run của {args.skip_targets})" if skipped else ""))
     plan_sha = _plan_sha(specs)
     drift = _plan_drift(batch_dir, plan_sha, done, specs)
     if drift:
@@ -360,6 +371,7 @@ def _run_batch(*, args, exp, corpus, carriers, specs, targets, batch_id, batch_d
         "models": {t: m.model for t, m in models.items()},
         "targets": targets,
         "n_planned": len(specs),
+        "skip_targets": args.skip_targets,
         "estimate_usd": args.estimate_usd,
         "workers": args.workers if parallel else 1,
         "started_at_utc": _stamp(),
