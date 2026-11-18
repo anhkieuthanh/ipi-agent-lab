@@ -1,0 +1,124 @@
+[
+  {
+    "task": "STT-46",
+    "block": "B1",
+    "pilot": false,
+    "prompt_variant": "baseline",
+    "prompt_knobs": {
+      "system_prompt_detail": "standard",
+      "external_content_warning": "none",
+      "default_tool_permissions": "on_request"
+    },
+    "prompt_template_sha256": "344f20f77c74282f66e402656e403e31314e028084b92286a1722f5d06dfe01b",
+    "batch_id": "attack-B1-baseline-20261118T090849Z",
+    "dry_run": false,
+    "lab_git_commit": "f72ede1f9f47e8b2b6c12ecdfe877d410c1b4e33",
+    "env_hash": "86873e6b4e83d6fd42bad1d0e01bfdcafb2d5bc391f902c91c720f0a6904638a",
+    "models": {
+      "A1": "glm-5.3",
+      "A2": "glm-5.2",
+      "A3": "deepseek-v4.1-flash-1017"
+    },
+    "targets": [
+      "A1",
+      "A2",
+      "A3"
+    ],
+    "n_planned": 1890,
+    "skip_targets": [
+      "A2"
+    ],
+    "estimate_usd": 40.0,
+    "workers": 3,
+    "started_at_utc": "20261118T090849Z",
+    "plan_sha256": "a6040ccea98118d9e0a5ee691b35f99802666dc5548384ce65eab9bfab6bb398",
+    "spent_scope": "session",
+    "since_ts": "2026-11-18T09:08:49Z",
+    "finished_at_utc": "20261118T121129Z",
+    "spent_usd": 17.658843000000022,
+    "budget_status": "ok",
+    "worker_ids": [
+      "attack-B1-baseline-20261118T090849Z-0",
+      "attack-B1-baseline-20261118T090849Z-1",
+      "attack-B1-baseline-20261118T090849Z-2"
+    ],
+    "shard_exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "kb_worker_collections": {
+      "kb_wattack-B1-baseline-20261118T090849Z-0": 41,
+      "kb_wattack-B1-baseline-20261118T090849Z-1": 41,
+      "kb_wattack-B1-baseline-20261118T090849Z-2": 41
+    },
+    "kb_injected_leftover": {
+      "kb_wattack-B1-baseline-20261118T090849Z-0": 0,
+      "kb_wattack-B1-baseline-20261118T090849Z-1": 0,
+      "kb_wattack-B1-baseline-20261118T090849Z-2": 0
+    },
+    "cleanup_errors": [],
+    "save_status": "ok",
+    "save_errors": []
+  },
+  {
+    "task": "STT-46",
+    "block": "B1",
+    "pilot": false,
+    "prompt_variant": "baseline",
+    "prompt_knobs": {
+      "system_prompt_detail": "standard",
+      "external_content_warning": "none",
+      "default_tool_permissions": "on_request"
+    },
+    "prompt_template_sha256": "344f20f77c74282f66e402656e403e31314e028084b92286a1722f5d06dfe01b",
+    "batch_id": "attack-B1-baseline-20261118T090849Z",
+    "dry_run": false,
+    "lab_git_commit": "f72ede1f9f47e8b2b6c12ecdfe877d410c1b4e33",
+    "env_hash": "86873e6b4e83d6fd42bad1d0e01bfdcafb2d5bc391f902c91c720f0a6904638a",
+    "models": {
+      "A1": "glm-5.3",
+      "A2": "glm-5.2",
+      "A3": "deepseek-v4.1-flash-1017"
+    },
+    "targets": [
+      "A1",
+      "A2",
+      "A3"
+    ],
+    "n_planned": 1890,
+    "skip_targets": [],
+    "estimate_usd": 40.0,
+    "workers": 3,
+    "started_at_utc": "20261118T171808Z",
+    "plan_sha256": "a6040ccea98118d9e0a5ee691b35f99802666dc5548384ce65eab9bfab6bb398",
+    "spent_scope": "session",
+    "since_ts": "2026-11-18T17:18:07Z",
+    "finished_at_utc": "20261118T192451Z",
+    "spent_usd": 16.454571599999994,
+    "budget_status": "ok",
+    "worker_ids": [
+      "attack-B1-baseline-20261118T090849Z-0",
+      "attack-B1-baseline-20261118T090849Z-1",
+      "attack-B1-baseline-20261118T090849Z-2"
+    ],
+    "shard_exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "kb_worker_collections": {
+      "kb_wattack-B1-baseline-20261118T090849Z-0": 41,
+      "kb_wattack-B1-baseline-20261118T090849Z-1": 41,
+      "kb_wattack-B1-baseline-20261118T090849Z-2": 41
+    },
+    "kb_injected_leftover": {
+      "kb_wattack-B1-baseline-20261118T090849Z-0": 0,
+      "kb_wattack-B1-baseline-20261118T090849Z-1": 0,
+      "kb_wattack-B1-baseline-20261118T090849Z-2": 0
+    },
+    "cleanup_errors": [],
+    "save_status": "ok",
+    "save_errors": []
+  }
+]
