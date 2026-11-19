@@ -102,7 +102,8 @@ def test_khoi_b1_khong_con_truong_chua_chot(exp):
 
 def test_unresolved_bat_duoc_todo(exp):
     paths = unresolved(exp)
-    assert "blocks.B2.cells.selected" in paths
+    # S_def đã chọn từ B1 (scripts/select_cells.py); B2 hết trường null.
+    assert not [p for p in paths if p.startswith("blocks.B2")]
     # B5 còn chặn bởi cells.selected (tập S_adp chọn sau B2); attacker_model đã chốt opus-5 (STT-57).
     assert "blocks.B5.cells.selected" in paths
     assert "blocks.B5.attacker_model" not in paths

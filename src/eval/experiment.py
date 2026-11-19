@@ -144,7 +144,7 @@ class Experiment:
     def planned_runs(self, block_id: str) -> int | None:
         """Số run theo công thức của khối; `None` khi còn thừa số chưa chốt.
 
-        Khối chọn ô theo quy tắc (B2, B5) cho cận trên — `cells.max_cells` ô. B1 nhân với số biến thể
+        Khối chọn ô theo quy tắc (B2, B5): số ô đã chọn, chưa chọn thì cận trên `cells.max_cells`. B1 nhân với số biến thể
         system prompt. Nhận cả lượt ngoài khối (`utility_baseline`).
         """
         return self._planned(self.unit(block_id))
@@ -152,7 +152,8 @@ class Experiment:
     def _planned(self, b: Block) -> int | None:
         n_targets = len(b.targets)
         n_presets = len(b.presets)
-        max_cells = (b.cells or {}).get("max_cells")
+        cells = b.cells or {}
+        max_cells = len(cells["selected"]) if cells.get("selected") else cells.get("max_cells")
 
         if b.harnesses:
             factors = [b.samples, n_targets, len(b.harnesses)]
@@ -342,6 +343,8 @@ def _check_unit(
         problems.append(f"{where}.harnesses: '{h}' ngoài {HARNESSES}")
     if b.cells is not None and b.cells.get("from_block") not in seen:
         problems.append(f"{where}.cells.from_block phải là một khối khai trước")
+    if b.cells is not None:
+        problems += _check_cells(where, b.cells)
     if b.best_single is not None:
         if b.best_single.get("select_on") not in BEST_SINGLE_SELECT_ON:
             problems.append(f"{where}.best_single.select_on ngoài {BEST_SINGLE_SELECT_ON}")
@@ -351,6 +354,39 @@ def _check_unit(
         singles = [p for p in b.presets if p.endswith("_only")]
         if "all" not in b.presets or not singles:
             problems.append(f"{where}.best_single cần preset 'all' và ít nhất một '*_only'")
+    return problems
+
+
+CELL_RULES = ("S_def", "S_adp")
+CELL_RANK_BY = ("pooled",)
+
+
+def _check_cells(where: str, cells: dict[str, Any]) -> list[str]:
+    """Ô đã chọn (`selected`) phải đúng hình (kênh, kỹ thuật, mục tiêu), không trùng, ≤ max_cells."""
+    problems: list[str] = []
+    if cells.get("rule") not in CELL_RULES:
+        problems.append(f"{where}.cells.rule ngoài {CELL_RULES}")
+    if "rank_by" in cells and cells["rank_by"] not in CELL_RANK_BY:
+        problems.append(f"{where}.cells.rank_by ngoài {CELL_RANK_BY}")
+    selected = cells.get("selected")
+    if selected is None:
+        return problems
+    if cells.get("source_batch") is None:
+        problems.append(f"{where}.cells.selected cần source_batch (lô nguồn của phép chọn)")
+    seen_cells: set[tuple[str, ...]] = set()
+    for i, cell in enumerate(selected):
+        if not isinstance(cell, list) or len(cell) != 3:
+            problems.append(f"{where}.cells.selected[{i}] phải là [kênh, kỹ thuật, mục tiêu]")
+            continue
+        ch, t, g = cell
+        if ch not in CHANNELS or t not in TECHNIQUES or g not in GOALS:
+            problems.append(f"{where}.cells.selected[{i}] {cell} ngoài kênh/kỹ thuật/mục tiêu")
+        if tuple(cell) in seen_cells:
+            problems.append(f"{where}.cells.selected[{i}] {cell} trùng")
+        seen_cells.add(tuple(cell))
+    max_cells = cells.get("max_cells")
+    if max_cells is not None and len(selected) > max_cells:
+        problems.append(f"{where}.cells.selected có {len(selected)} ô > max_cells {max_cells}")
     return problems
 
 

@@ -22,8 +22,8 @@ backoff lại.
 PHÒNG THỦ: `build_defense` dựng `defense.pipeline.DefensePipeline` cho mọi preset chạy được của
 `config/defenses.yaml` (STT-55); `off` vẫn là `NoDefense`. Run tấn công khai `task_type` của tác vụ
 chở theo `task_types.*.matches_carrier_tasks` — harness đóng vai nhân viên chọn loại tác vụ trước
-phiên (quy tắc cứng #3), không suy ra từ câu hỏi. Các khối chọn ô theo quy tắc
-(`cells.selected: null`) bị `unresolved` chặn tới khi B1 xong.
+phiên (quy tắc cứng #3), không suy ra từ câu hỏi. Khối chọn ô theo quy tắc (B2) sinh run trên
+`cells.selected`; còn `null` thì `unresolved` chặn.
 """
 
 from __future__ import annotations
@@ -263,17 +263,31 @@ def cell_units(
 
 
 def _technique_block(block: Block) -> Block:
-    """Trả về phần khối sinh ô theo `techniques_by_channel`. Khối chọn ô theo quy tắc (B2/B5) chưa
-    hỗ trợ (cần B1 xong + D1–D4); báo lỗi rõ thay vì sinh thiếu."""
-    if block.cells is not None:
-        raise AttackRunnerError(
-            f"khối {block.id} chọn ô theo quy tắc (cells) — cần B1 xong và D1–D4; chưa hỗ trợ"
-        )
-    if block.attacker_mode == "adaptive":
-        raise AttackRunnerError(f"khối {block.id} là tấn công thích ứng (B5) — chưa hỗ trợ")
-    if not block.techniques_by_channel:
+    """Trả về phần khối sinh ô theo `techniques_by_channel`, cho pilot. Khối chọn ô theo quy tắc
+    (B2/B5) không làm nguồn pilot."""
+    if block.cells is not None or not block.techniques_by_channel:
         raise AttackRunnerError(f"khối {block.id} không sinh ô theo techniques_by_channel")
     return block
+
+
+def block_cells(block: Block) -> list[tuple[str, str, str]]:
+    """Ô (kênh, kỹ thuật, mục tiêu) của một khối tấn công blind, theo thứ tự khai.
+
+    Khối sinh ô theo `techniques_by_channel × goals` (B1) hoặc theo `cells.selected` (B2, chọn bằng
+    `scripts/select_cells.py`). Khối thích ứng (B5) có bộ chạy riêng, không đi đường này."""
+    if block.attacker_mode == "adaptive":
+        raise AttackRunnerError(f"khối {block.id} là tấn công thích ứng — dùng bộ chạy B5")
+    if block.cells is not None:
+        selected = block.cells.get("selected")
+        if not selected:
+            raise AttackRunnerError(f"khối {block.id}: cells.selected chưa điền")
+        return [tuple(c) for c in selected]  # type: ignore[misc]
+    if not block.techniques_by_channel:
+        raise AttackRunnerError(f"khối {block.id} không sinh ô theo techniques_by_channel")
+    return [
+        (ch, t, g) for ch, techs in block.techniques_by_channel.items() for t in techs
+        for g in block.goals
+    ]
 
 
 def plan_block(
@@ -294,10 +308,10 @@ def plan_block(
     """Mọi run của `block_id`, thứ tự chạy (xáo trộn có seed). Lọc (`channels`/`techniques`/`goals`/
     `targets`/`presets`/`n_per_cell`) chỉ cho chạy thử — khi không lọc, số run khớp `planned_runs`.
     """
-    block = _technique_block(exp.unit(block_id))
+    block = exp.unit(block_id)
+    cells = block_cells(block)
     targets = list(targets or block.targets)
     presets = list(presets or block.presets)
-    goals = list(goals or block.goals)
     n = n_per_cell if n_per_cell is not None else block.n_per_cell
     if n is None:
         raise AttackRunnerError(f"khối {block_id} thiếu n_per_cell")
@@ -305,37 +319,36 @@ def plan_block(
 
     specs: list[AttackRunSpec] = []
     empty: list[str] = []
-    for channel, techs in block.techniques_by_channel.items():
+    for channel, technique, goal in cells:
         if channels and channel not in channels:
             continue
-        for technique in techs:
-            if techniques and technique not in techniques:
-                continue
-            for goal in goals:
-                payloads = select_payloads(
-                    corpus, channel, technique, goal, selection=exp.corpus_selection
-                )
-                pairs = _cell_pairs(payloads, channel, carriers, tasks_path=tasks_path)
-                if not pairs:
-                    empty.append(f"{channel}·{technique}·{goal}")
-                    continue
-                units = cell_units(pairs, n, seed=f"{seed}:{channel}:{technique}:{goal}")
-                for target in targets:
-                    for preset in presets:
-                        for pid, cid, rep in units:
-                            specs.append(
-                                AttackRunSpec(
-                                    repeat_idx=rep,
-                                    target_id=target,
-                                    channel=channel,
-                                    technique=technique,
-                                    goal=goal,
-                                    attacker_mode=block.attacker_mode or "blind",
-                                    defense_config=snapshots[preset],
-                                    carrier_task_id=cid,
-                                    payload_id=pid,
-                                )
-                            )
+        if techniques and technique not in techniques:
+            continue
+        if goals and goal not in goals:
+            continue
+        payloads = select_payloads(corpus, channel, technique, goal, selection=exp.corpus_selection)
+        pairs = _cell_pairs(payloads, channel, carriers, tasks_path=tasks_path)
+        if not pairs:
+            empty.append(f"{channel}·{technique}·{goal}")
+            continue
+        # Cùng seed đơn vị với B1: ô của B2 bốc đúng các cặp (payload, tác vụ chở) mà B1 đã chạy.
+        units = cell_units(pairs, n, seed=f"{seed}:{channel}:{technique}:{goal}")
+        for target in targets:
+            for preset in presets:
+                for pid, cid, rep in units:
+                    specs.append(
+                        AttackRunSpec(
+                            repeat_idx=rep,
+                            target_id=target,
+                            channel=channel,
+                            technique=technique,
+                            goal=goal,
+                            attacker_mode=block.attacker_mode or "blind",
+                            defense_config=snapshots[preset],
+                            carrier_task_id=cid,
+                            payload_id=pid,
+                        )
+                    )
     if empty:
         raise AttackRunnerError(
             f"khối {block_id}: {len(empty)} ô không có payload/tác vụ chở — corpus chưa đủ "

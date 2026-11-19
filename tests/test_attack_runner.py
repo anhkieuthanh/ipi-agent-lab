@@ -189,9 +189,22 @@ def test_plan_block_o_trong_bao_loi_liet_ke(exp, carriers):
         R.plan_block(exp, "B1", corpus=reduced, carriers=carriers, seed=1)
 
 
-def test_plan_block_tu_choi_khoi_chon_o(exp, corpus, carriers):
-    with pytest.raises(R.AttackRunnerError, match="chọn ô theo quy tắc"):
-        R.plan_block(exp, "B2", corpus=corpus, carriers=carriers, seed=1)
+def test_plan_block_b2_tren_o_da_chon_cung_don_vi_voi_b1(exp, corpus, carriers):
+    b2 = R.plan_block(exp, "B2", corpus=corpus, carriers=carriers, seed=1)
+    assert len(b2) == exp.planned_runs("B2") == 840
+    selected = {tuple(c) for c in exp.blocks["B2"].cells["selected"]}
+    assert {(s.channel, s.technique, s.goal) for s in b2} == selected
+    assert len({s.defense_config for s in b2}) == len(exp.blocks["B2"].presets)
+    # Cùng seed đơn vị: ô của B2 bốc đúng cặp (payload, tác vụ chở, lần lặp) của B1.
+    b1 = R.plan_block(exp, "B1", corpus=corpus, carriers=carriers, seed=1)
+    key = lambda s: (s.target_id, s.channel, s.technique, s.goal, s.payload_id,  # noqa: E731
+                     s.carrier_task_id, s.repeat_idx)
+    assert {key(s) for s in b2} <= {key(s) for s in b1}
+
+
+def test_plan_block_tu_choi_khoi_thich_ung(exp, corpus, carriers):
+    with pytest.raises(R.AttackRunnerError, match="thích ứng"):
+        R.plan_block(exp, "B5", corpus=corpus, carriers=carriers, seed=1)
 
 
 def test_plan_pilot_so_ca_va_cung_ca_moi_target(exp, corpus, carriers):
