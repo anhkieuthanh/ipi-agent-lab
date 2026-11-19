@@ -358,7 +358,7 @@ def _check_unit(
 
 
 CELL_RULES = ("S_def", "S_adp")
-CELL_RANK_BY = ("pooled",)
+CELL_RANK_BY = ("pooled", "dsr_then_off_asr")
 
 
 def _check_cells(where: str, cells: dict[str, Any]) -> list[str]:
