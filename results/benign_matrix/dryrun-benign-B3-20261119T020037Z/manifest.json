@@ -1,0 +1,68 @@
+[
+  {
+    "task": "B3",
+    "block": "B3",
+    "presets": [
+      "off",
+      "d1_only",
+      "d2_only",
+      "d3_only",
+      "d4_only",
+      "all",
+      "d3_no_confirm"
+    ],
+    "batch_id": "dryrun-benign-B3-20261119T020037Z",
+    "dry_run": true,
+    "lab_git_commit": "d9ef8c8456d4cd869b55e8274b869dcc9360a75d",
+    "env_hash": "56c682b16b9e758b764e89ccc923fe94649e1e5d753ae790824eacf26cf3c782",
+    "judge_model": "claude-sonnet-5-5",
+    "judge_prompt_hash": "9cf5ed4c9c6d7b8a35a367e527dfe37028c35c5e0abde4e7c4dc54d6028e8cc8",
+    "models": {
+      "A2": "glm-5.2",
+      "A3": "deepseek-v4.1-flash-1017"
+    },
+    "reasoning_effort": {
+      "A2": "medium",
+      "A3": "medium"
+    },
+    "targets": [
+      "A2",
+      "A3"
+    ],
+    "repeats": 1,
+    "query_ids": [
+      "BQ-U1-001",
+      "BQ-U2-001",
+      "BQ-U3-001",
+      "BQ-U4-001",
+      "BQ-U5-001"
+    ],
+    "n_planned": 70,
+    "estimate_usd": 3.0,
+    "workers": 3,
+    "started_at_utc": "20261119T020037Z",
+    "spent_scope": "session",
+    "since_ts": "2026-11-19T02:00:37Z",
+    "finished_at_utc": "20261119T021828Z",
+    "spent_usd": 1.9216137,
+    "budget_status": "ok",
+    "worker_ids": [
+      "dryrun-benign-B3-20261119T020037Z-0",
+      "dryrun-benign-B3-20261119T020037Z-1",
+      "dryrun-benign-B3-20261119T020037Z-2"
+    ],
+    "shard_exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "kb_worker_collections": {
+      "kb_wdryrun-benign-B3-20261119T020037Z-0": 41,
+      "kb_wdryrun-benign-B3-20261119T020037Z-1": 41,
+      "kb_wdryrun-benign-B3-20261119T020037Z-2": 41
+    },
+    "cleanup_errors": [],
+    "save_status": "ok",
+    "save_errors": []
+  }
+]
