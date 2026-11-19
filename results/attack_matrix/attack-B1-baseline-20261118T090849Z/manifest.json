@@ -180,5 +180,42 @@
     "cleanup_errors": [],
     "save_status": "ok",
     "save_errors": []
+  },
+  {
+    "task": "STT-46",
+    "block": "B1",
+    "pilot": false,
+    "prompt_variant": "baseline",
+    "prompt_knobs": {
+      "system_prompt_detail": "standard",
+      "external_content_warning": "none",
+      "default_tool_permissions": "on_request"
+    },
+    "prompt_template_sha256": "344f20f77c74282f66e402656e403e31314e028084b92286a1722f5d06dfe01b",
+    "batch_id": "attack-B1-baseline-20261118T090849Z",
+    "dry_run": false,
+    "lab_git_commit": "d0700d6e5af963ae8ba7af4611e0d17ff2cd3e1c",
+    "env_hash": "f88cf6998410aecfaa8fbc30a124810e9ca831b477d8a644732dfb59cd0102f9",
+    "models": {
+      "A1": "glm-5.3",
+      "A2": "glm-5.2",
+      "A3": "deepseek-v4.1-flash-1017"
+    },
+    "targets": [
+      "A1",
+      "A2",
+      "A3"
+    ],
+    "n_planned": 1890,
+    "skip_targets": [],
+    "estimate_usd": 1.0,
+    "workers": 1,
+    "started_at_utc": "20261119T010046Z",
+    "plan_sha256": "a6040ccea98118d9e0a5ee691b35f99802666dc5548384ce65eab9bfab6bb398",
+    "spent_scope": "session",
+    "since_ts": "2026-11-19T01:00:46Z",
+    "finished_at_utc": "20261119T010116Z",
+    "spent_usd": 0.0329844,
+    "budget_status": "ok"
   }
 ]
