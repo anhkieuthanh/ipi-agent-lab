@@ -155,11 +155,33 @@ def test_chat_normalizes_tool_call_and_logs(tmp_path):
 
 
 def test_response_model_recorded_for_drift(tmp_path):
-    http, _ = _gateway([_completion(model="glm-5.2-20261001", content="ok")])
+    http, _ = _gateway([_completion(model="ZhipuAI/GLM-5.2", content="ok")])
     result = _client(tmp_path, http).chat([{"role": "user", "content": "hi"}])
     assert result.model == "glm-5.2"
-    assert result.response_model == "glm-5.2-20261001"
-    assert _log_lines(tmp_path)[0]["response_model"] == "glm-5.2-20261001"
+    assert result.response_model == "ZhipuAI/GLM-5.2"
+    assert _log_lines(tmp_path)[0]["response_model"] == "ZhipuAI/GLM-5.2"
+
+
+def test_response_model_ngoai_ban_pin_thi_retry(tmp_path):
+    http, calls = _gateway([
+        _completion(model="glm-5.3", content="nhầm"),
+        _completion(model="glm-5.2", content="ok"),
+    ])
+    result = _client(tmp_path, http).chat([{"role": "user", "content": "hi"}])
+    assert result.text == "ok"
+    assert len(calls) == 2
+    lines = _log_lines(tmp_path)
+    assert [x["ok"] for x in lines] == [False, True]
+    assert lines[0]["retryable"] is True and "glm-5.3" in lines[0]["error"]
+
+
+def test_response_model_lech_mai_thi_bao_loi(tmp_path):
+    http, calls = _gateway([_completion(model="glm-5.3", content="nhầm")])
+    client = _client(tmp_path, http)
+    with pytest.raises(LLMClientError, match="glm-5.3"):
+        client.chat([{"role": "user", "content": "hi"}])
+    assert len(calls) == client.max_retries + 1
+    assert all(not x["ok"] for x in _log_lines(tmp_path))
 
 
 @pytest.mark.parametrize("bad_args", ['{"query": ', '["không phải object"]'])
@@ -364,7 +386,7 @@ def test_reasoning_effort_tu_config_gui_kem_request(tmp_path):
 
     def handler(request):
         seen.append(json.loads(request.content))
-        return httpx.Response(200, json=_completion(model="glm-5.2", content="ok"))
+        return httpx.Response(200, json=_completion(model=PINNED["A3"], content="ok"))
 
     http = httpx.Client(transport=httpx.MockTransport(handler))
     _client(tmp_path, http, target="A3").chat([{"role": "user", "content": "hi"}])

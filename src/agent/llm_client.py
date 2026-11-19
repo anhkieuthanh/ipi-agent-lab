@@ -241,6 +241,14 @@ class LLMClient:
                 f"'{pinned}' (v-models-1.2). Sửa .env, không sửa config."
             )
 
+        # Chốt model phục vụ: gateway có lúc trả lời request của target này bằng model khác
+        # (A2 nhận glm-5.3 của A1, 2026-11-19). `response_model` ngoài danh sách thì coi là lỗi hạ
+        # tầng — retry, hết lượt thì LLMClientError, run không thành kết quả. Không khai = không chốt.
+        accepted = spec.get("accepted_response_models")
+        self.accepted_response_models: frozenset[str] | None = (
+            frozenset(accepted) if accepted else None
+        )
+
         self.timeout_s: float = opt("timeout_s", 60)
         self.max_retries: int = opt("max_retries", 5)
         self.backoff_base_s: float = opt("backoff_base_s", 1.0)
@@ -338,6 +346,22 @@ class LLMClient:
 
             latency_ms = int((time.perf_counter() - t_start) * 1000)
             result = normalize(response, attempt=attempt, latency_ms=latency_ms)
+            served = result.response_model
+            if (
+                self.accepted_response_models is not None
+                and served not in self.accepted_response_models
+            ):
+                self._log_error(
+                    call_id, attempt, request_kwargs, t0,
+                    f"response_model lệch bản pin: {served!r}", True,
+                )
+                if attempt <= self.max_retries:
+                    self._sleep_backoff(attempt)
+                    continue
+                raise LLMClientError(
+                    f"[{self.target_id}] gateway trả model {served!r} ngoài "
+                    f"{sorted(self.accepted_response_models)} sau {attempt} lần thử"
+                )
             self._log_success(call_id, request_kwargs, response, result)
             return result
 
