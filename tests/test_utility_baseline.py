@@ -451,3 +451,43 @@ def test_review_shortlist_khung_rong_khi_khong_run_bat_dong():
     empty = pd.DataFrame(columns=["review_priority", "judge_pass", "benign_query_id"])
     out = review_shortlist(empty, {}, {})
     assert out.empty and "chon_vi" in out.columns
+
+
+# --- B3: chiều preset ------------------------------------------------------------------------
+
+
+def test_plan_runs_mot_preset_giu_thu_tu_usr_nen():
+    from eval.utility_baseline import OFF_CONFIG, RunSpec, plan_runs
+
+    one = plan_runs(["A2", "A3"], ["Q1", "Q2"], repeats=2, seed=7)
+    assert all(s.defense_config == OFF_CONFIG for s in one)
+    assert one == plan_runs(["A2", "A3"], ["Q1", "Q2"], repeats=2, seed=7,
+                            defense_configs=[OFF_CONFIG])
+    assert RunSpec(0, "A2", "Q1") == RunSpec(0, "A2", "Q1", OFF_CONFIG)
+
+
+def test_plan_runs_b3_du_tich_preset_va_dung_so_run():
+    from attack.runner import build_defenses
+    from eval.experiment import load_experiment
+    from eval.utility_baseline import plan_runs
+
+    exp = load_experiment()
+    b3 = exp.unit("B3")
+    configs = list(build_defenses(b3.presets))
+    assert len(configs) == len(b3.presets) == 7
+    specs = plan_runs(b3.targets, [f"Q{i}" for i in range(60)], repeats=b3.repeats, seed=1,
+                      defense_configs=configs)
+    assert len(specs) == len(set(specs)) == exp.planned_runs("B3") == 1680
+    assert {s.defense_config for s in specs} == set(configs)
+
+
+def test_defense_for_tra_theo_anh_chup_va_tu_choi_preset_la():
+    from eval.utility_baseline import OFF_CONFIG, RunContext, RunSpec, _defense_for
+    from interfaces import NoDefense
+
+    ctx = RunContext.__new__(RunContext)
+    ctx.defenses = {"X": "tang-X"}
+    assert _defense_for(RunSpec(0, "A2", "Q1", "X"), ctx) == "tang-X"
+    assert isinstance(_defense_for(RunSpec(0, "A2", "Q1", OFF_CONFIG), ctx), NoDefense)
+    with pytest.raises(ValueError, match="không có tầng phòng thủ"):
+        _defense_for(RunSpec(0, "A2", "Q1", "Y"), ctx)

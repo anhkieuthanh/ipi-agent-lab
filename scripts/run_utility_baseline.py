@@ -1,4 +1,8 @@
-"""Chạy lượt USR nền (STT-37): 60 câu lành tính × A1–A3 × 3 lần, phòng thủ tắt.
+"""Chạy lượt lành tính: USR nền (STT-37, 60 câu × A1–A3 × 3 lần, phòng thủ tắt) hoặc B3 (--block B3).
+
+B3 (RQ4): 60 câu × A2, A3 × 7 preset × 2 lần; preset dựng từ `config/defenses.yaml`, mỗi run khai
+`task_type` của câu (`benign_task_types`) cho D3. Lô B3 nằm ở `results/benign_matrix/<batch_id>/`,
+CSV xuất theo từng preset vào `results/tables/<batch_id>_<preset>*.csv`.
 
 Tham số lượt ở `config/experiment.yaml` khóa `utility_baseline`; logic ở `src/eval/utility_baseline.py`.
 Số này là mốc TRƯỚC hiệu chỉnh độ khó (giao thức mục 8, N6).
@@ -48,6 +52,7 @@ from dotenv import load_dotenv  # noqa: E402
 from agent.core import load_core_params  # noqa: E402
 from agent.llm_client import JUDGE_ID, LLMClient  # noqa: E402
 from agent.prompts import template_hash  # noqa: E402
+from attack.runner import build_defenses  # noqa: E402
 from eval.canary import sweep_stale_run_dirs  # noqa: E402
 from eval.experiment import load_experiment, unresolved, validate  # noqa: E402
 from eval.judge import JudgeConfig  # noqa: E402
@@ -61,6 +66,7 @@ from eval.utility_baseline import (  # noqa: E402
     export_tables,
     plan_runs,
     run_one,
+    run_table,
 )
 from obs.cost import budget_from_env, load_prices, spend_from_log  # noqa: E402
 from obs.parallel import (  # noqa: E402
@@ -83,6 +89,9 @@ MODELS = ROOT / "config" / "models.yaml"
 TOOLS = ROOT / "config" / "tools.yaml"
 LOG = ROOT / "logs" / "llm_client.jsonl"
 BATCH_ROOT = ROOT / "results" / "usr_baseline"
+BLOCK_ROOT = ROOT / "results" / "benign_matrix"
+#: Khối lành tính chạy được bằng script này, ngoài USR nền.
+BENIGN_BLOCKS = ("B3",)
 TABLES = ROOT / "results" / "tables"
 LOCK = ROOT / "logs" / "batch.lock"
 
@@ -109,13 +118,18 @@ def _select_queries(queries: list[dict], ids: list[str] | None, per_group: int |
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--block", default=UNIT_ID, choices=[UNIT_ID, *BENIGN_BLOCKS],
+        help="lượt lành tính: USR nền (mặc định) hoặc khối B3",
+    )
     parser.add_argument("--batch-id", help="tiếp tục / xuất lại một lô đã có")
     parser.add_argument("--estimate-usd", type=float, help="dự toán chi phí của lô (USD)")
     parser.add_argument("--plan-only", action="store_true", help="in số run, không gọi API")
     parser.add_argument("--export-only", action="store_true", help="chỉ xuất CSV từ store")
     dry = parser.add_argument_group("chạy thử (chỉ cùng --dry-run)")
     dry.add_argument("--dry-run", action="store_true", help="lô thử, tiền tố dryrun-")
-    dry.add_argument("--targets", nargs="+", help="tập con target của utility_baseline")
+    dry.add_argument("--targets", nargs="+", help="tập con target của lượt")
+    dry.add_argument("--presets", nargs="+", help="tập con preset của lượt")
     dry.add_argument("--queries", nargs="+", help="tập con mã câu")
     dry.add_argument("--per-group", type=int, help="lấy n câu đầu mỗi nhóm U1–U5")
     dry.add_argument("--repeats", type=int, help="số lần lặp thay cho config")
@@ -131,44 +145,58 @@ def main() -> int:
     if args.workers > 1 and not args.shard and worker_id() is not None:
         parser.error(f"{WORKER_ENV} đã đặt sẵn — tiến trình mẹ phải chạy với collection/kho gốc")
 
-    narrowed = any([args.targets, args.queries, args.per_group, args.repeats, args.allow_dirty])
+    narrowed = any([args.targets, args.presets, args.queries, args.per_group, args.repeats,
+                    args.allow_dirty])
     if narrowed and not args.dry_run:
         parser.error(
-            "--targets/--queries/--per-group/--repeats/--allow-dirty chỉ dùng với --dry-run"
+            "--targets/--presets/--queries/--per-group/--repeats/--allow-dirty chỉ dùng với --dry-run"
         )
     if args.batch_id and args.dry_run != args.batch_id.startswith("dryrun-"):
         parser.error("--dry-run phải đi với batch_id tiền tố dryrun- và ngược lại")
 
     load_dotenv(ROOT / ".env")
     exp = load_experiment()
-    problems = validate(exp) + unresolved(exp, UNIT_ID)
+    problems = validate(exp) + unresolved(exp, args.block)
     if problems:
         print("experiment.yaml chưa sẵn sàng:\n  " + "\n  ".join(problems))
         return 2
-    unit = exp.unit(UNIT_ID)
+    unit = exp.unit(args.block)
+    if unit.run_kind != "benign":
+        parser.error(f"{args.block} không phải lượt lành tính")
     targets = args.targets or list(unit.targets)
     if set(targets) - set(unit.targets):
         parser.error(f"--targets phải thuộc {list(unit.targets)}")
+    presets = args.presets or list(unit.presets)
+    if set(presets) - set(unit.presets):
+        parser.error(f"--presets phải thuộc {list(unit.presets)}")
+    defenses = build_defenses(presets)  # mỗi preset dựng một lần; khóa = ảnh chụp JSON
+    names = dict(zip(defenses, dict.fromkeys(presets), strict=True))
     repeats = args.repeats or unit.repeats
     benign = json.loads(exp.contract_path("benign_queries").read_text(encoding="utf-8"))["queries"]
     query_ids = _select_queries(benign, args.queries, args.per_group)
 
-    prefix = "dryrun-usr-baseline" if args.dry_run else "usr-baseline"
+    base = "usr-baseline" if args.block == UNIT_ID else f"benign-{args.block}"
+    prefix = f"dryrun-{base}" if args.dry_run else base
     batch_id = args.batch_id or f"{prefix}-{_stamp()}"
-    batch_dir = BATCH_ROOT / batch_id
+    if not batch_id.removeprefix("dryrun-").startswith(base):
+        parser.error(f"--batch-id của {args.block} phải có tiền tố {base}")
+    batch_dir = (BATCH_ROOT if args.block == UNIT_ID else BLOCK_ROOT) / batch_id
     store = batch_dir / "trace.sqlite"
     if (args.plan_only or args.export_only) and not store.is_file():
         if args.export_only:
             parser.error(f"không có store {store.relative_to(ROOT)}")
-        specs = plan_runs(targets, query_ids, repeats=repeats, seed=exp.raw["run_order"]["seed"])
+        specs = plan_runs(targets, query_ids, repeats=repeats, seed=exp.raw["run_order"]["seed"],
+                          defense_configs=list(defenses))
         print(f"{batch_id}: {len(specs)} run theo kế hoạch, chưa chạy run nào")
         return 0
     judge_log = batch_dir / "judge.jsonl"
     tables_dir = batch_dir / "tables" if args.dry_run else TABLES
-    specs = plan_runs(targets, query_ids, repeats=repeats, seed=exp.raw["run_order"]["seed"])
+    specs = plan_runs(targets, query_ids, repeats=repeats, seed=exp.raw["run_order"]["seed"],
+                      defense_configs=list(defenses))
     run = dict(args=args, exp=exp, benign=benign, targets=targets, repeats=repeats,
                query_ids=query_ids, specs=specs, batch_id=batch_id, batch_dir=batch_dir,
-               store=store, judge_log=judge_log, tables_dir=tables_dir)
+               store=store, judge_log=judge_log, tables_dir=tables_dir, defenses=defenses,
+               names=names)
 
     if args.plan_only or args.export_only:
         engine = open_store(store)
@@ -211,16 +239,23 @@ def _merge_judge_shards(judge_log: Path) -> None:
         sh.unlink()
 
 
-def _export(engine, *, exp, benign, batch_id, judge_log, tables_dir, **_) -> None:
-    paths = export_tables(
-        engine,
-        batch_id,
-        judge_log,
-        tables_dir,
-        tcp=TcpCi.from_experiment(exp),
-        review_ratio=exp.raw["stopping"]["parse_error_review_ratio"],
-        queries={q["id"]: q for q in benign},
-    )
+def _export(engine, *, args, exp, benign, batch_id, judge_log, tables_dir, names, **_) -> None:
+    common = dict(tcp=TcpCi.from_experiment(exp),
+                  review_ratio=exp.raw["stopping"]["parse_error_review_ratio"])
+    if args.block == UNIT_ID:
+        paths = export_tables(engine, batch_id, judge_log, tables_dir,
+                              queries={q["id"]: q for q in benign}, **common)
+    else:
+        # B3: bảng theo từng preset — tổng hợp USR/FRR của một preset không trộn preset khác.
+        runs = run_table(engine, batch_id, judge_log)
+        paths = {}
+        for config, name in names.items():
+            part = runs[runs["defense_config"] == config]
+            if part.empty:
+                continue
+            got = export_tables(engine, batch_id, judge_log, tables_dir, runs=part,
+                                stem=f"{batch_id}_{name}", **common)
+            paths.update({f"{name}.{k}": v for k, v in got.items()})
     print("\n".join(f"  {k}: {v.relative_to(ROOT)}" for k, v in paths.items()))
 
 
@@ -233,7 +268,7 @@ def _check_commit(args) -> str | None:
     return commit
 
 
-def _context(*, exp, benign, targets, batch_id, engine, commit, judge_log) -> RunContext:
+def _context(*, exp, benign, targets, batch_id, engine, commit, judge_log, defenses) -> RunContext:
     return RunContext(
         engine=engine,
         batch_id=batch_id,
@@ -247,6 +282,7 @@ def _context(*, exp, benign, targets, batch_id, engine, commit, judge_log) -> Ru
         task_types={qid: tt for tt, ids in exp.raw["benign_task_types"].items() for qid in ids},
         core_params=load_core_params(),
         judge_log=judge_log,
+        defenses=defenses,
     )
 
 
@@ -270,7 +306,8 @@ def _append_manifest(batch_dir: Path, manifest: dict) -> None:
     )
 
 
-def _run_shard(*, args, exp, benign, targets, specs, batch_id, batch_dir, store, **_) -> int:
+def _run_shard(*, args, exp, benign, targets, specs, batch_id, batch_dir, store, defenses, names,
+               **_) -> int:
     """Tiến trình con: phần `todo[i::N]`, ghi trace/judge shard riêng; mẹ gộp, ghi manifest, xuất."""
     i, n = (int(x) for x in args.shard.split("/"))
     done = done_specs(open_store(store), batch_id)
@@ -282,7 +319,7 @@ def _run_shard(*, args, exp, benign, targets, specs, batch_id, batch_dir, store,
     guard = budget_from_env(args.estimate_usd)
     ctx = _context(exp=exp, benign=benign, targets=targets, batch_id=batch_id,
                    engine=open_store(shard_path(batch_dir, i)), commit=commit,
-                   judge_log=_judge_shard(batch_dir, i))
+                   judge_log=_judge_shard(batch_dir, i), defenses=defenses)
     stop = stop_file(batch_dir)
     t0 = time.monotonic()
     for k, spec in enumerate(todo, start=1):
@@ -295,7 +332,8 @@ def _run_shard(*, args, exp, benign, targets, specs, batch_id, batch_dir, store,
             return EXIT_BUDGET
         run_one(spec, ctx)
         print(
-            f"[s{i} {k}/{len(todo)}] {spec.target_id} {spec.benign_query_id} r{spec.repeat_idx}"
+            f"[s{i} {k}/{len(todo)}] {spec.target_id} {names[spec.defense_config]}"
+            f" {spec.benign_query_id} r{spec.repeat_idx}"
             f" · {_spent(prices, batch_id, args.since_ts):.2f} USD"
             f" · {(time.monotonic() - t0) / 60:.1f} phút",
             flush=True,
@@ -304,7 +342,7 @@ def _run_shard(*, args, exp, benign, targets, specs, batch_id, batch_dir, store,
 
 
 def _run_batch(*, args, exp, benign, targets, repeats, query_ids, specs, batch_id, batch_dir,
-               store, judge_log, tables_dir) -> int:
+               store, judge_log, tables_dir, defenses, names) -> int:
     since = _log_ts()
     merged = merge_leftover_shards(store) if store.is_file() else []
     if merged:
@@ -321,14 +359,16 @@ def _run_batch(*, args, exp, benign, targets, repeats, query_ids, specs, batch_i
     prices = load_prices(MODELS, [*targets, JUDGE_ID])
     guard = budget_from_env(args.estimate_usd)
     ctx = _context(exp=exp, benign=benign, targets=targets, batch_id=batch_id, engine=engine,
-                   commit=commit, judge_log=judge_log)
+                   commit=commit, judge_log=judge_log, defenses=defenses)
     parallel = args.workers > 1 and len(todo) > 1
     if not parallel:  # song song: run_sharded dọn dưới khóa, kèm tài nguyên worker
         swept = sweep_stale_run_dirs()
         if swept:
             print(f"Đã dọn {len(swept)} thư mục run cũ còn sót.")
     manifest = {
-        "task": "STT-37",
+        "task": "STT-37" if args.block == UNIT_ID else args.block,
+        "block": args.block,
+        "presets": list(names.values()),
         "batch_id": batch_id,
         "dry_run": args.dry_run,
         "lab_git_commit": commit,
@@ -348,8 +388,8 @@ def _run_batch(*, args, exp, benign, targets, repeats, query_ids, specs, batch_i
         "since_ts": since,
     }
     batch_dir.mkdir(parents=True, exist_ok=True)
-    run = dict(exp=exp, benign=benign, batch_id=batch_id, judge_log=judge_log,
-               tables_dir=tables_dir)
+    run = dict(args=args, exp=exp, benign=benign, batch_id=batch_id, judge_log=judge_log,
+               tables_dir=tables_dir, names=names)
     if parallel:
         return _run_parallel(args, batch_dir, store, manifest, prices, guard, engine,
                              len(todo), run)
@@ -362,7 +402,8 @@ def _run_batch(*, args, exp, benign, targets, repeats, query_ids, specs, batch_i
             spent = _spent(prices, batch_id, since)
             status = guard.status(spent)
             print(
-                f"[{i}/{len(todo)}] {spec.target_id} {spec.benign_query_id} r{spec.repeat_idx}"
+                f"[{i}/{len(todo)}] {spec.target_id} {names[spec.defense_config]}"
+                f" {spec.benign_query_id} r{spec.repeat_idx}"
                 f" · {spent:.2f} USD · {status} · {(time.monotonic() - t0) / 60:.1f} phút",
                 flush=True,
             )

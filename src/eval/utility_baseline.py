@@ -1,8 +1,10 @@
-"""Lượt USR nền — STT-37, giao thức thực nghiệm mục 3 bước 2.
+"""Lượt lành tính — USR nền (STT-37, giao thức mục 3 bước 2) và khối B3 (RQ4, FRR theo preset).
 
-60 câu lành tính × target × lần lặp, phòng thủ tắt (`NoDefense`). Tham số lấy từ khóa
-`utility_baseline` của `config/experiment.yaml`; script `scripts/run_utility_baseline.py` là lớp CLI
-mỏng gọi module này. Chạy biến thể prompt `baseline`; B3 tự có `off` nên số này không là mốc so của B3.
+60 câu lành tính × target × lần lặp × preset. USR nền chỉ có `off` (`NoDefense`); B3 chạy 7 preset
+của `config/defenses.yaml`, mỗi preset dựng một lần (`attack.runner.build_defenses`) và tra theo
+`RunSpec.defense_config`. Tham số lấy từ khóa `utility_baseline` hay `blocks.B3` của
+`config/experiment.yaml`; script `scripts/run_utility_baseline.py --block` là lớp CLI mỏng gọi module
+này. Chạy biến thể prompt `baseline`; B3 tự có `off` nên USR nền không là mốc so của B3.
 
 Một run:
 
@@ -28,7 +30,7 @@ import random
 import re
 import sqlite3
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -87,31 +89,49 @@ RECOVERABLE: tuple[type[BaseException], ...] = (
 _DB_WHERE_RE = re.compile(r"^customers where (?P<where>.+?)(?:\s*→.*)?$")
 
 
+def snapshot_json(defense: Any) -> str:
+    """Ảnh chụp cấu hình dạng chuỗi, chuỗi hóa GIỐNG HỆT cột `defense_config` của trace."""
+    return json.dumps(defense.config_snapshot(), ensure_ascii=False, sort_keys=True)
+
+
+#: `defense_config` của preset `off`.
+OFF_CONFIG = snapshot_json(NoDefense())
+
+
 @dataclass(frozen=True, order=True)
 class RunSpec:
     repeat_idx: int
     target_id: str
     benign_query_id: str
+    # Ảnh chụp JSON của preset (cột `defense_config`), không phải tên: danh tính resume.
+    defense_config: str = OFF_CONFIG
 
 
 def plan_runs(
-    targets: Iterable[str], query_ids: Iterable[str], *, repeats: int, seed: int
+    targets: Iterable[str],
+    query_ids: Iterable[str],
+    *,
+    repeats: int,
+    seed: int,
+    defense_configs: Iterable[str] = (OFF_CONFIG,),
 ) -> list[RunSpec]:
-    """Mọi run của lượt, theo thứ tự chạy. Tất định với cùng tham số."""
-    targets, query_ids = list(targets), list(query_ids)
+    """Mọi run của lượt, theo thứ tự chạy. Tất định với cùng tham số. Một preset (`off`) cho đúng
+    thứ tự của USR nền; nhiều preset (B3) xáo trộn chung trong mỗi lần lặp — trôi gateway rải đều
+    lên các preset thay vì dồn vào preset chạy sau."""
+    targets, query_ids, configs = list(targets), list(query_ids), list(defense_configs)
     order: list[RunSpec] = []
     for r in range(repeats):
-        batch = [RunSpec(r, t, q) for t in targets for q in query_ids]
+        batch = [RunSpec(r, t, q, d) for t in targets for d in configs for q in query_ids]
         random.Random(f"{seed}:{r}").shuffle(batch)
         order.extend(batch)
     return order
 
 
 def done_specs(engine: Engine, batch_id: str) -> set[RunSpec]:
-    """Bộ (lần lặp, target, câu) đã có trong store — kể cả run `parse_error`, không chạy lại."""
+    """Bộ (lần lặp, target, câu, preset) đã có trong store — kể cả run `parse_error`."""
     with Session(engine) as s:
         rows = s.exec(
-            select(Run.repeat_idx, Run.target_id, Run.benign_query_id).where(
+            select(Run.repeat_idx, Run.target_id, Run.benign_query_id, Run.defense_config).where(
                 Run.batch_id == batch_id
             )
         ).all()
@@ -193,6 +213,17 @@ class RunContext:
     core_params: Mapping[str, int]
     judge_log: Path
     system_prompt: Callable[[str], str] = build_system_prompt
+    # Ảnh chụp JSON → tầng phòng thủ (B3). Rỗng thì chỉ chạy được preset `off`.
+    defenses: Mapping[str, Any] = field(default_factory=dict)
+
+
+def _defense_for(spec: RunSpec, ctx: RunContext) -> Any:
+    defense = ctx.defenses.get(spec.defense_config)
+    if defense is not None:
+        return defense
+    if spec.defense_config == OFF_CONFIG:
+        return NoDefense()
+    raise ValueError(f"không có tầng phòng thủ cho defense_config: {spec.defense_config[:120]}")
 
 
 def run_one(spec: RunSpec, ctx: RunContext) -> str:
@@ -200,7 +231,7 @@ def run_one(spec: RunSpec, ctx: RunContext) -> str:
     khác cũng ghi `parse_error` nhưng lan ra để runner dừng lô."""
     query = ctx.queries[spec.benign_query_id]
     model = ctx.models[spec.target_id]
-    defense = NoDefense()
+    defense = _defense_for(spec, ctx)
     ctx.tools.mail.assert_no_chaos()  # U4 gửi thư thật; Jim làm lỗi ngẫu nhiên thành "model kém"
     with seeded_run(db_tool=ctx.tools.db, http_tool=ctx.tools.http) as seeded:
         ctx.tools.tickets.clear_tickets()
@@ -253,6 +284,10 @@ def run_one(spec: RunSpec, ctx: RunContext) -> str:
             _log_judge(ctx, seeded.run_id, None, error=f"{type(e).__name__}: {e}"[:500])
             if not isinstance(e, RECOVERABLE):
                 raise
+        finally:
+            end_run = getattr(defense, "end_run", None)
+            if end_run is not None:
+                end_run(seeded.run_id)  # dọn trạng thái theo run (delimiter D1)
     return seeded.run_id
 
 
