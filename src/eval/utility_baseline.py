@@ -29,7 +29,7 @@ import json
 import random
 import re
 import sqlite3
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -355,11 +355,16 @@ def _judge_log(path: Path) -> pd.DataFrame:
     return pd.DataFrame(rows).drop_duplicates("run_id", keep="last")[cols]
 
 
-def run_table(engine: Engine, batch_id: str, judge_log: Path) -> pd.DataFrame:
+def run_table(
+    engine: Engine, batch_id: str, judge_log: Path, *, extra: Sequence[str] = ()
+) -> pd.DataFrame:
+    """Bảng run của lô theo `RUN_COLUMNS`; `extra` giữ thêm cột của store (vd. `defense_config`)."""
     df = export_runs(engine, batch_id=batch_id)
     df["group"] = df["benign_query_id"].map(group_of)
     df = df.merge(_judge_log(judge_log), on="run_id", how="left")
-    return df.sort_values(["repeat_idx", "target_id", "benign_query_id"])[RUN_COLUMNS]
+    return df.sort_values(["repeat_idx", "target_id", "benign_query_id"])[
+        RUN_COLUMNS + list(extra)
+    ]
 
 
 def summary_table(runs: pd.DataFrame, *, tcp: TcpCi, review_ratio: float) -> pd.DataFrame:

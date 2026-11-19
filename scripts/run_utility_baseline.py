@@ -247,10 +247,11 @@ def _export(engine, *, args, exp, benign, batch_id, judge_log, tables_dir, names
                               queries={q["id"]: q for q in benign}, **common)
     else:
         # B3: bảng theo từng preset — tổng hợp USR/FRR của một preset không trộn preset khác.
-        runs = run_table(engine, batch_id, judge_log)
+        runs = run_table(engine, batch_id, judge_log, extra=("defense_config",))
         paths = {}
         for config, name in names.items():
-            part = runs[runs["defense_config"] == config]
+            part = runs[runs["defense_config"] == config].drop(columns="defense_config")
+            part = part.assign(preset=name)
             if part.empty:
                 continue
             got = export_tables(engine, batch_id, judge_log, tables_dir, runs=part,
