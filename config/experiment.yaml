@@ -324,4 +324,12 @@ blocks:
     targets: [A2]
     presets: ["off"]
     harnesses: [none, HN-OW]
+    # 20 mẫu bốc ngẫu nhiên có seed từ kế hoạch run của B2 thu về preset `off` trên A2 (6 ô S_def ×
+    # 10 run = 60 run, cùng payload và tác vụ chở với B2). Mỗi mẫu chạy một lần dưới mỗi harness.
+    # TA duyệt 2026-11-19.
     samples: 20
+    sample_from:
+      block: B2
+      preset: "off"
+      target: A2
+      seed: 20261119

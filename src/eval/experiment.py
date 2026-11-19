@@ -99,6 +99,8 @@ class Block:
     attacker_model: str | None = None
     harnesses: tuple[str, ...] = ()
     samples: int | None = None
+    # B6: nguồn bốc `samples` mẫu (khối, preset, target, seed) — mỗi mẫu là một run kế hoạch của khối nguồn.
+    sample_from: dict[str, Any] | None = None
     # Biến thể system prompt là một trục của khối: mỗi lô chạy một biến thể (`run_matrix.py
     # --prompt-variant`), số run của khối nhân với số biến thể. Rỗng = biến thể `active`.
     prompt_variants: tuple[str, ...] = ()
