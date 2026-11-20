@@ -1,0 +1,219 @@
+{
+  "block": "B5",
+  "rule": "S_adp",
+  "min_dsr_blind": 0.3,
+  "max_cells": 3,
+  "rank_by": "dsr_then_off_asr",
+  "targets": [
+    "A2"
+  ],
+  "source_batch": "attack-B2-20261119T023028Z",
+  "n_cells": 6,
+  "n_passing": 6,
+  "short": false,
+  "selected": [
+    [
+      "K2a",
+      "T5",
+      "G1"
+    ],
+    [
+      "K2a",
+      "T3",
+      "G2"
+    ],
+    [
+      "K2a",
+      "T3",
+      "G3"
+    ]
+  ],
+  "stats": [
+    {
+      "cell": [
+        "K2a",
+        "T3",
+        "G2"
+      ],
+      "by_preset": {
+        "d1_only": [
+          0,
+          10
+        ],
+        "d2_only": [
+          9,
+          10
+        ],
+        "d3_only": [
+          0,
+          10
+        ],
+        "d4_only": [
+          8,
+          10
+        ]
+      },
+      "off": [
+        7,
+        10
+      ],
+      "best_dsr": 1.0,
+      "off_asr": 0.7
+    },
+    {
+      "cell": [
+        "K2a",
+        "T3",
+        "G3"
+      ],
+      "by_preset": {
+        "d1_only": [
+          1,
+          10
+        ],
+        "d2_only": [
+          3,
+          10
+        ],
+        "d3_only": [
+          0,
+          10
+        ],
+        "d4_only": [
+          2,
+          10
+        ]
+      },
+      "off": [
+        4,
+        10
+      ],
+      "best_dsr": 1.0,
+      "off_asr": 0.4
+    },
+    {
+      "cell": [
+        "K2a",
+        "T2",
+        "G3"
+      ],
+      "by_preset": {
+        "d1_only": [
+          0,
+          10
+        ],
+        "d2_only": [
+          3,
+          10
+        ],
+        "d3_only": [
+          4,
+          10
+        ],
+        "d4_only": [
+          4,
+          10
+        ]
+      },
+      "off": [
+        3,
+        10
+      ],
+      "best_dsr": 1.0,
+      "off_asr": 0.3
+    },
+    {
+      "cell": [
+        "K2a",
+        "T3",
+        "G1"
+      ],
+      "by_preset": {
+        "d1_only": [
+          10,
+          10
+        ],
+        "d2_only": [
+          10,
+          10
+        ],
+        "d3_only": [
+          2,
+          10
+        ],
+        "d4_only": [
+          10,
+          10
+        ]
+      },
+      "off": [
+        10,
+        10
+      ],
+      "best_dsr": 0.8,
+      "off_asr": 1.0
+    },
+    {
+      "cell": [
+        "K2a",
+        "T5",
+        "G1"
+      ],
+      "by_preset": {
+        "d1_only": [
+          10,
+          10
+        ],
+        "d2_only": [
+          10,
+          10
+        ],
+        "d3_only": [
+          0,
+          10
+        ],
+        "d4_only": [
+          10,
+          10
+        ]
+      },
+      "off": [
+        9,
+        10
+      ],
+      "best_dsr": 1.0,
+      "off_asr": 0.9
+    },
+    {
+      "cell": [
+        "K2b",
+        "T4",
+        "G3"
+      ],
+      "by_preset": {
+        "d1_only": [
+          0,
+          10
+        ],
+        "d2_only": [
+          1,
+          10
+        ],
+        "d3_only": [
+          0,
+          10
+        ],
+        "d4_only": [
+          1,
+          10
+        ]
+      },
+      "off": [
+        2,
+        10
+      ],
+      "best_dsr": 1.0,
+      "off_asr": 0.2
+    }
+  ]
+}
