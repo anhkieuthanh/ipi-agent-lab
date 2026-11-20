@@ -72,9 +72,10 @@ def load_prices(
     """Đọc đơn giá; `targets` = các target lô sẽ dùng, kể cả `judge`, `attacker` (mặc định: tất cả)."""
     with Path(config_path).open("r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
-    # Khối `judge`, `attacker` tính như một target: lô có judge/attacker cần đơn giá của nó (STT-37).
+    # Khối `judge`, `attacker`, `attacker_adaptive` tính như một target: lô có judge/attacker cần
+    # đơn giá của nó (STT-37; attacker_adaptive cho B5, STT-57).
     all_targets = dict(cfg.get("targets") or {})
-    for block in ("judge", "attacker"):
+    for block in ("judge", "attacker", "attacker_adaptive"):
         if cfg.get(block):
             all_targets[block] = cfg[block]
     wanted = list(targets) if targets is not None else list(all_targets)
