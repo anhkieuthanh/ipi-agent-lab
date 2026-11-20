@@ -233,6 +233,12 @@ class LLMAdaptiveAttacker:
         return rewrite_instruction(ctx.base_payload, new_text)
 
 
+def _instruction_of(payload: dict[str, Any]) -> str | None:
+    """Câu chỉ thị theo ngôn ngữ của payload — để so vòng viết lại với payload gốc."""
+    field_ = _LANG_INSTRUCTION.get(payload.get("lang"), "instruction_vi")
+    return (payload.get("goal_binding") or {}).get(field_)
+
+
 def rewrite_instruction(payload: dict[str, Any], new_text: str) -> dict[str, Any]:
     """Payload mới với `instruction_<lang>` thay bằng `new_text`, giữ nguyên phần còn lại.
 
@@ -351,6 +357,11 @@ class RoundResult:
     outcome: str | None
     parse_error: bool
     observation: Observation
+    # True nếu câu chỉ thị vòng này KHÁC payload gốc (kẻ tấn công thực sự viết lại được). Vòng 1 luôn
+    # False (payload gốc, chưa thích ứng). False ở vòng > 1 nghĩa là kẻ tấn công trả rỗng/trùng/vỡ
+    # placeholder nên điều phối giữ payload gốc — vòng đó KHÔNG phải vòng thích ứng thật, dùng để lọc
+    # khi tính ARR (không gộp "kẻ tấn công không viết lại được" vào "phòng thủ đứng vững").
+    rewrite_applied: bool = False
 
 
 @dataclass
@@ -597,6 +608,9 @@ def run_chain(
                     spec.chain_id, spec, rounds, success=False, stop_reason=STOP_RENDER_ERROR
                 )
         rr = run_round(spec, payload, round_idx, ctx, hit_fetcher=hit_fetcher)
+        rr.rewrite_applied = round_idx > 1 and _instruction_of(payload) != _instruction_of(
+            spec.base_payload
+        )
         rounds.append(rr)
 
         if rr.goal_hit:

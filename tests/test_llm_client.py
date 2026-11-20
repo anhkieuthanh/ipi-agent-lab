@@ -275,6 +275,17 @@ def test_attacker_uses_anthropic_provider_without_gateway(tmp_path):
     assert client.default_temperature is None
 
 
+def test_attacker_adaptive_la_khoi_gateway_glm53(tmp_path):
+    # Khối attacker thích ứng B5 chạy qua gateway (glm-5.3), tách khỏi attacker paraphrase (opus-5).
+    client = LLMClient(
+        target_id=llm_mod.ATTACKER_ADAPTIVE_ID, config_path=CONFIG_PATH, log_path=None
+    )
+    assert client.provider == "openai"
+    assert client.model == "glm-5.3"
+    assert client.base_url == "https://gateway.invalid/v1"
+    assert "glm-5.3" in client.accepted_response_models
+
+
 def test_anthropic_translates_request_and_normalizes_tool_use(tmp_path):
     http, calls = _anthropic_api([_message([THINKING, TOOL_USE], "tool_use")])
     client = _client(tmp_path, http, target=llm_mod.ATTACKER_ID)

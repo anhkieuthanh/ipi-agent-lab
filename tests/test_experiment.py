@@ -100,11 +100,25 @@ def test_khoi_b1_khong_con_truong_chua_chot(exp):
     assert not [p for p in unresolved(exp, "B1") if p.startswith("blocks.B1")]
 
 
-def test_unresolved_bat_duoc_todo(exp):
-    paths = unresolved(exp)
-    # S_def đã chọn từ B1 (scripts/select_cells.py); B2 hết trường null.
-    assert not [p for p in paths if p.startswith("blocks.B2")]
-    # B5 còn chặn bởi cells.selected (tập S_adp chọn sau B2); attacker_model đã chốt opus-5 (STT-57).
+def test_unresolved_het_todo_khi_da_chot(exp):
+    # S_def (B2) và S_adp (B5) đã chọn, attacker_model B5 đã chốt glm-5.3 → config hết trường null.
+    assert unresolved(exp) == []
+
+
+def test_unresolved_bat_duoc_todo(tmp_path: Path):
+    # `unresolved` phải bắt được cells.selected khi chưa chọn ô (dựng lại trạng thái trước S_adp).
+    import re
+
+    lines = Path(load_experiment().path).read_text(encoding="utf-8").splitlines(keepends=True)
+    start = next(i for i, ln in enumerate(lines) if ln.rstrip() == "  B5:")
+    end = next((i for i in range(start + 1, len(lines))
+                if lines[i].startswith("  ") and not lines[i].startswith("   ")
+                and lines[i].strip()), len(lines))
+    block = re.sub(r"(?m)^      selected:\n(?:        - .*\n)+", "      selected: null\n",
+                   "".join(lines[start:end]))
+    cfg = tmp_path / "experiment.yaml"
+    cfg.write_text("".join(lines[:start]) + block + "".join(lines[end:]), encoding="utf-8")
+    paths = unresolved(load_experiment(cfg))
     assert "blocks.B5.cells.selected" in paths
     assert "blocks.B5.attacker_model" not in paths
 

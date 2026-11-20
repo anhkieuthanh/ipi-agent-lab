@@ -50,6 +50,7 @@ import yaml
 
 __all__ = [
     "ATTACKER_ID",
+    "ATTACKER_ADAPTIVE_ID",
     "JUDGE_ID",
     "SANDBOX_ID",
     "LLMClient",
@@ -73,8 +74,12 @@ JUDGE_ID = "judge"
 # pin như judge, ghi log với `target_id = "attacker"` để obs.cost tính chi phí riêng. Không phải
 # target: runner không chạy tác vụ trên khối này.
 ATTACKER_ID = "attacker"
+# `target_id` chọn khối `attacker_adaptive` — model viết lại payload giữa các vòng B5 (adaptive, STT-57).
+# Tách khỏi `attacker` (paraphrase offline, opus-5): claude-opus-5 từ chối tác vụ viết-lại-để-né-phòng-thủ
+# ở mức API (2026-11-20), nên B5 dùng glm-5.3 qua gateway (TA duyệt đổi 2026-11-20). Pin như attacker.
+ATTACKER_ADAPTIVE_ID = "attacker_adaptive"
 # Khối cấp cao của models.yaml không nằm trong `targets` (pin như target, nhưng runner không chạy).
-_NON_TARGET_BLOCKS = (JUDGE_ID, ATTACKER_ID)
+_NON_TARGET_BLOCKS = (JUDGE_ID, ATTACKER_ID, ATTACKER_ADAPTIVE_ID)
 # `target_id` chọn khối `sandbox` — model thử ngoài bộ đo, chỉ cho lượt demo console (STT-82). Không
 # pin: model_id do người dùng nhập, truyền qua `sandbox_model`, kiểm theo `model_id_pattern`; kênh
 # gọi chọn trong `sandbox.channels` bằng `sandbox_channel`. Runner lô không bao giờ dùng id này.

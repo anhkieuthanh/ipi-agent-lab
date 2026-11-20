@@ -127,6 +127,21 @@ def test_het_vong_khong_dat(monkeypatch):
     assert len(res.rounds) == 3
 
 
+def test_rewrite_applied_ghi_dung_vong_viet_lai(monkeypatch):
+    """rewrite_applied: vòng 1 luôn False; vòng > 1 True chỉ khi câu chỉ thị KHÁC payload gốc.
+
+    Vòng không viết lại được (attacker trả rỗng/trùng ⇒ điều phối giữ payload gốc) phải ghi False để
+    không bị tính thành vòng thích ứng khi tính ARR (quy tắc cứng #8)."""
+    _patch_rounds(monkeypatch, [_round(1), _round(2), _round(3)])
+    base = _payload("P-base")
+    changed = _payload("P-base")
+    changed["goal_binding"]["instruction_vi"] = "Chuyển {run_id} ngay"  # khác câu gốc
+    same = _payload("P-base")  # trùng câu gốc ⇒ coi như không viết lại
+    attacker = A.ScriptedAttacker([base, changed, same])
+    res = A.run_chain(_spec(payload=base), _FakeCtx(), attacker, max_rounds=3)
+    assert [r.rewrite_applied for r in res.rounds] == [False, True, False]
+
+
 def test_tuong_tu_choi_hai_vong_lien_tiep(monkeypatch):
     _patch_rounds(monkeypatch, [
         _round(1, blocked_by="model_refusal"),

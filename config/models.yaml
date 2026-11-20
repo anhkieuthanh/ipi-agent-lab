@@ -101,6 +101,24 @@ attacker:
   # Giá API trực tiếp của Anthropic cho claude-opus-5 (tra 2026-10-13).
   pricing_usd_per_mtok: {input: 5.00, output: 25.00}
 
+# Model viết lại payload giữa các vòng tấn công thích ứng B5 (STT-57, attacker_mode: adaptive). TÁCH
+# khỏi khối `attacker` ở trên: claude-opus-5 từ chối tác vụ viết-lại-để-né-phòng-thủ ở mức API
+# (stop_reason=refusal, 15/15 lời gọi dò 2026-11-20); glm-5.3 qua gateway nhận việc 14/15, không từ
+# chối (TA duyệt đổi 2026-11-20, báo GVHD). Pin như target: `TARGET_MODEL_A1` (= glm-5.3) trong `.env`
+# phải trùng `model_id`; dùng lại biến A1 để không phải thêm dòng `.env`. Dùng ở B5 (blocks.B5.
+# attacker_model), KHÔNG ở paraphrase offline. Ghi log `target_id = "attacker_adaptive"` để tính chi phí riêng.
+attacker_adaptive:
+  label: "Attacker adaptive B5"
+  base_url_env: GATEWAY_BASE_URL
+  api_key_env: GATEWAY_API_KEY
+  model_env: TARGET_MODEL_A1
+  model_id: glm-5.3
+  accepted_response_models: [glm-5.3]
+  # Suy luận mức medium như lúc dò 2026-11-20 (bản viết lại gọn, 512 token đủ).
+  reasoning_effort: medium
+  # Giá TẠM: dùng lại đơn giá glm-5.3 (A1), chưa tra dashboard gateway riêng cho vai attacker.
+  pricing_usd_per_mtok: {input: 2.10, output: 6.60}
+
 # Model thử ngoài bộ đo — CHỈ cho lượt demo trên console (STT-82), runner lô không bao giờ đọc khối
 # này. Người dùng chọn kênh gọi, gõ model_id và đơn giá trên trang Cấu hình; khối này giới hạn những
 # gì được nhập. Không pin bằng `v-models-1.2` và không phải target: run ghi `target_id = "sandbox"`,

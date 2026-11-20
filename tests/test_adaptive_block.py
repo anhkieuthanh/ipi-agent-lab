@@ -16,6 +16,25 @@ ROOT = Path(__file__).resolve().parent.parent
 CELLS = [["K2a", "T3", "G2"], ["K2a", "T3", "G3"], ["K2b", "T4", "G3"]]
 
 
+def _config_b5_cells_null() -> str:
+    """Bản config với `blocks.B5.cells.source_batch/selected` = null — trạng thái trước khi chọn ô.
+
+    Config hiện hành đã điền S_adp (STT-75), nhưng các test ở đây kiểm chính PHÉP điền/từ chối nên cần
+    bản chưa điền. Thu gọn khối đã điền về dạng null bằng regex trên văn bản (giữ đúng format mà
+    `select_cells.write_config` khớp dòng)."""
+    import re
+
+    lines = (ROOT / "config/experiment.yaml").read_text(encoding="utf-8").splitlines(keepends=True)
+    start = next(i for i, ln in enumerate(lines) if ln.rstrip() == "  B5:")
+    end = next((i for i in range(start + 1, len(lines))
+                if lines[i].startswith("  ") and not lines[i].startswith("   ")
+                and lines[i].strip()), len(lines))
+    block = "".join(lines[start:end])
+    block = re.sub(r"(?m)^      source_batch: .*$", "      source_batch: null", block)
+    block = re.sub(r"(?m)^      selected:\n(?:        - .*\n)+", "      selected: null\n", block)
+    return "".join(lines[:start]) + block + "".join(lines[end:])
+
+
 def _select_cells_module():
     spec = importlib.util.spec_from_file_location("select_cells", ROOT / "scripts/select_cells.py")
     mod = importlib.util.module_from_spec(spec)
@@ -26,7 +45,7 @@ def _select_cells_module():
 @pytest.fixture
 def exp_b5(tmp_path, monkeypatch):
     cfg = tmp_path / "experiment.yaml"
-    cfg.write_text((ROOT / "config/experiment.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    cfg.write_text(_config_b5_cells_null(), encoding="utf-8")
     mod = _select_cells_module()
     monkeypatch.setattr(mod, "CONFIG", cfg)
     mod.write_config("B5", "attack-B2-20261119T000000Z", CELLS)
@@ -59,9 +78,11 @@ def test_plan_adaptive_so_chuoi_va_chain_id_tat_dinh(exp_b5):
     assert {(p.channel, p.technique, p.goal) for p in plans} == {tuple(c) for c in CELLS}
 
 
-def test_plan_adaptive_tu_choi_khi_chua_chon_o():
+def test_plan_adaptive_tu_choi_khi_chua_chon_o(tmp_path):
+    cfg = tmp_path / "experiment.yaml"
+    cfg.write_text(_config_b5_cells_null(), encoding="utf-8")
     with pytest.raises(AttackRunnerError, match="chưa điền"):
-        plan_adaptive(load_experiment(), "B5", corpus=load_corpus(), carriers=load_carriers(),
+        plan_adaptive(load_experiment(cfg), "B5", corpus=load_corpus(), carriers=load_carriers(),
                       seed=1)
 
 

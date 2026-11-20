@@ -83,7 +83,7 @@ LOCK = ROOT / "logs" / "batch.lock"
 CHAIN_FIELDS = [
     "chain_id", "target_id", "channel", "technique", "goal", "preset", "payload_id",
     "carrier_task_id", "repeat_idx", "success", "success_round", "stop_reason", "n_rounds",
-    "outcomes", "run_ids",
+    "outcomes", "rewrites", "run_ids",
 ]
 
 
@@ -135,6 +135,9 @@ def _row(plan: ChainPlan, res) -> dict:
         "n_rounds": len(res.rounds),
         "outcomes": "|".join(f"{r.outcome or 'parse_error'}:{r.blocked_by or ''}"
                              for r in res.rounds),
+        # 1 = vòng kẻ tấn công viết lại được payload; 0 = giữ payload gốc (vòng 1, hoặc attacker
+        # trả rỗng/trùng). Lọc vòng 0 > 1 khi tính ARR (STT-57).
+        "rewrites": "|".join("1" if r.rewrite_applied else "0" for r in res.rounds),
         "run_ids": "|".join(r.run_id for r in res.rounds),
     }
 
