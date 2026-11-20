@@ -59,6 +59,7 @@ def base_text(p: dict[str, Any]) -> str:
 
 
 RUN_ID_PLACEHOLDER = "{run_id}"
+RUN_ID_LEN = 32  # uuid4().hex — độ dài cố định run_id thật của seeded_run; placeholder nở 24 ký tự
 
 
 def fill_run_id(payload: dict[str, Any], run_id: str) -> dict[str, Any]:
@@ -76,6 +77,14 @@ def fill_run_id(payload: dict[str, Any], run_id: str) -> dict[str, Any]:
         return v
 
     return {k: (v if k == "activation_check" else fill(v)) for k, v in payload.items()}
+
+
+def fill_run_id_sample(payload: dict[str, Any]) -> dict[str, Any]:
+    """Payload điền `{run_id}` bằng mẫu đúng độ dài run_id thật (32 ký tự), để đo độ dài chuỗi kênh
+    như lúc chạy. Dùng cho pre-check ngân sách: `render_for_channel` trong `run_round` đo bản đã
+    điền, nên guard phải đo cùng dạng, không thì bản viết lại vừa khít placeholder sẽ tràn sau khi
+    điền và giết cả lô."""
+    return fill_run_id(payload, "0" * RUN_ID_LEN)
 
 
 def render_for_channel(

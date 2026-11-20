@@ -50,6 +50,7 @@ from attack.payloads.render import (
     ChannelRenderError,
     base_text,
     fill_run_id,
+    fill_run_id_sample,
     instruction_of,
     load_render_config,
     render_for_channel,
@@ -271,7 +272,11 @@ def instruction_budget(
     if channel not in K2_CHANNELS or channel in (payload.get("channel_override") or {}):
         return None
     cfg = cfg or load_render_config()
-    frame = len(base_text(payload)) - len(instruction_of(payload) or "")
+    # Đo khung trên bản đã điền run_id: template chứa {run_id} (marker G3) nở 24 ký tự mỗi lần khi
+    # `run_round` render, nên ngân sách phải trừ phần khung đã nở, không thì bản viết lại vừa khít
+    # sẽ tràn sau khi điền.
+    filled = fill_run_id_sample(payload)
+    frame = len(base_text(filled)) - len(instruction_of(filled) or "")
     return cfg["channels"][channel]["max_payload_chars"] - frame
 
 
@@ -282,7 +287,10 @@ def _render_problem(
     if channel not in K2_CHANNELS:
         return None
     try:
-        render_for_channel(payload, channel, cfg=cfg)
+        # Đo bản đã điền run_id như `run_round` (build_k2_layer) để pre-check khớp lúc chạy: bản
+        # viết lại khít placeholder nhưng tràn sau khi điền phải bị bắt ở đây (dừng render_error có
+        # kiểm soát), không để lan ra giết cả lô.
+        render_for_channel(fill_run_id_sample(payload), channel, cfg=cfg)
     except ChannelRenderError as exc:
         return str(exc)
     return None

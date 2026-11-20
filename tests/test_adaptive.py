@@ -279,6 +279,22 @@ def test_viet_lai_van_qua_dai_dung_render_error(monkeypatch):
     assert len(attacker.seen) == 3
 
 
+def test_pre_check_do_ban_da_dien_run_id():
+    """Guard đo bản đã điền run_id như build_k2_layer: bản khít placeholder nhưng tràn sau khi điền
+    phải bị bắt tại pre-check (dừng render_error), không lan ra giết cả lô."""
+    from attack.payloads.render import base_text, fill_run_id_sample
+
+    limit = A.load_render_config()["channels"]["K2b"]["max_payload_chars"]
+    # template chứa {run_id} (nở 24 ký tự khi điền); chuỗi gốc khít dưới limit, điền thì tràn
+    tpl = "{run_id}" + "y" * (limit - 12) + "{INSTRUCTION}"
+    p = _k2_payload("đi", "P-EXP")
+    p["technique"] = {"code": "T2", "template": tpl}
+    assert len(base_text(p)) <= limit  # chưa điền: khít dưới ngưỡng
+    assert len(base_text(fill_run_id_sample(p))) > limit  # điền run_id: tràn
+    assert A._render_problem(p, "K2b") is not None  # guard bắt được bản đã điền
+    assert A.instruction_budget(p, "K2b") < 0  # ngân sách phản ánh khung đã nở
+
+
 def test_payload_goc_qua_dai_van_la_loi_corpus(monkeypatch):
     """Payload gốc không dựng được là lỗi corpus — không nuốt thành render_error."""
     from attack.payloads.render import ChannelRenderError
