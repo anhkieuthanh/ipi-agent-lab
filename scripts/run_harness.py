@@ -29,6 +29,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from agent.core import load_core_params  # noqa: E402
 from agent.llm_client import LLMClient  # noqa: E402
 from agent.prompts import build_system_prompt, load_prompt_config, template_hash  # noqa: E402
+from attack.harness_ow import HarnessOutageError  # noqa: E402
 from attack.runner import (  # noqa: E402
     HARNESS_PREFIX,
     AttackRunnerError,
@@ -175,8 +176,15 @@ def main() -> int:
     todo = [s for s in specs if s not in done]
     print(f"{batch_id}: {len(specs)} run, {len(done)} đã có, chạy {len(todo)}")
     t0 = datetime.now()
+    outage = False
     for i, spec in enumerate(todo, 1):
-        run_one_attack(spec, ctx)
+        try:
+            run_one_attack(spec, ctx)
+        except HarnessOutageError as e:
+            print(f"DỪNG (outage gateway/harness): {e}. Phần đã chạy giữ nguyên; nạp credit rồi "
+                  f"xóa run HN-OW hỏng và chạy lại cùng --batch-id {batch_id}.")
+            outage = True
+            break
         none_spend = spend_from_log(LOG, prices, since_ts=since_ts).get(TARGET, 0.0)
         spent = none_spend + _hnow_spend(store, batch_id, prices[TARGET])
         status = guard.status(spent)
@@ -202,7 +210,7 @@ def main() -> int:
     )
     print(f"Kết thúc: {final_spend:.2f} USD")
     print(f"  runs: {runs_csv.relative_to(ROOT)}")
-    return 0
+    return 3 if outage else 0
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from agent.llm_client import LLMClientError
-from attack.harness_ow import MCP_SERVER_NAME, OpenWorkCore
+from attack.harness_ow import MCP_SERVER_NAME, HarnessOutageError, OpenWorkCore
 
 
 @dataclass
@@ -47,7 +47,7 @@ def test_record_dung_tool_roi_llm_cuoi():
         _ev(type="step_finish", part={"tokens": {"input": 100, "output": 20}}),
         _ev(type="text", part={"type": "text", "text": "Câu trả lời cuối."}),
     ])
-    outcome = core._record(stdout, rec)
+    outcome = core._record(stdout, 0, "", rec)
     # bước 0 = tool (đã bỏ tiền tố server), bước 1 = llm không-tool mang câu trả lời
     assert [s["kind"] for s in rec.steps] == ["tool", "llm"]
     assert rec.steps[0]["tool_name"] == "search_kb"
@@ -68,7 +68,7 @@ def test_record_tool_chua_completed_bi_bo_qua():
         _tool_ev(f"{MCP_SERVER_NAME}_send_email", {"to": "a@b.c"}, "", status="running"),
         _ev(type="text", part={"type": "text", "text": "xong"}),
     ])
-    core._record(stdout, rec)
+    core._record(stdout, 0, "", rec)
     assert [s["kind"] for s in rec.steps] == ["llm"]  # tool running không ghi
 
 
@@ -77,7 +77,33 @@ def test_record_loi_khong_co_text_thanh_parse_error():
     rec = _FakeRecorder()
     stdout = _ev(type="error", error={"name": "UnknownError"})
     with pytest.raises(LLMClientError, match="UnknownError"):
-        core._record(stdout, rec)
+        core._record(stdout, 0, "", rec)
+
+
+def test_record_outage_402_dung_lo():
+    core = _core()
+    rec = _FakeRecorder()
+    stdout = _ev(type="error", error={"name": "APIError",
+                                      "data": {"message": "insufficient credit", "statusCode": 402}})
+    with pytest.raises(HarnessOutageError, match="402"):
+        core._record(stdout, 1, "", rec)
+
+
+def test_record_outage_429_rate_limit():
+    core = _core()
+    rec = _FakeRecorder()
+    stdout = _ev(type="error", error={"name": "APIError",
+                                      "data": {"message": "rate limit exceeded", "statusCode": 429}})
+    with pytest.raises(HarnessOutageError):
+        core._record(stdout, 1, "", rec)
+
+
+def test_record_loi_thuong_khong_phai_outage_thanh_parse_error():
+    core = _core()
+    rec = _FakeRecorder()
+    stdout = _ev(type="error", error={"name": "ValidationError", "data": {"statusCode": 400}})
+    with pytest.raises(LLMClientError):  # 400 không phải outage → parse_error một run
+        core._record(stdout, 1, "", rec)
 
 
 def test_record_text_cuoi_thang():
@@ -87,7 +113,7 @@ def test_record_text_cuoi_thang():
         _ev(type="text", part={"type": "text", "text": "giữa"}),
         _ev(type="text", part={"type": "text", "text": "cuối"}),
     ])
-    out = core._record(stdout, rec)
+    out = core._record(stdout, 0, "", rec)
     assert out.final_answer == "cuối"  # text sau cùng thắng
 
 

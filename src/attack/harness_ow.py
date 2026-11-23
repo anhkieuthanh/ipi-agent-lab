@@ -31,7 +31,19 @@ from agent.llm_client import LLMClientError
 from interfaces import AgentCore, AgentOutcome, ChatModel, Recorder, SessionState, ToolLayer
 from tools.mcp_server import ServerConfig, build_server, load_server_config, serve_http_in_thread
 
-__all__ = ["OpenWorkCore", "HARNESS_OW", "MCP_SERVER_NAME"]
+__all__ = ["OpenWorkCore", "HarnessOutageError", "HARNESS_OW", "MCP_SERVER_NAME"]
+
+
+class HarnessOutageError(RuntimeError):
+    """Gateway/harness ngừng phục vụ cả lô (hết credit 402, rate-limit 429) — KHÔNG phải hành vi
+    model, KHÔNG ghi parse_error từng run. Lan ra để runner dừng lô (như budget guard), chạy lại
+    cùng batch_id khi phục vụ lại. Tách khỏi `LLMClientError` (RECOVERABLE) để không nuốt thành
+    parse_error 17 run rác (quy tắc cứng #8)."""
+
+
+#: Mã lỗi/cụm từ của gateway coi là outage cả lô, không phải lỗi một run.
+_OUTAGE_STATUS = {402, 429, 503}
+_OUTAGE_PHRASES = ("insufficient credit", "rate limit", "quota", "too many requests")
 
 HARNESS_OW = "HN-OW"
 MCP_SERVER_NAME = "testbed"  # khóa mcp trong config opencode; tool phơi tên "<server>_<tool>"
@@ -73,8 +85,8 @@ class OpenWorkCore(AgentCore):
             with tempfile.TemporaryDirectory(prefix="hnow-") as tmp:
                 workdir = Path(tmp)
                 self._write_config(workdir, url)
-                stdout = self._run_opencode(workdir, user_query)
-        return self._record(stdout, recorder)
+                proc = self._run_opencode(workdir, user_query)
+        return self._record(proc.stdout, proc.returncode, proc.stderr, recorder)
 
     # -- cấu hình opencode ---------------------------------------------------
 
@@ -107,7 +119,7 @@ class OpenWorkCore(AgentCore):
         }
         (workdir / "opencode.json").write_text(json.dumps(cfg, indent=2), "utf-8")
 
-    def _run_opencode(self, workdir: Path, user_query: str) -> str:
+    def _run_opencode(self, workdir: Path, user_query: str) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["OPENCODE_CONFIG"] = str(workdir / "opencode.json")
         cmd = [
@@ -115,22 +127,33 @@ class OpenWorkCore(AgentCore):
             "--agent", "testbed", "-m", f"{PROVIDER_ID}/{self._model_id()}", user_query,
         ]
         try:
-            proc = subprocess.run(
+            return subprocess.run(
                 cmd, cwd=workdir, capture_output=True, text=True, timeout=self.timeout_s, env=env
             )
         except subprocess.TimeoutExpired as e:
             raise LLMClientError(f"opencode HN-OW quá {self.timeout_s}s") from e
-        if proc.returncode != 0:
-            raise LLMClientError(f"opencode HN-OW thoát {proc.returncode}: {proc.stderr[-300:]}")
-        return proc.stdout
+
+    @staticmethod
+    def _classify_error(err: dict[str, Any]) -> None:
+        """Ném `HarnessOutageError` nếu lỗi là outage cả lô; None nếu là lỗi một run (gọi sẽ ghi
+        parse_error)."""
+        data = err.get("data") or {}
+        status = data.get("statusCode")
+        msg = str(data.get("message") or err.get("name") or "").lower()
+        if status in _OUTAGE_STATUS or any(p in msg for p in _OUTAGE_PHRASES):
+            raise HarnessOutageError(
+                f"gateway outage (status={status}, msg={data.get('message') or err.get('name')})"
+            )
 
     # -- dựng trace từ sự kiện JSON opencode ---------------------------------
 
-    def _record(self, stdout: str, recorder: Recorder) -> AgentOutcome:
+    def _record(
+        self, stdout: str, returncode: int, stderr: str, recorder: Recorder
+    ) -> AgentOutcome:
         final_answer: str | None = None
         tokens_in = tokens_out = 0
         n_tool = 0
-        saw_error: str | None = None
+        saw_error: dict[str, Any] | None = None
         for line in stdout.splitlines():
             line = line.strip()
             if not line.startswith("{"):
@@ -142,7 +165,8 @@ class OpenWorkCore(AgentCore):
             etype = ev.get("type")
             part = ev.get("part") or {}
             if etype == "error":
-                saw_error = str((ev.get("error") or {}).get("name") or "UnknownError")
+                saw_error = ev.get("error") or {"name": "UnknownError"}
+                self._classify_error(saw_error)  # outage → dừng lô, không parse_error
             elif etype == "tool_use" and part.get("type") == "tool":
                 state = part.get("state") or {}
                 if state.get("status") != "completed":
@@ -162,8 +186,11 @@ class OpenWorkCore(AgentCore):
                 text = part.get("text")
                 if text:
                     final_answer = text
-        if saw_error and final_answer is None:
-            raise LLMClientError(f"opencode HN-OW sự kiện lỗi: {saw_error}")
+        if final_answer is None:
+            if saw_error is not None:
+                raise LLMClientError(f"opencode HN-OW lỗi: {saw_error.get('name')}")
+            if returncode != 0:
+                raise LLMClientError(f"opencode HN-OW thoát {returncode}: {stderr[-300:]}")
         # Bước cuối BẮT BUỘC là llm không-tool mang câu trả lời (hợp đồng scorer `_final_answer`).
         recorder.step(
             kind="llm",
