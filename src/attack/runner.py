@@ -538,6 +538,7 @@ def done_specs(engine: Engine, batch_id: str) -> set[AttackRunSpec]:
                 Run.defense_config,
                 Run.carrier_task_id,
                 Run.payload_id,
+                Run.harness,
             ).where(Run.batch_id == batch_id, Run.run_kind == "attack")
         ).all()
     return {AttackRunSpec(*row) for row in rows}

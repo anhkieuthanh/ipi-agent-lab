@@ -477,6 +477,21 @@ def test_resume_bo_qua_run_da_co(tmp_path, exp, corpus, carriers, monkeypatch):
         spec.payload_id, spec.repeat_idx)
 
 
+def test_done_specs_doc_cot_harness(tmp_path, exp, corpus, carriers, monkeypatch):
+    """done_specs dựng lại `harness` từ store — nếu bỏ sót, resume B6 chạy lại cả nhánh HN-OW."""
+    import sqlite3
+
+    store = tmp_path / "t.sqlite"
+    engine = open_store(store)
+    ctx = _ctx(engine, corpus, carriers, monkeypatch, channel="K1")
+    R.run_one_attack(_spec(corpus, carriers, "K1"), ctx)  # ghi 1 run harness="none"
+    con = sqlite3.connect(store)
+    con.execute("UPDATE runs SET harness='HN-OW'")
+    con.commit()
+    con.close()
+    assert next(iter(R.done_specs(engine, ctx.batch_id))).harness == "HN-OW"
+
+
 def test_run_one_attack_preset_all_ghi_anh_chup_va_task_type(
     tmp_path, exp, corpus, carriers, monkeypatch
 ):
