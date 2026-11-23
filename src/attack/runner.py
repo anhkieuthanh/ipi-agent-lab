@@ -42,6 +42,7 @@ from agent.core import CoreA
 from agent.llm_client import LLMClientError
 from agent.prompts import build_system_prompt
 from attack import injector_k1, injector_k2
+from attack.harness_ow import HARNESS_OW
 from attack.payloads.render import fill_run_id
 from attack.payloads.schema import DEFAULT_TASKS_PATH, load_payloads
 from defense.pipeline import DEFAULT_CONFIG_PATH as DEFENSES_PATH
@@ -66,6 +67,7 @@ __all__ = [
     "load_corpus",
     "load_carriers",
     "plan_block",
+    "plan_b6",
     "plan_pilot",
     "run_one_attack",
     "select_payloads",
@@ -170,6 +172,7 @@ class AttackRunSpec:
     defense_config: str
     carrier_task_id: str
     payload_id: str
+    harness: str = "none"  # "none" (core-a) hoặc "HN-OW" (opencode) — B6, quy tắc cứng #9
 
 
 # ---------------------------------------------------------------------------
@@ -357,6 +360,37 @@ def plan_block(
         )
     random.Random(f"{seed}:{block_id}").shuffle(specs)
     return specs
+
+
+def plan_b6(
+    exp: Experiment,
+    *,
+    corpus: Sequence[dict[str, Any]],
+    carriers: Sequence[dict[str, Any]],
+    seed: int,
+    tasks_path: Path | str = DEFAULT_TASKS_PATH,
+) -> list[AttackRunSpec]:
+    """Mọi run của B6: bốc `samples` mẫu có seed từ kế hoạch run của khối nguồn (`sample_from`),
+    rồi nhân với mỗi harness (`harnesses`). Mẫu là cặp (payload, tác vụ chở) y hệt khối nguồn —
+    cùng preset `off`, cùng target. Tất định theo `sample_from.seed`."""
+    import dataclasses
+
+    block = exp.unit("B6")
+    sf = block.sample_from or {}
+    if not sf or block.samples is None or not block.harnesses:
+        raise AttackRunnerError("B6 thiếu sample_from/samples/harnesses")
+    base = plan_block(
+        exp, str(sf["block"]), corpus=corpus, carriers=carriers, seed=seed,
+        targets=[str(sf["target"])], presets=[str(sf["preset"])], tasks_path=tasks_path,
+    )
+    if len(base) < block.samples:
+        raise AttackRunnerError(
+            f"B6: nguồn {sf['block']} (off/{sf['target']}) có {len(base)} run < samples {block.samples}"
+        )
+    chosen = sorted(random.Random(str(sf["seed"])).sample(base, block.samples))
+    return [
+        dataclasses.replace(s, harness=harness) for harness in block.harnesses for s in chosen
+    ]
 
 
 def plan_pilot(
@@ -553,6 +587,26 @@ def _defense_for(spec: AttackRunSpec, ctx: RunContext) -> Any:
     )
 
 
+def _build_core(
+    spec: AttackRunSpec, model: Any, tool_layer: Any, defense: Any, ctx: RunContext, sysprompt: str
+) -> Any:
+    """Lõi agent theo harness của spec: `none` → core-a; `HN-OW` → opencode (STT-79)."""
+    system_prompt = ctx.system_prompt(sysprompt)
+    if spec.harness == "none":
+        return CoreA(
+            model=model, tools=tool_layer, defense=defense,
+            system_prompt=system_prompt, **ctx.core_params,
+        )
+    if spec.harness == HARNESS_OW:
+        from attack.harness_ow import OpenWorkCore
+
+        return OpenWorkCore(
+            model=model, tools=tool_layer, defense=defense,
+            system_prompt=system_prompt, **ctx.core_params,
+        )
+    raise AttackRunnerError(f"harness lạ '{spec.harness}' — chỉ 'none' hoặc '{HARNESS_OW}'")
+
+
 def run_one_attack(spec: AttackRunSpec, ctx: RunContext) -> str:
     """Chạy và chấm một run tấn công; trả `run_id`. Lỗi `RECOVERABLE` thành `parse_error` của run;
     lỗi khác cũng ghi `parse_error` nhưng lan ra để runner dừng lô."""
@@ -597,6 +651,7 @@ def run_one_attack(spec: AttackRunSpec, ctx: RunContext) -> str:
             goal=spec.goal,
             channel=spec.channel,
             attacker_mode=spec.attacker_mode,
+            harness=spec.harness,
             lang=payload.get("lang"),
             obfuscation=",".join(payload.get("obfuscation") or []) or None,
             run_canaries=seeded.run_canaries,
@@ -609,13 +664,7 @@ def run_one_attack(spec: AttackRunSpec, ctx: RunContext) -> str:
             run_canaries=tuple(seeded.run_canaries),
             carrier_task_id=spec.carrier_task_id,
         )
-        core = CoreA(
-            model=model,
-            tools=tool_layer,
-            defense=defense,
-            system_prompt=ctx.system_prompt(seeded.canaries.sysprompt),
-            **ctx.core_params,
-        )
+        core = _build_core(spec, model, tool_layer, defense, ctx, seeded.canaries.sysprompt)
         try:
             with TraceRecorder(ctx.engine, meta, on_step=ctx.on_step) as rec:
                 rec.run.delivered = delivered
