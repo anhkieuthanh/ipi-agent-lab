@@ -1,0 +1,6 @@
+preset,dsr_adaptive,dsr_adaptive_lo,dsr_adaptive_hi,n_adaptive,dsr_blind,n_blind,arr,usr,frr,pareto_frontier
+d1_only,0.4667,0.2481,0.6988,15,0.6333,30,0.7368,0.9083,0.0,True
+d2_only,0.1333,0.0374,0.3788,15,0.2667,30,0.5,0.9,0.0,False
+d3_only,0.8667,0.6212,0.9626,15,1.0,30,0.8667,0.6134,0.2773,True
+d4_only,0.2,0.0705,0.4519,15,0.3333,30,0.6,0.8571,0.0,False
+all,0.7333,0.4805,0.891,15,1.0,30,0.7333,0.6134,0.2941,False
