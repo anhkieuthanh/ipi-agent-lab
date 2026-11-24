@@ -1,0 +1,10 @@
+variant,channel,n_techniques,kendall_tau_b_a2_a3,stable,top_group_a2,top_group_a3,top_group_a2_a3,top3_a1,top3_a2_a3,a1_top3_shared
+guarded,K1,8,0.1903,False,T1 T2 T3 T4 T5 T6 T7 T8,T1 T2 T3 T4 T5 T6 T7 T8,T1 T2 T3 T4 T5 T6 T7 T8,T4 T1 T2,T3 T4 T2,2
+guarded,K2a,6,0.5000,False,T3 T5,T2 T3,T3,T3 T2 T5,T3 T5 T1,2
+guarded,K2b,7,0.5394,False,T1 T2 T3 T4 T5 T7 T8,T1 T2 T3 T4 T5 T7 T8,T1 T2 T3 T4 T5 T7 T8,T5 T1 T4,T3 T4 T5,2
+baseline,K1,8,,,T1 T2 T3 T4 T5 T6 T7 T8,T1 T2 T3 T4 T5 T6 T7 T8,T1 T2 T3 T4 T5 T6 T7 T8,T4 T2 T3,T2 T3 T4,3
+baseline,K2a,6,0.2760,False,T3,T2 T3,T3,T3 T2 T5,T3 T5 T1,2
+baseline,K2b,7,0.2333,False,T1 T2 T3 T4 T5 T7 T8,T1 T2 T3 T4 T5 T8,T1 T2 T3 T4 T5 T8,T5 T1 T4,T4 T5 T1,3
+trusting,K1,8,0.2965,False,T1 T2 T3 T4 T5 T6 T7 T8,T1 T2 T3 T4 T5 T6 T7 T8,T1 T2 T3 T4 T5 T6 T7 T8,T4 T1 T2,T3 T4 T6,1
+trusting,K2a,6,0.4629,False,T3 T8,T2 T3,T3,T3 T2 T5,T3 T8 T2,2
+trusting,K2b,7,0.4743,False,T1 T4 T5,T2 T3 T4 T5 T8,T1 T4 T5,T5 T4 T1,T4 T5 T1,3

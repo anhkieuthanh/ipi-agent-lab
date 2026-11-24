@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1318" height="196" viewBox="0 0 1318 196" font-family="Helvetica, Arial, sans-serif" font-size="11">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="48" y="16" font-size="13" font-weight="bold">A1</text>
+<text x="71.0" y="36" text-anchor="middle">T1</text>
+<text x="117.0" y="36" text-anchor="middle">T2</text>
+<text x="163.0" y="36" text-anchor="middle">T3</text>
+<text x="209.0" y="36" text-anchor="middle">T4</text>
+<text x="255.0" y="36" text-anchor="middle">T5</text>
+<text x="301.0" y="36" text-anchor="middle">T6</text>
+<text x="347.0" y="36" text-anchor="middle">T7</text>
+<text x="393.0" y="36" text-anchor="middle">T8</text>
+<text x="42" y="65.0" text-anchor="end">K1</text>
+<rect x="48" y="44" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="71.0" y="65.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="94" y="44" width="46" height="34" fill="rgb(242,245,248)" stroke="#ffffff"/>
+<text x="117.0" y="65.0" text-anchor="middle" fill="#1a1a1a">1/30</text>
+<rect x="140" y="44" width="46" height="34" fill="rgb(242,245,248)" stroke="#ffffff"/>
+<text x="163.0" y="65.0" text-anchor="middle" fill="#1a1a1a">1/30</text>
+<rect x="186" y="44" width="46" height="34" fill="rgb(229,235,242)" stroke="#ffffff"/>
+<text x="209.0" y="65.0" text-anchor="middle" fill="#1a1a1a">2/30</text>
+<rect x="232" y="44" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="255.0" y="65.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="278" y="44" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="301.0" y="65.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="324" y="44" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="347.0" y="65.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="370" y="44" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="393.0" y="65.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<text x="42" y="99.0" text-anchor="end">K2a</text>
+<rect x="48" y="78" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="71.0" y="99.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="94" y="78" width="46" height="34" fill="rgb(164,186,210)" stroke="#ffffff"/>
+<text x="117.0" y="99.0" text-anchor="middle" fill="#1a1a1a">7/30</text>
+<rect x="140" y="78" width="46" height="34" fill="rgb(73,117,165)" stroke="#ffffff"/>
+<text x="163.0" y="99.0" text-anchor="middle" fill="#ffffff">14/30</text>
+<rect x="186" y="78" width="46" height="34" fill="#f2f2f2" stroke="#ffffff"/>
+<rect x="232" y="78" width="46" height="34" fill="rgb(229,235,242)" stroke="#ffffff"/>
+<text x="255.0" y="99.0" text-anchor="middle" fill="#1a1a1a">2/30</text>
+<rect x="278" y="78" width="46" height="34" fill="#f2f2f2" stroke="#ffffff"/>
+<rect x="324" y="78" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="347.0" y="99.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="370" y="78" width="46" height="34" fill="rgb(242,245,248)" stroke="#ffffff"/>
+<text x="393.0" y="99.0" text-anchor="middle" fill="#1a1a1a">1/30</text>
+<text x="42" y="133.0" text-anchor="end">K2b</text>
+<rect x="48" y="112" width="46" height="34" fill="rgb(203,215,229)" stroke="#ffffff"/>
+<text x="71.0" y="133.0" text-anchor="middle" fill="#1a1a1a">4/30</text>
+<rect x="94" y="112" width="46" height="34" fill="rgb(242,245,248)" stroke="#ffffff"/>
+<text x="117.0" y="133.0" text-anchor="middle" fill="#1a1a1a">1/30</text>
+<rect x="140" y="112" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="163.0" y="133.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="186" y="112" width="46" height="34" fill="rgb(229,235,242)" stroke="#ffffff"/>
+<text x="209.0" y="133.0" text-anchor="middle" fill="#1a1a1a">2/30</text>
+<rect x="232" y="112" width="46" height="34" fill="rgb(151,176,203)" stroke="#ffffff"/>
+<text x="255.0" y="133.0" text-anchor="middle" fill="#1a1a1a">8/30</text>
+<rect x="278" y="112" width="46" height="34" fill="#f2f2f2" stroke="#ffffff"/>
+<rect x="324" y="112" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="347.0" y="133.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="370" y="112" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="393.0" y="133.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<text x="494" y="16" font-size="13" font-weight="bold">A2</text>
+<text x="517.0" y="36" text-anchor="middle">T1</text>
+<text x="563.0" y="36" text-anchor="middle">T2</text>
+<text x="609.0" y="36" text-anchor="middle">T3</text>
+<text x="655.0" y="36" text-anchor="middle">T4</text>
+<text x="701.0" y="36" text-anchor="middle">T5</text>
+<text x="747.0" y="36" text-anchor="middle">T6</text>
+<text x="793.0" y="36" text-anchor="middle">T7</text>
+<text x="839.0" y="36" text-anchor="middle">T8</text>
+<text x="488" y="65.0" text-anchor="end">K1</text>
+<rect x="494" y="44" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="517.0" y="65.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="540" y="44" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="563.0" y="65.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="586" y="44" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="609.0" y="65.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="632" y="44" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="655.0" y="65.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="678" y="44" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="701.0" y="65.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="724" y="44" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="747.0" y="65.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="770" y="44" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="793.0" y="65.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="816" y="44" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="839.0" y="65.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<text x="488" y="99.0" text-anchor="end">K2a</text>
+<rect x="494" y="78" width="46" height="34" fill="rgb(138,166,197)" stroke="#ffffff"/>
+<text x="517.0" y="99.0" text-anchor="middle" fill="#1a1a1a">9/30</text>
+<rect x="540" y="78" width="46" height="34" fill="rgb(229,235,242)" stroke="#ffffff"/>
+<text x="563.0" y="99.0" text-anchor="middle" fill="#1a1a1a">2/30</text>
+<rect x="586" y="78" width="46" height="34" fill="rgb(22,78,140)" stroke="#ffffff"/>
+<text x="609.0" y="99.0" text-anchor="middle" fill="#ffffff">26/30</text>
+<rect x="632" y="78" width="46" height="34" fill="#f2f2f2" stroke="#ffffff"/>
+<rect x="678" y="78" width="46" height="34" fill="rgb(125,156,191)" stroke="#ffffff"/>
+<text x="701.0" y="99.0" text-anchor="middle" fill="#ffffff">10/30</text>
+<rect x="724" y="78" width="46" height="34" fill="#f2f2f2" stroke="#ffffff"/>
+<rect x="770" y="78" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="793.0" y="99.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="816" y="78" width="46" height="34" fill="rgb(112,146,184)" stroke="#ffffff"/>
+<text x="839.0" y="99.0" text-anchor="middle" fill="#ffffff">11/30</text>
+<text x="488" y="133.0" text-anchor="end">K2b</text>
+<rect x="494" y="112" width="46" height="34" fill="rgb(190,205,223)" stroke="#ffffff"/>
+<text x="517.0" y="133.0" text-anchor="middle" fill="#1a1a1a">5/30</text>
+<rect x="540" y="112" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="563.0" y="133.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="586" y="112" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="609.0" y="133.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="632" y="112" width="46" height="34" fill="rgb(190,205,223)" stroke="#ffffff"/>
+<text x="655.0" y="133.0" text-anchor="middle" fill="#1a1a1a">5/30</text>
+<rect x="678" y="112" width="46" height="34" fill="rgb(216,225,235)" stroke="#ffffff"/>
+<text x="701.0" y="133.0" text-anchor="middle" fill="#1a1a1a">3/30</text>
+<rect x="724" y="112" width="46" height="34" fill="#f2f2f2" stroke="#ffffff"/>
+<rect x="770" y="112" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="793.0" y="133.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="816" y="112" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="839.0" y="133.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<text x="940" y="16" font-size="13" font-weight="bold">A3</text>
+<text x="963.0" y="36" text-anchor="middle">T1</text>
+<text x="1009.0" y="36" text-anchor="middle">T2</text>
+<text x="1055.0" y="36" text-anchor="middle">T3</text>
+<text x="1101.0" y="36" text-anchor="middle">T4</text>
+<text x="1147.0" y="36" text-anchor="middle">T5</text>
+<text x="1193.0" y="36" text-anchor="middle">T6</text>
+<text x="1239.0" y="36" text-anchor="middle">T7</text>
+<text x="1285.0" y="36" text-anchor="middle">T8</text>
+<text x="934" y="65.0" text-anchor="end">K1</text>
+<rect x="940" y="44" width="46" height="34" fill="rgb(203,215,229)" stroke="#ffffff"/>
+<text x="963.0" y="65.0" text-anchor="middle" fill="#1a1a1a">4/30</text>
+<rect x="986" y="44" width="46" height="34" fill="rgb(164,186,210)" stroke="#ffffff"/>
+<text x="1009.0" y="65.0" text-anchor="middle" fill="#1a1a1a">7/30</text>
+<rect x="1032" y="44" width="46" height="34" fill="rgb(177,196,216)" stroke="#ffffff"/>
+<text x="1055.0" y="65.0" text-anchor="middle" fill="#1a1a1a">6/30</text>
+<rect x="1078" y="44" width="46" height="34" fill="rgb(177,196,216)" stroke="#ffffff"/>
+<text x="1101.0" y="65.0" text-anchor="middle" fill="#1a1a1a">6/30</text>
+<rect x="1124" y="44" width="46" height="34" fill="rgb(216,225,235)" stroke="#ffffff"/>
+<text x="1147.0" y="65.0" text-anchor="middle" fill="#1a1a1a">3/30</text>
+<rect x="1170" y="44" width="46" height="34" fill="rgb(203,215,229)" stroke="#ffffff"/>
+<text x="1193.0" y="65.0" text-anchor="middle" fill="#1a1a1a">4/30</text>
+<rect x="1216" y="44" width="46" height="34" fill="rgb(216,225,235)" stroke="#ffffff"/>
+<text x="1239.0" y="65.0" text-anchor="middle" fill="#1a1a1a">3/30</text>
+<rect x="1262" y="44" width="46" height="34" fill="rgb(229,235,242)" stroke="#ffffff"/>
+<text x="1285.0" y="65.0" text-anchor="middle" fill="#1a1a1a">2/30</text>
+<text x="934" y="99.0" text-anchor="end">K2a</text>
+<rect x="940" y="78" width="46" height="34" fill="rgb(203,215,229)" stroke="#ffffff"/>
+<text x="963.0" y="99.0" text-anchor="middle" fill="#1a1a1a">4/30</text>
+<rect x="986" y="78" width="46" height="34" fill="rgb(151,176,203)" stroke="#ffffff"/>
+<text x="1009.0" y="99.0" text-anchor="middle" fill="#1a1a1a">8/30</text>
+<rect x="1032" y="78" width="46" height="34" fill="rgb(47,97,152)" stroke="#ffffff"/>
+<text x="1055.0" y="99.0" text-anchor="middle" fill="#ffffff">16/30</text>
+<rect x="1078" y="78" width="46" height="34" fill="#f2f2f2" stroke="#ffffff"/>
+<rect x="1124" y="78" width="46" height="34" fill="rgb(203,215,229)" stroke="#ffffff"/>
+<text x="1147.0" y="99.0" text-anchor="middle" fill="#1a1a1a">4/30</text>
+<rect x="1170" y="78" width="46" height="34" fill="#f2f2f2" stroke="#ffffff"/>
+<rect x="1216" y="78" width="46" height="34" fill="rgb(242,245,248)" stroke="#ffffff"/>
+<text x="1239.0" y="99.0" text-anchor="middle" fill="#1a1a1a">1/30</text>
+<rect x="1262" y="78" width="46" height="34" fill="rgb(229,235,242)" stroke="#ffffff"/>
+<text x="1285.0" y="99.0" text-anchor="middle" fill="#1a1a1a">2/30</text>
+<text x="934" y="133.0" text-anchor="end">K2b</text>
+<rect x="940" y="112" width="46" height="34" fill="rgb(203,215,229)" stroke="#ffffff"/>
+<text x="963.0" y="133.0" text-anchor="middle" fill="#1a1a1a">4/30</text>
+<rect x="986" y="112" width="46" height="34" fill="rgb(177,196,216)" stroke="#ffffff"/>
+<text x="1009.0" y="133.0" text-anchor="middle" fill="#1a1a1a">6/30</text>
+<rect x="1032" y="112" width="46" height="34" fill="rgb(164,186,210)" stroke="#ffffff"/>
+<text x="1055.0" y="133.0" text-anchor="middle" fill="#1a1a1a">7/30</text>
+<rect x="1078" y="112" width="46" height="34" fill="rgb(151,176,203)" stroke="#ffffff"/>
+<text x="1101.0" y="133.0" text-anchor="middle" fill="#1a1a1a">8/30</text>
+<rect x="1124" y="112" width="46" height="34" fill="rgb(138,166,197)" stroke="#ffffff"/>
+<text x="1147.0" y="133.0" text-anchor="middle" fill="#1a1a1a">9/30</text>
+<rect x="1170" y="112" width="46" height="34" fill="#f2f2f2" stroke="#ffffff"/>
+<rect x="1216" y="112" width="46" height="34" fill="rgb(255,255,255)" stroke="#ffffff"/>
+<text x="1239.0" y="133.0" text-anchor="middle" fill="#1a1a1a">0/30</text>
+<rect x="1262" y="112" width="46" height="34" fill="rgb(190,205,223)" stroke="#ffffff"/>
+<text x="1285.0" y="133.0" text-anchor="middle" fill="#1a1a1a">5/30</text>
+<text x="10" y="182" fill="#555555">ASR_e2e, biến thể baseline, D = off, kẻ tấn công mù; ô xám: kỹ thuật không dựng được trên kênh. Màu bão hòa ở 60%.</text>
+</svg>
