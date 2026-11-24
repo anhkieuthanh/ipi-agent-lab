@@ -1,0 +1,19 @@
+% Sinh bởi scripts/tradeoff_b2_b3.py — không sửa tay. Cần \usepackage{pgfplots} và
+% \usepgfplotslibrary{groupplots}.
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 1, horizontal sep=1.6cm},
+  width=0.47\textwidth, height=6cm, xmin=0.55, xmax=1.0, ymin=0, ymax=1.05,
+  xlabel={USR (hữu dụng)}, ylabel={DSR (an toàn)},
+  nodes near coords, point meta=explicit symbolic,
+  every node near coord/.append style={font=\scriptsize, anchor=south west},
+  legend style={font=\small}, legend pos=south west]
+\nextgroupplot[title={A2}]
+\addplot+[only marks, mark=*] coordinates {(0.8644,0.4167) [off] (0.9083,0.6500) [D1] (0.9000,0.4000) [D2] (0.6134,0.9000) [D3] (0.8571,0.4167) [D4] (0.6134,1.0000) [all] (0.7395,0.5333) [D3nc]};
+\addlegendentry{mù (B2)}
+\addplot+[only marks, mark=triangle*] coordinates {(0.9083,0.4667) [D1] (0.9000,0.1333) [D2] (0.6134,0.8667) [D3] (0.8571,0.2000) [D4] (0.6134,0.7333) [all]};
+\addlegendentry{thích ứng (B5)}
+\nextgroupplot[title={A3}]
+\addplot+[only marks, mark=*] coordinates {(0.9492,0.5667) [off] (0.9652,0.7833) [D1] (0.9417,0.4000) [D2] (0.6639,0.7667) [D3] (0.9744,0.5667) [D4] (0.6583,0.8167) [all] (0.7797,0.4500) [D3nc]};
+\addlegendentry{mù (B2)}
+\end{groupplot}
+\end{tikzpicture}
