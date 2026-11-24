@@ -10,6 +10,12 @@
   goal_technique.csv               STT-68: mục tiêu × kỹ thuật (gộp kênh, model)
   lang_carrier.csv                 STT-68: ngôn ngữ payload × tác vụ chở
   heatmap_baseline.svg             ASR_e2e kênh × kỹ thuật theo model, biến thể baseline
+  sensitivity.csv                  C5: ASR theo biến thể prompt × model × lớp payload
+  sensitivity_pgfplots.tex         C5: hình đường cong độ nhạy (pgfplots, dán vào báo cáo)
+
+Lớp payload của đường cong độ nhạy: G1+G2 gắn ngữ cảnh · G1+G2 không gắn ngữ cảnh · G3 (corpus chỉ có
+payload G3 không gắn ngữ cảnh). Tách G3 ra vì so hai lớp payload gộp mọi mục tiêu sẽ trộn lớp với mục
+tiêu: payload gắn ngữ cảnh chỉ có ở G1, G2.
 
     uv run python scripts/b1_tables.py
 """
@@ -24,6 +30,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
+from attack.runner import load_corpus  # noqa: E402
 from eval.b1_analysis import (  # noqa: E402
     T_CHUNG,
     kendall_tau_b,
@@ -42,6 +49,8 @@ TARGETS = ("A1", "A2", "A3")
 CHANNELS = ("K1", "K2a", "K2b")
 TECHNIQUES = ("T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8")
 GOALS = ("G1", "G2", "G3")
+VARIANTS = ("guarded", "baseline", "trusting")
+SERIES = {"ctx": "G1+G2 gắn ngữ cảnh", "old": "G1+G2 không gắn ngữ cảnh", "g3": "G3"}
 OUT = ROOT / "results" / "tables" / "b1"
 
 
@@ -173,9 +182,63 @@ def main() -> int:
     written.append(_write("lang_carrier.csv", rows))
 
     written.append(_heatmap(data["baseline"]))
+    written.extend(_sensitivity(data))
     for p in written:
         print(p.relative_to(ROOT))
     return 0
+
+
+def _series(run: dict, contextual: dict[str, bool]) -> str:
+    if run["goal"] == "G3":
+        return "g3"
+    return "ctx" if contextual[run["payload_id"]] else "old"
+
+
+def _sensitivity(data) -> list[Path]:
+    contextual = {p["id"]: bool(p.get("contextual")) for p in load_corpus()}
+    rows = []
+    for v in VARIANTS:
+        g = defaultdict(list)
+        for r in data[v]:
+            g[(r["target_id"], _series(r, contextual))].append(r)
+        for t in TARGETS:
+            for key, label in SERIES.items():
+                c = tally(g[(t, key)])
+                rows.append({"variant": v, "target_id": t, "series": key, "label": label,
+                             **_rate_cols("", c)})
+    csv_path = _write("sensitivity.csv", rows)
+
+    # pgfplots: ba khung (một khung mỗi lớp payload), trục x ba biến thể, mỗi model một đường.
+    marks = {"A1": "square*", "A2": "*", "A3": "triangle*"}
+    lines = ["% Sinh bởi scripts/b1_tables.py — không sửa tay. Cần \\usepackage{pgfplots} và",
+             "% \\usepgfplotslibrary{groupplots}.",
+             "\\begin{tikzpicture}",
+             "\\begin{groupplot}[group style={group size=3 by 1, horizontal sep=1.4cm},",
+             "  width=0.36\\textwidth, height=5cm, ymin=0, ymax=0.55,",
+             "  symbolic x coords={guarded,baseline,trusting}, xtick=data,",
+             "  x tick label style={font=\\small}, ylabel style={font=\\small},",
+             "  yticklabel={\\pgfmathparse{100*\\tick}\\pgfmathprintnumber{\\pgfmathresult}\\%},",
+             "  legend style={font=\\small}, legend pos=north west]"]
+    for i, (key, label) in enumerate(SERIES.items()):
+        opts = f"title={{{label}}}"
+        if i == 0:
+            opts += ", ylabel={ASR đầu-cuối}"
+        lines.append(f"\\nextgroupplot[{opts}]")
+        for t in TARGETS:
+            pts = []
+            for v in VARIANTS:
+                r = next(x for x in rows if x["variant"] == v and x["target_id"] == t
+                         and x["series"] == key)
+                asr, lo, hi = float(r["asr_e2e"]), float(r["lo"]), float(r["hi"])
+                pts.append(f"({v},{asr:.4f}) += (0,{hi - asr:.4f}) -= (0,{asr - lo:.4f})")
+            lines.append(f"\\addplot+[mark={marks[t]}, error bars/.cd, y dir=both, y explicit]")
+            lines.append("  coordinates {" + " ".join(pts) + "};")
+            if i == 0:
+                lines.append(f"\\addlegendentry{{{t}}}")
+    lines += ["\\end{groupplot}", "\\end{tikzpicture}"]
+    tex_path = OUT / "sensitivity_pgfplots.tex"
+    tex_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return [csv_path, tex_path]
 
 
 def _heatmap(runs) -> Path:

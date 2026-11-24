@@ -36,8 +36,8 @@ __all__ = [
 #: Kỹ thuật dựng được ở cả K1, K2a, K2b (`experiment.yaml`: K2a thiếu T4, T6; K2b thiếu T6).
 T_CHUNG = ("T1", "T2", "T3", "T5", "T7", "T8")
 
-_COLUMNS = ("target_id", "channel", "technique", "goal", "lang", "carrier_task_id", "outcome",
-            "delivered", "parse_error", "blocked_by")
+_COLUMNS = ("target_id", "channel", "technique", "goal", "lang", "carrier_task_id", "payload_id",
+            "outcome", "delivered", "parse_error", "blocked_by")
 
 
 def load_runs(store: Path) -> list[dict]:
